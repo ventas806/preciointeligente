@@ -1787,13 +1787,14 @@ async function sbDeleteUsuario(id) {
 
 // Guardar entrada de historial
 async function sbSaveHistorial(entry) {
-  const { error } = await sbExec(() => sb.from('historial').insert({
-    msg:  entry.msg,
-    tipo: entry.tipo,
-    user: entry.user,
-    rol:  entry.rol,
-    time: new Date().toISOString()
-  }));
+  const u = currentUser?.user || '';
+  const { error } = await sb.rpc('save_historial', {
+    p_user: u,
+    p_msg:  entry.msg,
+    p_tipo: entry.tipo,
+    p_rol:  entry.rol,
+    p_time: new Date().toISOString()
+  });
   if (error) console.warn('Historial no guardado:', error.message);
 }
 
@@ -1860,77 +1861,48 @@ async function sbRechazarPendiente(pendId) {
 
 // Guardar venta completa (cabecera + items)
 async function sbSaveVenta(venta) {
-  // 1. Upsert cabecera — intenta con columnas de método de pago;
-  //    si no existen en Supabase aún, reintenta sin ellas.
-  const cabeceraBase = {
-    id:              venta.id,
-    fecha:           venta.fecha,
-    cliente_id:      venta.clienteId      || null,
-    cliente_nombre:  venta.clienteNombre  || '',
-    cliente_ciudad:  venta.clienteCiudad  || '',
-    cliente_tel:     venta.clienteTel     || '',
-    vendedor_id:     venta.vendedorId     || '',
-    vendedor_nombre: venta.vendedorNombre || '',
-    envio:           venta.envio          || 0,
-    subtotal_sin_isv:venta.subtotalSinISV || 0,
-    total_isv:       venta.totalISV       || 0,
-    total:           venta.total          || 0,
-    utilidad_bruta:  venta.utilidadBruta  || 0,
-    pct_comision:    venta.pctComision    || 0,
-    comision:        venta.comision       || 0,
-    observaciones:   venta.observaciones  || '',
-    fecha_registro:  venta.fechaRegistro  || new Date().toISOString(),
-    registrado_por:  venta.registradoPor  || ''
-  };
-  const cabecera = {
-    ...cabeceraBase,
-    metodo_pago:       venta.metodoPago      || '',
-    metodo_pago_label: venta.metodoPagoLabel || '',
-    metodo_pago_obs:   venta.metodoPagoObs   || '',
-    promesa_pago:      venta.promesaPago      || null
-  };
-  console.log('💾 sbSaveVenta → intentando upsert cabecera:', cabecera);
-  let { error: e1 } = await sbExec(() => sb.from('ventas').upsert(cabecera, { onConflict: 'id' }));
-  if (e1) {
-    console.error('❌ Error upsert ventas (con metodo_pago):', e1);
-    const msg = e1.message || '';
-    if (msg.includes('metodo_pago') || msg.includes('column') || msg.includes('schema') || msg.includes('does not exist')) {
-      console.log('🔄 Reintentando sin columnas metodo_pago...');
-      const { error: e1b } = await sbExec(() => sb.from('ventas').upsert(cabeceraBase, { onConflict: 'id' }));
-      if (e1b) {
-        console.error('❌ Error upsert ventas (sin metodo_pago):', e1b);
-        throw new Error(e1b.message);
-      }
-      console.log('✅ Venta guardada sin metodo_pago (columnas pendientes de crear)');
-    } else {
-      throw new Error(msg);
-    }
-  } else {
-    console.log('✅ Cabecera venta guardada correctamente');
-  }
-
-  // 2. Borrar items anteriores e insertar nuevos
-  await sbExec(() => sb.from('venta_items').delete().eq('venta_id', venta.id));
-  if (venta.items && venta.items.length > 0) {
-    const items = venta.items.map(it => ({
-      venta_id:    venta.id,
-      producto_id: it.productoId || null,
-      sku:         it.sku        || '',
+  const u = currentUser?.user || '';
+  const payload = {
+    id:               venta.id,
+    fecha:            venta.fecha,
+    cliente_id:       venta.clienteId      || null,
+    cliente_nombre:   venta.clienteNombre  || '',
+    cliente_ciudad:   venta.clienteCiudad  || '',
+    cliente_tel:      venta.clienteTel     || '',
+    vendedor_id:      venta.vendedorId     || '',
+    vendedor_nombre:  venta.vendedorNombre || '',
+    envio:            venta.envio          || 0,
+    subtotal_sin_isv: venta.subtotalSinISV || 0,
+    total_isv:        venta.totalISV       || 0,
+    total:            venta.total          || 0,
+    utilidad_bruta:   venta.utilidadBruta  || 0,
+    pct_comision:     venta.pctComision    || 0,
+    comision:         venta.comision       || 0,
+    observaciones:    venta.observaciones  || '',
+    fecha_registro:   venta.fechaRegistro  || new Date().toISOString(),
+    registrado_por:   venta.registradoPor  || '',
+    metodo_pago:      venta.metodoPago      || '',
+    metodo_pago_label:venta.metodoPagoLabel || '',
+    metodo_pago_obs:  venta.metodoPagoObs   || '',
+    promesa_pago:     venta.promesaPago      || null,
+    items: (venta.items || []).map(it => ({
+      sku:         it.sku         || '',
       nombre:      it.descripcion || it.nombre || '',
-      cantidad:    it.cantidad   || 1,
-      precio_final:it.precioFinal|| 0,
-      lleva_isv:   it.llevaISV   || false,
-      isv_pct:     it.isvPct     || 0,
-      costo_lps:   it.costoLPS   || 0
-    }));
-    console.log('💾 Insertando', items.length, 'items:', items);
-    const { error: e2 } = await sbExec(() => sb.from('venta_items').insert(items));
-    if (e2) {
-      console.error('❌ Error insertando venta_items:', e2);
-      throw new Error(e2.message);
-    }
-    console.log('✅ Items guardados correctamente');
+      cantidad:    it.cantidad    || 1,
+      precio_final:it.precioFinal || 0,
+      lleva_isv:   it.llevaISV    || false,
+      isv_pct:     it.isvPct      || 0,
+      costo_lps:   it.costoLPS    || 0
+    }))
+  };
+
+  console.log('💾 sbSaveVenta → RPC save_venta:', venta.id);
+  const { data, error } = await sb.rpc('save_venta', { p_user: u, p_venta: payload });
+  if (error) {
+    console.error('❌ Error RPC save_venta:', error.message);
+    throw new Error(error.message);
   }
+  console.log('✅ Venta guardada correctamente');
   return { ok: true };
 }
 
