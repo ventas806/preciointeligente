@@ -2143,6 +2143,11 @@ function fmtUSD(v) { return '$ '+parseFloat(v||0).toLocaleString('en',{minimumFr
 function fmtPct(v) { return (parseFloat(v||0)*100).toFixed(1)+'%'; }
 function fmtFecha(v) {
   if(!v) return '-';
+  // Fecha sola YYYY-MM-DD: parsear directo para evitar desfase UTC→local (Honduras UTC-6)
+  if(/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    const [y, m, d] = v.split('-');
+    return `${d}/${m}/${y.slice(-2)}`;
+  }
   const d = new Date(v);
   if(isNaN(d)) return v;
   const day   = String(d.getDate()).padStart(2,'0');
@@ -2150,7 +2155,6 @@ function fmtFecha(v) {
   const year  = String(d.getFullYear()).slice(-2);
   const hh    = String(d.getHours()).padStart(2,'0');
   const mm    = String(d.getMinutes()).padStart(2,'0');
-  // Si tiene hora (no es solo fecha) mostrar hora
   if(v.includes('T') || v.includes(' ')) return `${day}/${month}/${year} ${hh}:${mm}`;
   return `${day}/${month}/${year}`;
 }
@@ -4658,43 +4662,23 @@ function _mapVentaRow(v) {
 async function cargarVentasYClientes() {
   if (_ventasCargadas) return;
   try {
-    // Seleccionar columnas explícitas para evitar error si metodo_pago no existe aún
-    const colsBase = 'id,fecha,cliente_id,cliente_nombre,cliente_ciudad,cliente_tel,vendedor_id,vendedor_nombre,envio,subtotal_sin_isv,total_isv,total,utilidad_bruta,pct_comision,comision,observaciones,fecha_registro,registrado_por';
-    const colsExtra = ',metodo_pago,metodo_pago_label,metodo_pago_obs,promesa_pago';
+    const u = currentUser?.user || '';
+    // RPC en una sola llamada: evita el problema de connection pooling donde
+    // set_app_user y la query van en requests separados y RLS bloquea los datos
+    const { data, error } = await sb.rpc('get_ventas_clientes', { p_user: u });
 
-    // Intentar con columnas de método de pago
-    let { data: vRows, error: e1 } = await sbExec(() => sb
-      .from('ventas')
-      .select(`${colsBase}${colsExtra}, venta_items(*)`)
-      .order('fecha', { ascending: false })
-      .limit(500));
+    console.log('🔍 RPC ventas →', data ? `ventas:${(data.ventas||[]).length} clientes:${(data.clientes||[]).length}` : 'null', '| err:', error?.message || 'ninguno');
 
-    // Si falla por columnas inexistentes, reintentar sin ellas
-    if (e1) {
-      console.warn('⚠️ Carga ventas con metodo_pago falló:', e1.message, '— reintentando sin esas columnas');
-      const res2 = await sbExec(() => sb
-        .from('ventas')
-        .select(`${colsBase}, venta_items(*)`)
-        .order('fecha', { ascending: false })
-        .limit(500));
-      vRows = res2.data;
-      e1    = res2.error;
-    }
-
-    if (e1) {
-      console.error('❌ Error cargando ventas:', e1);
-      // No marcar como cargado para que reintente en la próxima visita
+    if (error) {
+      console.error('❌ Error cargando ventas/clientes:', error.message);
       return;
-    } else if (vRows) {
-      ventas = vRows.map(_mapVentaRow);
-      console.log('✅ Ventas cargadas:', ventas.length);
     }
 
-    const { data: cRows, error: e2 } = await sbExec(() => sb.from('clientes').select('*').order('nombre'));
-    if (e2) {
-      console.error('❌ Error cargando clientes:', e2);
-    } else if (cRows) {
-      clientes = cRows.map(r => ({
+    if (data) {
+      ventas = (data.ventas || []).map(_mapVentaRow);
+      console.log('✅ Ventas cargadas:', ventas.length);
+
+      clientes = (data.clientes || []).map(r => ({
         id:          r.id,
         nombre:      r.nombre    || '',
         direccion:   r.direccion || '',
