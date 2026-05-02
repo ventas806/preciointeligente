@@ -5335,28 +5335,38 @@ function renderHistorialVentas() {
     return;
   }
 
+  const verRoi = ['admin','gerencia'].includes(currentUser?.rol);
+
   el.innerHTML = `<div class="table-wrap"><table>
     <thead><tr>
       <th>Fecha</th><th>Cliente</th><th>Ciudad</th><th>Vendedor</th><th>Método de Pago</th>
-      <th style="text-align:right">Total</th><th style="text-align:right">Comisión</th><th>Acciones</th>
+      <th style="text-align:right">Total</th>
+      ${verRoi ? '<th style="text-align:right">ROI</th>' : ''}
+      <th style="text-align:right">Comisión</th><th>Acciones</th>
     </tr></thead>
     <tbody>
-      ${lista.map(v => `<tr onclick="verDetalleVenta('${v.id}')" style="cursor:pointer">
-        <td style="white-space:nowrap">${fmtFecha(v.fecha)}</td>
-        <td style="font-weight:600">${v.clienteNombre}</td>
-        <td style="color:var(--text2)">${v.clienteCiudad||'—'}</td>
-        <td>${v.vendedorNombre}</td>
-        <td>${v.metodoPago ? `<span style="font-size:11px;background:rgba(61,106,255,.1);border:1px solid rgba(61,106,255,.2);color:var(--accent);border-radius:10px;padding:2px 9px;white-space:nowrap">${v.metodoPagoLabel||v.metodoPago}</span>${v.promesaPago?`<div style="font-size:10px;color:var(--gold);margin-top:2px">📅 ${fmtFecha(v.promesaPago)}</div>`:''}` : '<span style="color:var(--text3);font-size:12px">—</span>'}</td>
-        <td style="text-align:right;color:var(--green);font-weight:700">${fmtLPS(v.total)}</td>
-        <td style="text-align:right;color:var(--accent3);font-weight:700">${fmtLPS(v.comision)}</td>
-        <td onclick="event.stopPropagation()" style="white-space:nowrap">
-          <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')">👁️</button>
-          <button class="btn btn-ghost btn-sm" onclick="imprimirEtiquetaEnvio('${v.id}')" title="Imprimir etiqueta de envío">🖨️</button>
-          <button class="btn btn-sm" onclick="compartirWhatsApp('${v.id}')" title="Enviar resumen por WhatsApp" style="background:#25D366;color:#fff;border:none">📲</button>
-          ${['admin','gerencia'].includes(currentUser?.rol) ? `<button class="btn btn-primary btn-sm" onclick="editarVenta('${v.id}')">✏️</button>` : ''}
-          ${['admin','gerencia'].includes(currentUser?.rol) ? `<button class="btn btn-danger btn-sm" onclick="eliminarVenta('${v.id}')">🗑️</button>` : ''}
-        </td>
-      </tr>`).join('')}
+      ${lista.map(v => {
+        const costo = v.subtotalSinISV - v.utilidadBruta;
+        const roi   = costo > 0 ? v.utilidadBruta / costo : 0;
+        const roiCls = roi >= 0.3 ? 'var(--green)' : roi >= 0.2 ? 'var(--gold)' : 'var(--red)';
+        return `<tr onclick="verDetalleVenta('${v.id}')" style="cursor:pointer">
+          <td style="white-space:nowrap">${fmtFecha(v.fecha)}</td>
+          <td style="font-weight:600">${v.clienteNombre}</td>
+          <td style="color:var(--text2)">${v.clienteCiudad||'—'}</td>
+          <td>${v.vendedorNombre}</td>
+          <td>${v.metodoPago ? `<span style="font-size:11px;background:rgba(61,106,255,.1);border:1px solid rgba(61,106,255,.2);color:var(--accent);border-radius:10px;padding:2px 9px;white-space:nowrap">${v.metodoPagoLabel||v.metodoPago}</span>${v.promesaPago?`<div style="font-size:10px;color:var(--gold);margin-top:2px">📅 ${fmtFecha(v.promesaPago)}</div>`:''}` : '<span style="color:var(--text3);font-size:12px">—</span>'}</td>
+          <td style="text-align:right;color:var(--green);font-weight:700">${fmtLPS(v.total)}</td>
+          ${verRoi ? `<td style="text-align:right;font-weight:700;color:${roiCls}">${fmtPct(roi)}</td>` : ''}
+          <td style="text-align:right;color:var(--accent3);font-weight:700">${fmtLPS(v.comision)}</td>
+          <td onclick="event.stopPropagation()" style="white-space:nowrap">
+            <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')">👁️</button>
+            <button class="btn btn-ghost btn-sm" onclick="imprimirEtiquetaEnvio('${v.id}')" title="Imprimir etiqueta de envío">🖨️</button>
+            <button class="btn btn-sm" onclick="compartirWhatsApp('${v.id}')" title="Enviar resumen por WhatsApp" style="background:#25D366;color:#fff;border:none">📲</button>
+            ${verRoi ? `<button class="btn btn-primary btn-sm" onclick="editarVenta('${v.id}')">✏️</button>` : ''}
+            ${verRoi ? `<button class="btn btn-danger btn-sm" onclick="eliminarVenta('${v.id}')">🗑️</button>` : ''}
+          </td>
+        </tr>`;
+      }).join('')}
     </tbody>
   </table></div>`;
 }
@@ -5810,21 +5820,27 @@ function renderReporteVendedores() {
   const porVendedor = {};
   lista.forEach(v => {
     const key = v.vendedorId || 'sin_vendedor';
-    if (!porVendedor[key]) porVendedor[key] = { nombre: v.vendedorNombre, ventas:[], totalVentas:0, totalComision:0, totalUtilidad:0 };
+    if (!porVendedor[key]) porVendedor[key] = { nombre: v.vendedorNombre, ventas:[], totalVentas:0, totalComision:0, totalUtilidad:0, totalCosto:0 };
     porVendedor[key].ventas.push(v);
-    porVendedor[key].totalVentas    += v.total;
-    porVendedor[key].totalComision  += v.comision;
-    porVendedor[key].totalUtilidad  += v.utilidadBruta;
+    porVendedor[key].totalVentas   += v.total;
+    porVendedor[key].totalComision += v.comision;
+    porVendedor[key].totalUtilidad += v.utilidadBruta;
+    porVendedor[key].totalCosto    += (v.subtotalSinISV - v.utilidadBruta);
   });
   const rows = Object.values(porVendedor).sort((a,b) => b.totalVentas - a.totalVentas);
 
   // KPIs globales
-  const totVentas    = lista.reduce((a,v)=>a+v.total,0);
-  const totComision  = lista.reduce((a,v)=>a+v.comision,0);
-  const totUtilidad  = lista.reduce((a,v)=>a+v.utilidadBruta,0);
+  const totVentas   = lista.reduce((a,v)=>a+v.total,0);
+  const totComision = lista.reduce((a,v)=>a+v.comision,0);
+  const totUtilidad = lista.reduce((a,v)=>a+v.utilidadBruta,0);
+  const totCosto    = lista.reduce((a,v)=>a+(v.subtotalSinISV - v.utilidadBruta),0);
+  const roiGlobal   = totCosto > 0 ? totUtilidad / totCosto : 0;
+  const roiGlobalCls = roiGlobal >= 0.3 ? 'stat-green' : roiGlobal >= 0.2 ? 'stat-gold' : 'stat-red';
+
   kpisEl.innerHTML = `
     <div class="stat-card"><div class="stat-label">Ventas Totales</div><div class="stat-value stat-green">${fmtLPS(totVentas)}</div><div class="stat-sub">${lista.length} transacción(es)</div></div>
     <div class="stat-card"><div class="stat-label">Utilidad Bruta</div><div class="stat-value stat-blue">${fmtLPS(totUtilidad)}</div></div>
+    <div class="stat-card"><div class="stat-label">ROI Promedio</div><div class="stat-value ${roiGlobalCls}">${fmtPct(roiGlobal)}</div><div class="stat-sub">utilidad / costo</div></div>
     <div class="stat-card"><div class="stat-label">Total Comisiones</div><div class="stat-value stat-teal">${fmtLPS(totComision)}</div></div>
     <div class="stat-card"><div class="stat-label">Vendedores Activos</div><div class="stat-value stat-gold">${rows.length}</div></div>
   `;
@@ -5840,19 +5856,23 @@ function renderReporteVendedores() {
         <th>Vendedor</th><th style="text-align:center"># Ventas</th>
         <th style="text-align:right">Total Vendido</th>
         <th style="text-align:right">Utilidad Bruta</th>
+        <th style="text-align:right">ROI</th>
         <th style="text-align:right">% Comisión</th>
         <th style="text-align:right">Comisión Total</th>
         <th style="text-align:right">Ticket Prom.</th>
       </tr></thead>
       <tbody>
         ${rows.map(r => {
-          const pct = r.ventas[0]?.pctComision || (parametros.comisionVentas||10);
-          const ticket = r.ventas.length ? r.totalVentas/r.ventas.length : 0;
+          const pct    = r.ventas[0]?.pctComision || (parametros.comisionVentas||10);
+          const ticket = r.ventas.length ? r.totalVentas / r.ventas.length : 0;
+          const roi    = r.totalCosto > 0 ? r.totalUtilidad / r.totalCosto : 0;
+          const roiCls = roi >= 0.3 ? 'var(--green)' : roi >= 0.2 ? 'var(--gold)' : 'var(--red)';
           return `<tr>
             <td style="font-weight:700">${r.nombre}</td>
             <td style="text-align:center">${r.ventas.length}</td>
             <td style="text-align:right;color:var(--green);font-weight:700">${fmtLPS(r.totalVentas)}</td>
             <td style="text-align:right;color:var(--accent)">${fmtLPS(r.totalUtilidad)}</td>
+            <td style="text-align:right;font-weight:700;color:${roiCls}">${fmtPct(roi)}</td>
             <td style="text-align:right">${pct.toFixed(1)}%</td>
             <td style="text-align:right;color:var(--accent3);font-weight:700">${fmtLPS(r.totalComision)}</td>
             <td style="text-align:right;color:var(--text2)">${fmtLPS(ticket)}</td>
