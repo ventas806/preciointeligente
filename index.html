@@ -5110,6 +5110,7 @@ function renderItemsVenta() {
             <span style="font-size:11px;color:var(--text3)">Costo L</span>
             <input type="number" value="${item.costoLPS||0}" step="0.01" min="0" onchange="actualizarItemVenta('${item._id}','costoLPS',this.value)" style="width:80px;padding:4px 6px;background:var(--bg4);border:1px solid var(--border);border-radius:5px;color:var(--text3);font-size:12px;outline:none" title="Costo en LPS (para calcular comisión)">
           </div>` : ''}
+          ${(!esManual && ['admin','gerencia'].includes(currentUser?.rol) && item.costoLPS) ? `<span style="font-size:11px;color:var(--text3);background:rgba(255,255,255,.05);padding:2px 7px;border-radius:4px;border:1px solid var(--border)">Costo: ${fmtLPS(item.costoLPS)}</span>` : ''}
         </div>
         </div><!-- cierre flex col -->
       </div><!-- cierre flex row thumb+info -->
@@ -5150,11 +5151,11 @@ function calcResumenVenta() {
   const envio = parseFloat(document.getElementById('vEnvio')?.value) || 0;
   const total = subtotalSinISV + totalISV + envio;
 
-  // Comisión = % de utilidad bruta (sin ISV, sin envío)
+  // Comisión = % de utilidad bruta (sin ISV, sin envío) — nunca negativa
   const vendedorId  = document.getElementById('vVendedor')?.value;
   const vendedor    = usuarios.find(u => String(u.id) === String(vendedorId));
   const pctComision = (vendedor && vendedor.comision != null ? vendedor.comision : (parametros.comisionVentas || 10)) / 100;
-  const comision    = utilidadBruta * pctComision;
+  const comision    = Math.max(0, utilidadBruta * pctComision);
 
   const set = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
   set('vResSubtotal', fmtLPS(subtotalSinISV));
@@ -5228,7 +5229,7 @@ async function guardarVenta() {
   const total       = subtotalSinISV + totalISV + envio;
   const vendedor    = usuarios.find(u => String(u.id) === String(vendedorId));
   const pctComision = (vendedor && vendedor.comision != null ? vendedor.comision : (parametros.comisionVentas||10)) / 100;
-  const comision    = utilidadBruta * pctComision;
+  const comision    = Math.max(0, utilidadBruta * pctComision);
 
   const venta = {
     id:            vEditandoId || 'vta_' + Date.now(),
