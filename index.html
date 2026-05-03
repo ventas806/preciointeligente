@@ -4207,17 +4207,26 @@ async function guardarNotaRapida(id, valor) {
 }
 
 // ===== COPIAR SKU =====
-function copiarSKU(sku) {
-  navigator.clipboard.writeText(String(sku)).then(() => {
-    showToast(`📋 SKU copiado: ${sku}`, 'success');
-  }).catch(() => {
-    const el = document.createElement('textarea');
-    el.value = String(sku);
-    document.body.appendChild(el);
-    el.select();
+function copiarSKU(sku, el) {
+  const _feedback = () => {
+    if (el) {
+      const orig = el.innerHTML;
+      el.innerHTML = '✅';
+      el.style.color = 'var(--accent3)';
+      setTimeout(() => { el.innerHTML = orig; el.style.color = ''; }, 1500);
+    } else {
+      showToast(`📋 SKU copiado: ${sku}`, 'success');
+    }
+  };
+  navigator.clipboard.writeText(String(sku)).then(_feedback).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = String(sku);
+    ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
     document.execCommand('copy');
-    el.remove();
-    showToast(`📋 SKU copiado: ${sku}`, 'success');
+    ta.remove();
+    _feedback();
   });
 }
 
@@ -5445,33 +5454,6 @@ function renderHistorialVentas() {
 }
 
 
-function copiarSKU(sku, el) {
-  navigator.clipboard.writeText(sku).then(() => {
-    const orig = el.innerHTML;
-    el.innerHTML = '✅ Copiado!';
-    el.style.borderColor = 'var(--accent3)';
-    el.style.color = 'var(--accent3)';
-    setTimeout(() => {
-      el.innerHTML = orig;
-      el.style.borderColor = '';
-      el.style.color = '';
-    }, 1500);
-  }).catch(() => {
-    // Fallback para navegadores sin clipboard API
-    const ta = document.createElement('textarea');
-    ta.value = sku;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    const orig = el.innerHTML;
-    el.innerHTML = '✅ Copiado!';
-    el.style.color = 'var(--accent3)';
-    setTimeout(() => { el.innerHTML = orig; el.style.color = ''; }, 1500);
-  });
-}
 
 function compartirWhatsApp(id) {
   const v = ventas.find(x => x.id === id);
