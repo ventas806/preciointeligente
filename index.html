@@ -4787,12 +4787,16 @@ function poblarSelectorVendedor(elId) {
   const esBase = elId !== 'vVendedor';
   sel.innerHTML = (esBase ? '<option value="">Todos los vendedores</option>' : '<option value="">Seleccionar vendedor...</option>') +
     vendedores.map(u => `<option value="${u.id}" ${String(u.id)===String(actual)?'selected':''}>${u.nombre} (${u.rol})</option>`).join('');
-  // Si el usuario actual es vendedor, preseleccionar
+  // Si el usuario actual es vendedor, preseleccionar y bloquear en la nueva venta
   if (elId === 'vVendedor' && currentUser && currentUser.rol === 'ventas') {
     sel.value = currentUser.id;
     sel.disabled = true;
   } else if (elId === 'vVendedor') {
     sel.disabled = false;
+  }
+  // En el reporte, preseleccionar el usuario logueado por defecto (si no hay valor activo)
+  if (elId === 'vRepVendedor' && currentUser && !actual) {
+    sel.value = currentUser.id;
   }
 }
 
