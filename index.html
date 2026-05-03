@@ -1256,6 +1256,9 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                   <span style="color:var(--text2)">Comisión (<span id="vResPct">10</span>%)</span>
                   <span id="vResComision" style="font-weight:700;color:var(--accent3)">L 0.00</span>
                 </div>
+                <div id="vComisionNota" style="display:none;margin-top:6px;font-size:11px;color:var(--gold);background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.2);border-radius:6px;padding:5px 8px">
+                  ⏳ Se registrará en el mes en que se complete el pago
+                </div>
               </div>
 
               <div style="margin-bottom:12px">
@@ -5261,13 +5264,22 @@ function calcResumenVenta() {
   const pctComision = (vendedor && vendedor.comision != null ? vendedor.comision : (parametros.comisionVentas || 10)) / 100;
   const comision    = Math.max(0, utilidadBruta * pctComision);
 
+  // Si el método de pago es parcial y aún hay saldo → comisión se difiere
+  const metodoPago   = document.getElementById('vMetodoPago')?.value || '';
+  const esParcial    = metodoPago === 'parcial';
+  const totalAbonado = esParcial ? vItemsAbonos.reduce((s,a)=>s+(a.monto||0),0) : total;
+  const saldoPend    = Math.max(0, total - totalAbonado);
+  const comisionVis  = (esParcial && saldoPend > 0) ? 0 : comision;
+
   const set = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
   set('vResSubtotal', fmtLPS(subtotalSinISV));
   set('vResISV',      fmtLPS(totalISV));
   set('vResTotal',    fmtLPS(total));
   set('vResUtilidad', fmtLPS(utilidadBruta));
-  set('vResComision', fmtLPS(comision));
+  set('vResComision', fmtLPS(comisionVis));
   set('vResPct',      ((pctComision)*100).toFixed(1));
+  const notaEl = document.getElementById('vComisionNota');
+  if (notaEl) notaEl.style.display = (esParcial && saldoPend > 0) ? '' : 'none';
 
   // Abonos: suma y saldo pendiente
   const aboWrap = document.getElementById('vAbonoWrap');
@@ -5995,6 +6007,20 @@ function eliminarVenta(id) {
 }
 
 // ===== REPORTE POR VENDEDOR =====
+
+// Fecha en que se asigna la comisión:
+// - Ventas NO parciales → fecha de venta
+// - Parciales ya pagadas → fecha del último abono
+// - Parciales con saldo pendiente → null (sin comisión)
+function _fechaComision(v) {
+  if (v.metodoPago === 'parcial') {
+    if ((v.saldoPendiente || 0) > 0) return null; // aún pendiente
+    const fechas = (v.abonos || []).map(a => (a.fecha||'').substring(0,10)).filter(Boolean).sort();
+    return fechas.length ? fechas[fechas.length - 1] : (v.fecha||'').substring(0,10);
+  }
+  return (v.fecha || '').substring(0,10);
+}
+
 function renderReporteVendedores() {
   const periodo   = (document.getElementById('vRepPeriodo')||{}).value||'mes';
   const vidFilt   = (document.getElementById('vRepVendedor')||{}).value||'';
@@ -6004,26 +6030,40 @@ function renderReporteVendedores() {
   const tablaEl   = document.getElementById('vReporteTabla');
   if (!kpisEl || !tablaEl) return;
 
+  // Lista de ventas del período (para stats de ventas/utilidad)
   let lista = rentasPorRol(ventas);
   lista = filtrarVentasPorPeriodo(lista, periodo, desde, hasta);
   if (vidFilt) lista = lista.filter(v => String(v.vendedorId) === String(vidFilt));
 
-  // Agrupar por vendedor
+  // Lista de comisiones del período — usa fecha del último abono para parciales pagadas
+  // Solo incluye ventas cuya comisión "cae" en este período
+  const todasParaComision = rentasPorRol(ventas).filter(v => {
+    const fechaCom = _fechaComision(v);
+    if (!fechaCom) return false; // parcial sin pagar → no genera comisión aún
+    return filtrarVentasPorPeriodo([{ ...v, fecha: fechaCom }], periodo, desde, hasta).length > 0;
+  }).filter(v => !vidFilt || String(v.vendedorId) === String(vidFilt));
+
+  // Agrupar por vendedor (ventas → stats; todasParaComision → comisión)
   const porVendedor = {};
   lista.forEach(v => {
     const key = v.vendedorId || 'sin_vendedor';
     if (!porVendedor[key]) porVendedor[key] = { nombre: v.vendedorNombre, ventas:[], totalVentas:0, totalComision:0, totalUtilidad:0, totalCosto:0 };
     porVendedor[key].ventas.push(v);
     porVendedor[key].totalVentas   += v.total;
-    porVendedor[key].totalComision += v.comision;
     porVendedor[key].totalUtilidad += v.utilidadBruta;
     porVendedor[key].totalCosto    += (v.subtotalSinISV - v.utilidadBruta);
+  });
+  // Sumar comisiones por vendedor usando la lista de comisiones del período
+  todasParaComision.forEach(v => {
+    const key = v.vendedorId || 'sin_vendedor';
+    if (!porVendedor[key]) porVendedor[key] = { nombre: v.vendedorNombre, ventas:[], totalVentas:0, totalComision:0, totalUtilidad:0, totalCosto:0 };
+    porVendedor[key].totalComision += v.comision;
   });
   const rows = Object.values(porVendedor).sort((a,b) => b.totalVentas - a.totalVentas);
 
   // KPIs globales
   const totVentas   = lista.reduce((a,v)=>a+v.total,0);
-  const totComision = lista.reduce((a,v)=>a+v.comision,0);
+  const totComision = todasParaComision.reduce((a,v)=>a+v.comision,0);
   const totUtilidad = lista.reduce((a,v)=>a+v.utilidadBruta,0);
   const totCosto    = lista.reduce((a,v)=>a+(v.subtotalSinISV - v.utilidadBruta),0);
   const roiGlobal   = totCosto > 0 ? totUtilidad / totCosto : 0;
