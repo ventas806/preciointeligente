@@ -3530,18 +3530,17 @@ function buscarEnWix() {
   const nombre = (document.getElementById('fProducto')?.value || '').trim();
   if (!nombre) { showToast('⚠️ Primero ingresa el nombre del producto','warn'); return; }
 
-  // Generar slug: lowercase, sin acentos, solo letras/números/guiones
+  // Wix mantiene los acentos en el slug (los URL-codifica: í → %C3%AD)
   const slug = nombre
     .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')   // quitar tildes
-    .replace(/[ñ]/g, 'n')
-    .replace(/[^a-z0-9\s\-]/g, ' ')   // quitar caracteres especiales
+    .replace(/[^a-z0-9áéíóúüñàèìòùâêîôûäëïöü\s\-]/g, ' ')  // quitar solo chars especiales, conservar acentos
     .trim()
-    .replace(/\s+/g, '-')              // espacios → guiones
-    .replace(/-+/g, '-');              // colapsar guiones dobles
+    .replace(/\s+/g, '-')    // espacios → guiones
+    .replace(/-+/g, '-');    // colapsar guiones dobles
 
-  const url = `https://www.focusstore.net/pagina-del-producto/${slug}`;
+  // encodeURIComponent convierte á→%C3%A1, í→%C3%AD, etc. igual que Wix
+  const slugEncoded = slug.split('-').map(s => encodeURIComponent(s)).join('-');
+  const url = `https://www.focusstore.net/pagina-del-producto/${slugEncoded}`;
 
   // Rellenar campo
   const campo = document.getElementById('fUrl2');
