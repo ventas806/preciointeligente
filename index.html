@@ -4702,7 +4702,8 @@ async function initVentas() {
   }
 
   // Inicializar campos de nueva venta (siempre, son no-destructivos)
-  const hoy = new Date().toISOString().split('T')[0];
+  const _hn = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Tegucigalpa'}));
+  const hoy = `${_hn.getFullYear()}-${String(_hn.getMonth()+1).padStart(2,'0')}-${String(_hn.getDate()).padStart(2,'0')}`;
   const fd  = document.getElementById('vFecha');
   if (fd && !fd.value) fd.value = hoy;
   const envioEl = document.getElementById('vEnvio');
@@ -5250,7 +5251,7 @@ async function guardarVenta() {
       ocultarCargando();
       showToast('✅ Venta guardada correctamente', 'success');
       limpiarVenta();
-      vShowSub('nueva');
+      vShowSub('lista');
     })
     .catch((err) => {
       ocultarCargando();
