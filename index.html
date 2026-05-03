@@ -1090,14 +1090,14 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
 
       <!-- Sub-nav ventas -->
       <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
-        <button class="btn btn-primary" id="vSubNueva" onclick="vShowSub('nueva')">➕ Nueva Venta</button>
-        <button class="btn btn-ghost" id="vSubLista" onclick="vShowSub('lista')">📋 Historial de Ventas</button>
+        <button class="btn btn-ghost" id="vSubNueva" onclick="vShowSub('nueva')">➕ Nueva Venta</button>
+        <button class="btn btn-primary" id="vSubLista" onclick="vShowSub('lista')">📋 Historial de Ventas</button>
         <button class="btn btn-ghost" id="vSubReporte" onclick="vShowSub('reporte')">📊 Reporte Vendedores</button>
         <button class="btn btn-ghost" id="vSubClientes" onclick="vShowSub('clientes')" style="margin-left:auto">👥 Clientes</button>
       </div>
 
       <!-- ===== NUEVA VENTA ===== -->
-      <div id="vPanelNueva">
+      <div id="vPanelNueva" style="display:none">
         <div style="display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start">
 
           <!-- Columna izquierda: datos + productos -->
@@ -1279,7 +1279,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
       </div>
 
       <!-- ===== HISTORIAL DE VENTAS ===== -->
-      <div id="vPanelLista" style="display:none">
+      <div id="vPanelLista">
         <div class="card">
           <div class="card-header">
             <div>
@@ -2387,7 +2387,7 @@ function doLogout() {
   vItemsActuales   = [];
   vEditandoId      = null;
   vClienteSelId    = null;
-  _ventasSubActivo = 'nueva';
+  _ventasSubActivo = 'lista';
   document.getElementById('loginScreen').classList.add('active');
   document.getElementById('appScreen').classList.remove('active');
 }
@@ -4772,10 +4772,6 @@ async function initVentas() {
   poblarSelectorMetodoPago();
   calcResumenVenta();
 
-  // Mostrar historial por defecto; respetar si el usuario ya está en otra vista
-  if (_ventasSubActivo === 'nueva' || !_ventasSubActivo) {
-    _ventasSubActivo = 'lista';
-  }
   vShowSub(_ventasSubActivo);
 }
 
@@ -4801,7 +4797,7 @@ function poblarSelectorVendedor(elId) {
 }
 
 // ── Sub-paneles ──
-let _ventasSubActivo = 'nueva'; // Trackea el sub-panel activo
+let _ventasSubActivo = 'lista'; // Trackea el sub-panel activo
 let _ventaSnapshot   = null;    // Snapshot de la venta original al entrar a edición
 
 function vShowSub(sub) {
