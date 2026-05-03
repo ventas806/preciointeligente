@@ -811,7 +811,14 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
           </div>
           <div class="form-field field-full">
             <label>URL Referencia 2 (más detalles)</label>
-            <input type="url" id="fUrl2" placeholder="https://...">
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="url" id="fUrl2" placeholder="https://..." style="flex:1" oninput="onUrl2Change(this.value)">
+              <button type="button" onclick="buscarEnWix()" title="Generar URL desde nombre del producto en focusstore.net"
+                style="white-space:nowrap;padding:8px 12px;background:rgba(0,200,160,.12);border:1px solid rgba(0,200,160,.35);color:var(--accent3);border-radius:var(--radius2);cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:5px;flex-shrink:0">
+                🔍 Buscar en Wix
+              </button>
+              <a id="fUrl2Abrir" href="#" target="_blank" style="display:none;padding:8px 10px;background:rgba(61,106,255,.1);border:1px solid rgba(61,106,255,.3);color:var(--accent);border-radius:var(--radius2);font-size:12px;text-decoration:none;white-space:nowrap;flex-shrink:0">🔗 Abrir</a>
+            </div>
           </div>
           <div class="form-field field-full">
             <label>Nota Importante</label>
@@ -3487,6 +3494,7 @@ function editarProducto(id) {
   document.getElementById('fFlete').value=p.fleteL||'';
   document.getElementById('fUrl1').value=p.url1||'';
   document.getElementById('fUrl2').value=p.url2||'';
+  onUrl2Change(p.url2||'');
   document.getElementById('fNota').value=p.nota||'';
   if(p.imagen) {
     imgDataURL=p.imagen;
@@ -3516,6 +3524,46 @@ async function eliminarProducto(id) {
 }
 
 function cancelarEdicion() { editingId=null; showTab('productos'); }
+
+// ── Buscar producto en Wix focusstore.net ─────────────────────────────
+function buscarEnWix() {
+  const nombre = (document.getElementById('fProducto')?.value || '').trim();
+  if (!nombre) { showToast('⚠️ Primero ingresa el nombre del producto','warn'); return; }
+
+  // Generar slug: lowercase, sin acentos, solo letras/números/guiones
+  const slug = nombre
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')   // quitar tildes
+    .replace(/[ñ]/g, 'n')
+    .replace(/[^a-z0-9\s\-]/g, ' ')   // quitar caracteres especiales
+    .trim()
+    .replace(/\s+/g, '-')              // espacios → guiones
+    .replace(/-+/g, '-');              // colapsar guiones dobles
+
+  const url = `https://www.focusstore.net/pagina-del-producto/${slug}`;
+
+  // Rellenar campo
+  const campo = document.getElementById('fUrl2');
+  if (campo) campo.value = url;
+
+  // Mostrar botón "Abrir"
+  const abrirBtn = document.getElementById('fUrl2Abrir');
+  if (abrirBtn) { abrirBtn.href = url; abrirBtn.style.display = ''; }
+
+  // Abrir en nueva pestaña para verificar
+  window.open(url, '_blank');
+  showToast(`🔍 URL generada → verifica que cargue correctamente`, 'success', 4000);
+}
+
+// Actualizar botón "Abrir" cuando el campo cambia manualmente
+function onUrl2Change(val) {
+  const abrirBtn = document.getElementById('fUrl2Abrir');
+  if (!abrirBtn) return;
+  if (val && val.startsWith('http')) { abrirBtn.href = val; abrirBtn.style.display = ''; }
+  else abrirBtn.style.display = 'none';
+}
+
 function limpiarForm() {
   ['fSku','fCantidad','fProducto','fCostoUSD','fCostoExtra','fFlete','fUrl1','fUrl2','fNota','fMinStock','fDescuento','fAjusteManual'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('fEstado').value='Nuevo';
