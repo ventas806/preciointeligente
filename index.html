@@ -7164,31 +7164,64 @@ function imprimirReporteCobros() {
   const estadoLabel = { vencido:'Vencida', hoy:'Vence Hoy', sin_fecha:'Sin Fecha', proximo:'Próxima', vigente:'Vigente' };
 
   const seccionesHtml = Object.values(grupos).map(g => {
-    const subtotal = g.items.reduce((s,v)=>s+(v.saldoPendiente||v.total),0);
+    const subtotalSaldo = g.items.reduce((s,v)=>s+(v.saldoPendiente||0),0);
+    const subtotalTotal = g.items.reduce((s,v)=>s+(v.total||0),0);
+    const subtotalAbonado = g.items.reduce((s,v)=>s+((v.abonos||[]).reduce((a,b)=>a+(b.monto||0),0)),0);
+
     const filas = g.items.map(v => {
-      const vencimStr = v.promesaDate ? fmtHN(v.promesaDate) : '—';
-      const items     = (v.items||[]).map(it => it.descripcion||it.nombre||'').filter(Boolean);
-      const descrip   = items.length ? items.slice(0,3).join(', ') + (items.length>3?` +${items.length-3} más`:'') : '—';
-      const esvenc    = v.estado === 'vencido' || v.estado === 'hoy';
-      return `<tr>
+      const vencimStr  = v.promesaDate ? fmtHN(v.promesaDate) : '—';
+      const esvenc     = v.estado === 'vencido' || v.estado === 'hoy';
+      const items      = (v.items||[]).map(it => it.descripcion||it.nombre||'').filter(Boolean);
+      const descrip    = items.length ? items.slice(0,3).join(', ') + (items.length>3?` +${items.length-3} más`:'') : '—';
+      const abonos     = v.abonos || [];
+      const totalAbon  = abonos.reduce((s,a)=>s+(a.monto||0),0);
+      const saldo      = v.saldoPendiente || 0;
+
+      // Fila principal de la venta
+      const filaVenta = `<tr>
         <td>FAC</td>
-        <td style="font-family:monospace;font-size:11px">${(v.id||'').slice(-12)}</td>
+        <td style="font-family:monospace;font-size:10.5px">${(v.id||'').slice(-12)}</td>
         <td>${fmtHN(new Date(v.fecha+'T12:00:00'))}</td>
-        <td style="color:${esvenc?'#c0392b':'#333'}">${vencimStr}</td>
+        <td style="color:${esvenc?'#c0392b':'#555'}">${vencimStr}</td>
         <td style="color:${esvenc?'#c0392b':'#27ae60'};font-weight:600">${estadoLabel[v.estado]||'—'}</td>
-        <td>${g.nombre}</td>
         <td style="font-size:11px;color:#555">${descrip}</td>
-        <td style="text-align:right;font-weight:700;color:${esvenc?'#c0392b':'#333'}">${fmtL(v.saldoPendiente||v.total)}</td>
+        <td style="text-align:right;font-weight:700">${fmtL(v.total||0)}</td>
+        <td style="text-align:right;color:#27ae60;font-weight:600">${fmtL(totalAbon)}</td>
+        <td style="text-align:right;font-weight:700;color:${esvenc?'#c0392b':'#333'}">${fmtL(saldo)}</td>
       </tr>`;
+
+      // Sub-filas de abonos (si existen)
+      const filasAbonos = abonos.length
+        ? abonos.map((a,i) => `<tr style="background:#f9fff9">
+            <td colspan="2" style="padding:3px 8px 3px 24px;font-size:10.5px;color:#888">
+              ${i===0 ? '↳ <em>Abonos realizados:</em>' : ''}
+            </td>
+            <td style="font-size:10.5px;color:#555;padding:3px 8px">
+              ${a.fecha ? fmtHN(new Date(a.fecha+'T12:00:00')) : '—'}
+            </td>
+            <td colspan="4" style="font-size:10.5px;color:#555;padding:3px 8px">
+              ${a.nota ? `<em>${a.nota}</em>` : '<em style="color:#aaa">Sin nota</em>'}
+            </td>
+            <td style="text-align:right;font-size:10.5px;color:#27ae60;font-weight:600;padding:3px 8px">
+              ${fmtL(a.monto||0)}
+            </td>
+            <td></td>
+          </tr>`).join('')
+        : `<tr style="background:#fffaf9"><td colspan="9" style="padding:3px 8px 3px 24px;font-size:10.5px;color:#bbb"><em>↳ Sin abonos registrados</em></td></tr>`;
+
+      return filaVenta + filasAbonos;
     }).join('');
+
     return `
       <tr class="cliente-header">
-        <td colspan="8"><strong>${g.nombre}</strong> &nbsp;·&nbsp; ${g.ciudad||'—'} &nbsp;·&nbsp; ${g.tel||'—'} &nbsp;·&nbsp; ${g.items.length} factura(s)</td>
+        <td colspan="9"><strong>${g.nombre}</strong> &nbsp;·&nbsp; ${g.ciudad||'—'} &nbsp;·&nbsp; ${g.tel||'—'} &nbsp;·&nbsp; ${g.items.length} factura(s)</td>
       </tr>
       ${filas}
       <tr class="subtotal-row">
-        <td colspan="7" style="text-align:right">Subtotal ${g.nombre}</td>
-        <td style="text-align:right">${fmtL(subtotal)}</td>
+        <td colspan="6" style="text-align:right">Subtotal ${g.nombre}</td>
+        <td style="text-align:right">${fmtL(subtotalTotal)}</td>
+        <td style="text-align:right;color:#27ae60">${fmtL(subtotalAbonado)}</td>
+        <td style="text-align:right">${fmtL(subtotalSaldo)}</td>
       </tr>`;
   }).join('');
 
@@ -7258,9 +7291,10 @@ function imprimirReporteCobros() {
       <th>Fecha Emisión</th>
       <th>Fecha Vencim.</th>
       <th>Status</th>
-      <th>Emitido a nombre de</th>
       <th>Descripción</th>
-      <th style="text-align:right">Saldo Doc.</th>
+      <th style="text-align:right">Total Venta</th>
+      <th style="text-align:right">Total Abonado</th>
+      <th style="text-align:right">Saldo Pendiente</th>
     </tr>
   </thead>
   <tbody>
