@@ -1178,16 +1178,22 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                   <label>📅 Fecha Promesa de Pago</label>
                   <input type="date" id="vPromesaPago" style="width:100%">
                 </div>
-                <!-- Abono parcial -->
+                <!-- Registro de abonos -->
                 <div class="form-field field-full" id="vAbonoWrap" style="display:none">
-                  <label>💵 Abono Inicial <span style="color:var(--text3);font-weight:400;font-size:11px">(cuánto paga ahora)</span></label>
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <span style="font-size:13px;color:var(--text3)">L</span>
-                    <input type="number" id="vAbono" value="0" min="0" step="0.01" oninput="calcResumenVenta()" style="flex:1;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:14px;font-weight:700;outline:none">
-                  </div>
-                  <div id="vSaldoPendiente" style="margin-top:8px;padding:10px 14px;background:rgba(255,71,87,.1);border:1px solid rgba(255,71,87,.3);border-radius:8px;display:none">
-                    <div style="font-size:11px;color:var(--red);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">⚠️ Saldo Pendiente por Cobrar</div>
-                    <div id="vSaldoPendienteVal" style="font-size:20px;font-weight:800;color:var(--red)">L 0.00</div>
+                  <label style="display:flex;align-items:center;justify-content:space-between">
+                    <span>💳 Registro de Abonos</span>
+                    <button type="button" onclick="agregarAbono()" style="padding:4px 12px;background:var(--accent3);color:#000;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">+ Agregar Abono</button>
+                  </label>
+                  <div id="vAbonoLista" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+                  <div id="vAbonoResumen" style="display:none;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px">
+                    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+                      <span style="color:var(--text2)">Total abonado</span>
+                      <span id="vTotalAbonado" style="font-weight:700;color:var(--accent3)">L 0.00</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800">
+                      <span style="color:var(--red)">⚠️ Saldo Pendiente</span>
+                      <span id="vSaldoPendienteVal" style="color:var(--red)">L 0.00</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1900,7 +1906,6 @@ async function sbSaveVenta(venta) {
     comision:         venta.comision       || 0,
     observaciones:    venta.observaciones  || '',
     maps_link:        venta.mapsLink        || '',
-    abono:            venta.abono           || 0,
     saldo_pendiente:  venta.saldoPendiente  || 0,
     fecha_registro:   venta.fechaRegistro  || new Date().toISOString(),
     registrado_por:   venta.registradoPor  || '',
@@ -1916,6 +1921,13 @@ async function sbSaveVenta(venta) {
       lleva_isv:   it.llevaISV    || false,
       isv_pct:     it.isvPct      || 0,
       costo_lps:   it.costoLPS    || 0
+    })),
+    abonos: (venta.abonos || []).map(a => ({
+      _id:           a._id           || ('ab_' + Date.now() + Math.random()),
+      monto:         a.monto         || 0,
+      fecha:         a.fecha         || new Date().toISOString().split('T')[0],
+      nota:          a.nota          || '',
+      registrado_por: a.registradoPor || ''
     }))
   };
 
@@ -3738,7 +3750,8 @@ function onMetodoPagoChange(limpiar = true) {
     if (metodo && !metodo.promesa && document.getElementById('vPromesaPago'))
       document.getElementById('vPromesaPago').value = '';
     if (!esParcial) {
-      const aboEl = document.getElementById('vAbono'); if (aboEl) aboEl.value = '0';
+      vItemsAbonos = [];
+      renderAbonosVenta();
     }
   }
   calcResumenVenta();
@@ -4622,6 +4635,7 @@ function imprimirEtiquetas() {
 let ventas      = [];
 let clientes    = [];
 let vItemsActuales = [];
+let vItemsAbonos   = [];   // [{_id, monto, fecha, nota, registradoPor}]
 let vClienteSelId  = null;
 let vEditandoId    = null;
 let _ventasCargadas = false;
@@ -4650,7 +4664,6 @@ function _mapVentaRow(v) {
     comision:        v.comision        || 0,
     observaciones:   v.observaciones   || '',
     mapsLink:        v.maps_link        || '',
-    abono:           v.abono           || 0,
     saldoPendiente:  v.saldo_pendiente || 0,
     metodoPago:      v.metodo_pago     || '',
     metodoPagoLabel: v.metodo_pago_label || '',
@@ -4669,6 +4682,13 @@ function _mapVentaRow(v) {
       llevaISV:    it.lleva_isv   || false,
       isvPct:      it.isv_pct     || 0,
       costoLPS:    it.costo_lps   || 0
+    })),
+    abonos: (v.venta_abonos || []).map(a => ({
+      _id:          a.id           || ('ab_'+Date.now()),
+      monto:        a.monto        || 0,
+      fecha:        a.fecha        || '',
+      nota:         a.nota         || '',
+      registradoPor:a.registrado_por|| ''
     }))
   };
 }
@@ -4994,6 +5014,68 @@ function onMapsLinkChange() {
 }
 
 // ===== BÚSQUEDA DE PRODUCTO =====
+// ===== ABONOS =====
+function _hoyHN() {
+  const d = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Tegucigalpa'}));
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function agregarAbono() {
+  vItemsAbonos.push({
+    _id:          'ab_' + Date.now(),
+    monto:        0,
+    fecha:        _hoyHN(),
+    nota:         '',
+    registradoPor: currentUser ? currentUser.nombre : ''
+  });
+  renderAbonosVenta();
+}
+
+function quitarAbono(_id) {
+  vItemsAbonos = vItemsAbonos.filter(a => a._id !== _id);
+  renderAbonosVenta();
+  calcResumenVenta();
+}
+
+function actualizarAbono(_id, campo, valor) {
+  const ab = vItemsAbonos.find(a => a._id === _id);
+  if (!ab) return;
+  ab[campo] = campo === 'monto' ? (parseFloat(valor)||0) : valor;
+  calcResumenVenta();
+}
+
+function renderAbonosVenta() {
+  const lista = document.getElementById('vAbonoLista');
+  if (!lista) return;
+  if (!vItemsAbonos.length) {
+    lista.innerHTML = `<div style="font-size:12px;color:var(--text3);padding:6px 0">Sin abonos registrados. Presiona "+ Agregar Abono".</div>`;
+  } else {
+    lista.innerHTML = vItemsAbonos.map((ab, idx) => `
+      <div style="display:grid;grid-template-columns:130px 1fr 1fr auto;gap:8px;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px">
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:3px">Fecha</div>
+          <input type="date" value="${ab.fecha}" onchange="actualizarAbono('${ab._id}','fecha',this.value)"
+            style="width:100%;padding:5px 8px;background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:3px">Monto (L)</div>
+          <input type="number" value="${ab.monto||''}" min="0" step="0.01" placeholder="0.00"
+            oninput="actualizarAbono('${ab._id}','monto',this.value)"
+            style="width:100%;padding:5px 8px;background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--accent3);font-size:14px;font-weight:700;outline:none">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:3px">Nota</div>
+          <input type="text" value="${ab.nota||''}" placeholder="Efectivo, transferencia..."
+            onchange="actualizarAbono('${ab._id}','nota',this.value)"
+            style="width:100%;padding:5px 8px;background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">
+        </div>
+        <button onclick="quitarAbono('${ab._id}')" title="Quitar" style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0 4px;margin-top:14px">×</button>
+      </div>`).join('');
+  }
+  calcResumenVenta();
+}
+
+// ===== BÚSQUEDA DE PRODUCTO =====
 function buscarProductoVenta() {
   const q   = (document.getElementById('vProdBuscar').value || '').toLowerCase().trim();
   const res = document.getElementById('vProdResultados');
@@ -5187,15 +5269,17 @@ function calcResumenVenta() {
   set('vResComision', fmtLPS(comision));
   set('vResPct',      ((pctComision)*100).toFixed(1));
 
-  // Abono y saldo pendiente (solo si método parcial visible)
+  // Abonos: suma y saldo pendiente
   const aboWrap = document.getElementById('vAbonoWrap');
   if (aboWrap && aboWrap.style.display !== 'none') {
-    const abono = parseFloat(document.getElementById('vAbono')?.value) || 0;
-    const saldo = Math.max(0, total - abono);
-    const saldoEl  = document.getElementById('vSaldoPendiente');
-    const saldoVal = document.getElementById('vSaldoPendienteVal');
-    if (saldoEl)  saldoEl.style.display  = saldo > 0 ? '' : 'none';
-    if (saldoVal) saldoVal.textContent   = fmtLPS(saldo);
+    const totalAbonado = vItemsAbonos.reduce((s, a) => s + (a.monto||0), 0);
+    const saldo        = Math.max(0, total - totalAbonado);
+    const resumen      = document.getElementById('vAbonoResumen');
+    const totalAboEl   = document.getElementById('vTotalAbonado');
+    const saldoVal     = document.getElementById('vSaldoPendienteVal');
+    if (resumen)    resumen.style.display   = vItemsAbonos.length ? '' : 'none';
+    if (totalAboEl) totalAboEl.textContent  = fmtLPS(totalAbonado);
+    if (saldoVal)   saldoVal.textContent    = fmtLPS(saldo);
   }
 }
 
@@ -5218,7 +5302,6 @@ async function guardarVenta() {
   const metodoPagoId  = (document.getElementById('vMetodoPago')?.value   || '').trim();
   const metodoPagoObs = (document.getElementById('vMetodoPagoObs')?.value || '').trim();
   const promesaPago   = (document.getElementById('vPromesaPago')?.value   || '').trim();
-  const abono         = parseFloat(document.getElementById('vAbono')?.value) || 0;
 
   // Guardar/actualizar cliente
   let clienteId = vClienteSelId;
@@ -5288,8 +5371,8 @@ async function guardarVenta() {
     metodoPagoLabel: (parametros.metodosPago||[]).find(m=>m.id===metodoPagoId)?.label || metodoPagoId,
     metodoPagoObs:    metodoPagoObs,
     promesaPago:      promesaPago,
-    abono:            abono,
-    saldoPendiente:   Math.max(0, (subtotalSinISV + totalISV + (parseFloat(document.getElementById('vEnvio')?.value)||0)) - abono),
+    abonos:           [...vItemsAbonos],
+    saldoPendiente:   Math.max(0, total - vItemsAbonos.reduce((s,a)=>s+(a.monto||0),0)),
     fechaRegistro: new Date().toISOString(),
     registradoPor: currentUser ? currentUser.nombre : '—'
   };
@@ -5325,8 +5408,8 @@ function limpiarVenta() {
   _ventasSubActivo = 'nueva';
   limpiarCliente();
   ['vObservaciones','vMetodoPagoObs','vMapsLink'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-  const aboEl = document.getElementById('vAbono'); if (aboEl) aboEl.value = '0';
-  const saldoEl = document.getElementById('vSaldoPendiente'); if (saldoEl) saldoEl.style.display = 'none';
+  vItemsAbonos = [];
+  renderAbonosVenta();
   onMapsLinkChange();
   const selMP = document.getElementById('vMetodoPago'); if(selMP) selMP.value = '';
   const proEl = document.getElementById('vPromesaPago'); if(proEl) proEl.value = '';
@@ -5799,7 +5882,8 @@ function editarVenta(id) {
   document.getElementById('vFecha').value            = v.fecha            || '';
   document.getElementById('vObservaciones').value    = v.observaciones    || '';
   const mlEl = document.getElementById('vMapsLink'); if(mlEl) { mlEl.value = v.mapsLink || ''; onMapsLinkChange(); }
-  const aboEl2 = document.getElementById('vAbono'); if(aboEl2) aboEl2.value = v.abono || 0;
+  vItemsAbonos = (v.abonos || []).map(a => ({...a, _id: a._id || ('ab_'+Date.now()+'_'+Math.random().toString(36).slice(2,6))}));
+  renderAbonosVenta();
   document.getElementById('vEnvio').value            = v.envio            != null ? v.envio : (parametros.envioDefecto != null ? parametros.envioDefecto : 120);
 
   // Cargar método de pago
@@ -6653,7 +6737,7 @@ function _renderCobrosReporte(filtrados, hoy) {
         <td style="${tdStyle};color:var(--text2);font-size:12px">${v.metodoPagoObs||v.metodoPagoLabel||'—'}</td>
         <td style="${tdStyle};text-align:right">
           <div style="font-weight:700;color:var(--red)">${fmtLPS(v.saldoPendiente||v.total)}</div>
-          ${v.abono>0?`<div style="font-size:10px;color:var(--text3)">Abono: ${fmtLPS(v.abono)}</div>`:''}
+          ${(v.abonos||[]).length ? `<div style="font-size:10px;color:var(--text3)">${(v.abonos||[]).length} abono(s) · ${fmtLPS((v.abonos||[]).reduce((s,a)=>s+(a.monto||0),0))}</div>` : ''}
         </td>
         <td style="${tdStyle};text-align:right">
           <div style="display:flex;gap:4px;justify-content:flex-end">
@@ -6775,7 +6859,7 @@ function _renderCobrosTarjetas(filtrados) {
           <div style="text-align:right">
             <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">Saldo Pendiente</div>
             <div style="font-size:18px;font-weight:800;color:var(--red)">${fmtLPS(v.saldoPendiente||v.total)}</div>
-            ${v.abono>0?`<div style="font-size:11px;color:var(--text3)">Abono: ${fmtLPS(v.abono)}</div>`:''}
+            ${(v.abonos||[]).length?`<div style="font-size:11px;color:var(--text3)">${(v.abonos||[]).length} abono(s) · ${fmtLPS((v.abonos||[]).reduce((s,a)=>s+(a.monto||0),0))}</div>`:''}
           </div>
           <div style="font-size:11px;color:var(--text3)">Ref: ${(v.id||'').slice(-8)}</div>
           <div style="display:flex;gap:6px;margin-top:4px">
