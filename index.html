@@ -963,6 +963,15 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
         </div>
 
         <div class="param-section">
+          <h3>🚚 Métodos de Envío</h3>
+          <div id="metodosEnvioEditor" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" id="newMetodoEnvio" placeholder="Nuevo método de envío..." style="flex:1;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+            <button class="btn btn-primary btn-sm" onclick="addMetodoEnvio()">+ Agregar</button>
+          </div>
+        </div>
+
+        <div class="param-section">
           <h3>🔖 Categorías</h3>
           <div class="tag-list" id="tagsCategorias"></div>
           <div class="tag-input-row">
@@ -1155,6 +1164,19 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                   <label>Observaciones</label>
                   <textarea id="vObservaciones" placeholder="Notas adicionales del pedido..." style="min-height:50px"></textarea>
                 </div>
+              </div>
+            </div>
+
+            <!-- Método de Envío -->
+            <div class="card">
+              <div class="card-header" style="margin-bottom:14px">
+                <div class="card-title">🚚 Método de Envío</div>
+              </div>
+              <div class="form-field field-full">
+                <label>Forma de Envío *</label>
+                <select id="vMetodoEnvio" style="width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+                  <option value="">— Seleccionar método de envío —</option>
+                </select>
               </div>
             </div>
 
@@ -1915,6 +1937,7 @@ async function sbSaveVenta(venta) {
     metodo_pago:      venta.metodoPago      || '',
     metodo_pago_label:venta.metodoPagoLabel || '',
     metodo_pago_obs:  venta.metodoPagoObs   || '',
+    metodo_envio:     venta.metodoEnvio     || '',
     promesa_pago:     venta.promesaPago      || null,
     items: (venta.items || []).map(it => ({
       sku:         it.sku         || '',
@@ -2013,6 +2036,15 @@ let parametros = {
   ],
   comisionVentas: 10,
   envioDefecto: 120,
+  metodosEnvio: [
+    'Recoger en tienda',
+    'Envío por CAEX',
+    'Envío por Transporte',
+    'Envío con Nexser',
+    'Envío con Yair',
+    'Envío Aéreo',
+    'Envío Marítimo'
+  ],
   metodosPago: [
     { id:'efectivo_ce',    label:'Efectivo Contra Entrega',               observaciones:true,  promesa:false },
     { id:'deposito_cancel',label:'CANCELADO - Depósito a Cuenta',         observaciones:false, promesa:false },
@@ -3689,8 +3721,9 @@ function renderParametros() {
   const selEl = document.getElementById('newSubCatParent');
   selEl.innerHTML = parametros.categorias.map(c=>`<option value="${c}">${c}</option>`).join('');
 
-  // Métodos de pago
+  // Métodos de pago y envío
   renderMetodosPagoEditor();
+  renderMetodosEnvioEditor();
 }
 
 async function guardarCategorias() {
@@ -3720,6 +3753,16 @@ function addSubCategoria() {
   document.getElementById('newSubCat').value='';
   renderParametros();
   guardarCategorias();
+}
+
+// ===== MÉTODOS DE ENVÍO =====
+function poblarSelectorMetodoEnvio() {
+  const sel = document.getElementById('vMetodoEnvio');
+  if (!sel) return;
+  const actual  = sel.value;
+  const metodos = parametros.metodosEnvio || [];
+  sel.innerHTML = '<option value="">— Seleccionar método de envío —</option>' +
+    metodos.map(m => `<option value="${m}" ${m===actual?'selected':''}>${m}</option>`).join('');
 }
 
 // ===== MÉTODOS DE PAGO =====
@@ -3800,6 +3843,38 @@ function removeMetodoPago(idx) {
   renderMetodosPagoEditor();
 }
 
+function renderMetodosEnvioEditor() {
+  const el = document.getElementById('metodosEnvioEditor');
+  if (!el) return;
+  const metodos = parametros.metodosEnvio || [];
+  if (!metodos.length) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:8px 0">Sin métodos configurados. Agrega uno abajo.</div>';
+    return;
+  }
+  el.innerHTML = metodos.map((m, i) => `
+    <div style="display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px">
+      <span style="flex:1;font-size:13px;font-weight:500;color:var(--text)">🚚 ${m}</span>
+      <button class="btn btn-danger btn-sm" onclick="removeMetodoEnvio(${i})" style="padding:4px 10px;font-size:12px">🗑️</button>
+    </div>`).join('');
+}
+
+function addMetodoEnvio() {
+  const input = document.getElementById('newMetodoEnvio');
+  const label = (input?.value || '').trim();
+  if (!label) return;
+  if (!parametros.metodosEnvio) parametros.metodosEnvio = [];
+  parametros.metodosEnvio.push(label);
+  input.value = '';
+  renderMetodosEnvioEditor();
+  poblarSelectorMetodoEnvio();
+}
+
+function removeMetodoEnvio(idx) {
+  parametros.metodosEnvio.splice(idx, 1);
+  renderMetodosEnvioEditor();
+  poblarSelectorMetodoEnvio();
+}
+
 function removeSubCat(cat,idx) {
   parametros.subcategorias[cat].splice(idx,1);
   renderParametros();
@@ -3830,7 +3905,7 @@ async function guardarParametros() {
 
   mostrarCargando('💾 Guardando parámetros...');
   try {
-    const claves = ['tipoCambio','isvNuevo','isvUsado','emailAlert','bandas','roiRef','descMax','categorias','subcategorias','comisionVentas','envioDefecto','metodosPago'];
+    const claves = ['tipoCambio','isvNuevo','isvUsado','emailAlert','bandas','roiRef','descMax','categorias','subcategorias','comisionVentas','envioDefecto','metodosPago','metodosEnvio'];
     for(const clave of claves) {
       await sbSaveParametro(clave, parametros[clave]);
     }
@@ -4671,6 +4746,7 @@ function _mapVentaRow(v) {
     metodoPago:      v.metodo_pago     || '',
     metodoPagoLabel: v.metodo_pago_label || '',
     metodoPagoObs:   v.metodo_pago_obs || '',
+    metodoEnvio:     v.metodo_envio   || '',
     promesaPago:     v.promesa_pago    || '',
     fechaRegistro:   v.fecha_registro  || '',
     registradoPor:   v.registrado_por  || '',
@@ -4770,6 +4846,7 @@ async function initVentas() {
   poblarSelectorVendedor('vFiltVendedor');
   poblarSelectorVendedor('vRepVendedor');
   poblarSelectorMetodoPago();
+  poblarSelectorMetodoEnvio();
   calcResumenVenta();
 
   vShowSub(_ventasSubActivo);
@@ -5311,9 +5388,10 @@ async function guardarVenta() {
   if (!fecha)      { showToast('⚠️ Selecciona la fecha de venta','warn'); return; }
   if (!vendedorId) { showToast('⚠️ Selecciona el vendedor','warn'); return; }
 
-  const metodoPagoId  = (document.getElementById('vMetodoPago')?.value   || '').trim();
+  const metodoPagoId  = (document.getElementById('vMetodoPago')?.value    || '').trim();
   const metodoPagoObs = (document.getElementById('vMetodoPagoObs')?.value || '').trim();
   const promesaPago   = (document.getElementById('vPromesaPago')?.value   || '').trim();
+  const metodoEnvio   = (document.getElementById('vMetodoEnvio')?.value   || '').trim();
 
   // Guardar/actualizar cliente
   let clienteId = vClienteSelId;
@@ -5382,6 +5460,7 @@ async function guardarVenta() {
     metodoPago:    metodoPagoId,
     metodoPagoLabel: (parametros.metodosPago||[]).find(m=>m.id===metodoPagoId)?.label || metodoPagoId,
     metodoPagoObs:    metodoPagoObs,
+    metodoEnvio:      metodoEnvio,
     promesaPago:      promesaPago,
     abonos:           [...vItemsAbonos],
     saldoPendiente:   Math.max(0, total - vItemsAbonos.reduce((s,a)=>s+(a.monto||0),0)),
@@ -5423,7 +5502,8 @@ function limpiarVenta() {
   vItemsAbonos = [];
   renderAbonosVenta();
   onMapsLinkChange();
-  const selMP = document.getElementById('vMetodoPago'); if(selMP) selMP.value = '';
+  const selMP = document.getElementById('vMetodoPago');  if(selMP) selMP.value = '';
+  const selME = document.getElementById('vMetodoEnvio'); if(selME) selME.value = '';
   const proEl = document.getElementById('vPromesaPago'); if(proEl) proEl.value = '';
   onMetodoPagoChange();
   const fd = document.getElementById('vFecha');
@@ -5667,6 +5747,7 @@ function copiarResumenVenta(id, el) {
   texto.push('📅 Fecha: '    + fmtFecha(v.fecha));
   texto.push('👨‍💼 Vendedor: ' + v.vendedorNombre);
   texto.push(sep);
+  if (v.metodoEnvio) texto.push('🚚 Método de Envío: ' + v.metodoEnvio);
   texto.push('💳 Forma de Pago: ' + (v.metodoPagoLabel || v.metodoPago || '—'));
   if (v.promesaPago) texto.push('📅 Promesa de Pago: ' + fmtFecha(v.promesaPago));
   if (v.metodoPagoObs) texto.push('', v.metodoPagoObs);
@@ -5947,6 +6028,16 @@ function editarVenta(id) {
   vItemsAbonos = (v.abonos || []).map(a => ({...a, _id: a._id || ('ab_'+Date.now()+'_'+Math.random().toString(36).slice(2,6))}));
   renderAbonosVenta();
   document.getElementById('vEnvio').value            = v.envio            != null ? v.envio : (parametros.envioDefecto != null ? parametros.envioDefecto : 120);
+
+  // Cargar método de envío
+  const _meId = v.metodoEnvio || '';
+  function _cargarMetodoEnvio() {
+    poblarSelectorMetodoEnvio();
+    const selME = document.getElementById('vMetodoEnvio');
+    if (selME) selME.value = _meId;
+  }
+  _cargarMetodoEnvio();
+  setTimeout(_cargarMetodoEnvio, 150);
 
   // Cargar método de pago
   // Usar onMetodoPagoChange(false) para NO limpiar los valores ya cargados
