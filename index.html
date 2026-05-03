@@ -5649,6 +5649,8 @@ function copiarResumenVenta(id, el) {
 
   const cli       = clientes.find(c => c.id === v.clienteId) || {};
   const direccion = cli.direccion || v.clienteDireccion || '';
+  const tel       = cli.tel  || v.clienteTel  || '';
+  const tel2      = cli.tel2 || '';
   const sep       = '━'.repeat(20);
   const nl        = '\n';
 
@@ -5659,6 +5661,9 @@ function copiarResumenVenta(id, el) {
     '📍 Ciudad: '  + (v.clienteCiudad || '—'),
   ];
   if (direccion) texto.push('🏠 Dirección: ' + direccion);
+  if (tel)       texto.push('📞 Teléfono: ' + tel);
+  if (tel2)      texto.push('📱 Contacto alterno: ' + tel2);
+  if (v.mapsLink) texto.push('🗺️ Ubicación: ' + v.mapsLink);
   texto.push('📅 Fecha: '    + fmtFecha(v.fecha));
   texto.push('👨‍💼 Vendedor: ' + v.vendedorNombre);
   texto.push(sep);
