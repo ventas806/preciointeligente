@@ -1178,6 +1178,18 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                   <label>📅 Fecha Promesa de Pago</label>
                   <input type="date" id="vPromesaPago" style="width:100%">
                 </div>
+                <!-- Abono parcial -->
+                <div class="form-field field-full" id="vAbonoWrap" style="display:none">
+                  <label>💵 Abono Inicial <span style="color:var(--text3);font-weight:400;font-size:11px">(cuánto paga ahora)</span></label>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span style="font-size:13px;color:var(--text3)">L</span>
+                    <input type="number" id="vAbono" value="0" min="0" step="0.01" oninput="calcResumenVenta()" style="flex:1;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:14px;font-weight:700;outline:none">
+                  </div>
+                  <div id="vSaldoPendiente" style="margin-top:8px;padding:10px 14px;background:rgba(255,71,87,.1);border:1px solid rgba(255,71,87,.3);border-radius:8px;display:none">
+                    <div style="font-size:11px;color:var(--red);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">⚠️ Saldo Pendiente por Cobrar</div>
+                    <div id="vSaldoPendienteVal" style="font-size:20px;font-weight:800;color:var(--red)">L 0.00</div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1887,7 +1899,9 @@ async function sbSaveVenta(venta) {
     pct_comision:     venta.pctComision    || 0,
     comision:         venta.comision       || 0,
     observaciones:    venta.observaciones  || '',
-    maps_link:        venta.mapsLink       || '',
+    maps_link:        venta.mapsLink        || '',
+    abono:            venta.abono           || 0,
+    saldo_pendiente:  venta.saldoPendiente  || 0,
     fecha_registro:   venta.fechaRegistro  || new Date().toISOString(),
     registrado_por:   venta.registradoPor  || '',
     metodo_pago:      venta.metodoPago      || '',
@@ -3709,18 +3723,25 @@ function onMetodoPagoChange(limpiar = true) {
   const sel     = document.getElementById('vMetodoPago');
   const obsWrap = document.getElementById('vMetodoPagoObsWrap');
   const proWrap = document.getElementById('vPromesaPagoWrap');
+  const aboWrap = document.getElementById('vAbonoWrap');
   if (!sel) return;
   const metodo = (parametros.metodosPago || []).find(m => m.id === sel.value);
-  // Mostrar/ocultar wrappers siempre
+  const esParcial = metodo && (metodo.id === 'parcial' || (metodo.label||'').toLowerCase().includes('parcial'));
+  // Mostrar/ocultar wrappers
   if (obsWrap) obsWrap.style.display = (metodo && metodo.observaciones) ? '' : 'none';
   if (proWrap) proWrap.style.display = (metodo && metodo.promesa)       ? '' : 'none';
+  if (aboWrap) aboWrap.style.display = esParcial ? '' : 'none';
   // Solo limpiar campos si el usuario cambió el método manualmente
   if (limpiar) {
     if (metodo && !metodo.observaciones && document.getElementById('vMetodoPagoObs'))
       document.getElementById('vMetodoPagoObs').value = '';
     if (metodo && !metodo.promesa && document.getElementById('vPromesaPago'))
       document.getElementById('vPromesaPago').value = '';
+    if (!esParcial) {
+      const aboEl = document.getElementById('vAbono'); if (aboEl) aboEl.value = '0';
+    }
   }
+  calcResumenVenta();
 }
 
 function renderMetodosPagoEditor() {
@@ -4628,7 +4649,9 @@ function _mapVentaRow(v) {
     pctComision:     v.pct_comision    || 0,
     comision:        v.comision        || 0,
     observaciones:   v.observaciones   || '',
-    mapsLink:        v.maps_link       || '',
+    mapsLink:        v.maps_link        || '',
+    abono:           v.abono           || 0,
+    saldoPendiente:  v.saldo_pendiente || 0,
     metodoPago:      v.metodo_pago     || '',
     metodoPagoLabel: v.metodo_pago_label || '',
     metodoPagoObs:   v.metodo_pago_obs || '',
@@ -5163,6 +5186,17 @@ function calcResumenVenta() {
   set('vResUtilidad', fmtLPS(utilidadBruta));
   set('vResComision', fmtLPS(comision));
   set('vResPct',      ((pctComision)*100).toFixed(1));
+
+  // Abono y saldo pendiente (solo si método parcial visible)
+  const aboWrap = document.getElementById('vAbonoWrap');
+  if (aboWrap && aboWrap.style.display !== 'none') {
+    const abono = parseFloat(document.getElementById('vAbono')?.value) || 0;
+    const saldo = Math.max(0, total - abono);
+    const saldoEl  = document.getElementById('vSaldoPendiente');
+    const saldoVal = document.getElementById('vSaldoPendienteVal');
+    if (saldoEl)  saldoEl.style.display  = saldo > 0 ? '' : 'none';
+    if (saldoVal) saldoVal.textContent   = fmtLPS(saldo);
+  }
 }
 
 // ===== GUARDAR VENTA =====
@@ -5184,6 +5218,7 @@ async function guardarVenta() {
   const metodoPagoId  = (document.getElementById('vMetodoPago')?.value   || '').trim();
   const metodoPagoObs = (document.getElementById('vMetodoPagoObs')?.value || '').trim();
   const promesaPago   = (document.getElementById('vPromesaPago')?.value   || '').trim();
+  const abono         = parseFloat(document.getElementById('vAbono')?.value) || 0;
 
   // Guardar/actualizar cliente
   let clienteId = vClienteSelId;
@@ -5251,8 +5286,10 @@ async function guardarVenta() {
     mapsLink:      (document.getElementById('vMapsLink')?.value||'').trim(),
     metodoPago:    metodoPagoId,
     metodoPagoLabel: (parametros.metodosPago||[]).find(m=>m.id===metodoPagoId)?.label || metodoPagoId,
-    metodoPagoObs: metodoPagoObs,
-    promesaPago:   promesaPago,
+    metodoPagoObs:    metodoPagoObs,
+    promesaPago:      promesaPago,
+    abono:            abono,
+    saldoPendiente:   Math.max(0, (subtotalSinISV + totalISV + (parseFloat(document.getElementById('vEnvio')?.value)||0)) - abono),
     fechaRegistro: new Date().toISOString(),
     registradoPor: currentUser ? currentUser.nombre : '—'
   };
@@ -5288,6 +5325,8 @@ function limpiarVenta() {
   _ventasSubActivo = 'nueva';
   limpiarCliente();
   ['vObservaciones','vMetodoPagoObs','vMapsLink'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  const aboEl = document.getElementById('vAbono'); if (aboEl) aboEl.value = '0';
+  const saldoEl = document.getElementById('vSaldoPendiente'); if (saldoEl) saldoEl.style.display = 'none';
   onMapsLinkChange();
   const selMP = document.getElementById('vMetodoPago'); if(selMP) selMP.value = '';
   const proEl = document.getElementById('vPromesaPago'); if(proEl) proEl.value = '';
@@ -5509,6 +5548,11 @@ function compartirWhatsApp(id) {
 }
 
 function verDetalleVenta(id) {
+  // Cargar ventas si aún no están disponibles
+  if (!ventas || !ventas.length) {
+    cargarVentasYClientes().then(() => verDetalleVenta(id));
+    return;
+  }
   const v = ventas.find(x => x.id === id);
   if (!v) return;
   const body = document.getElementById('modalDetalleVentaBody');
@@ -5732,6 +5776,11 @@ function editarVenta(id) {
   // Cerrar modal si está abierto
   cerrarModal('modalDetalleVenta');
 
+  // Asegurar que estamos en el tab de Ventas
+  if (!document.getElementById('tab-ventas')?.classList.contains('active')) {
+    showTab('ventas');
+  }
+
   // Cambiar a sub-panel Nueva Venta
   vShowSub('nueva');
 
@@ -5750,6 +5799,7 @@ function editarVenta(id) {
   document.getElementById('vFecha').value            = v.fecha            || '';
   document.getElementById('vObservaciones').value    = v.observaciones    || '';
   const mlEl = document.getElementById('vMapsLink'); if(mlEl) { mlEl.value = v.mapsLink || ''; onMapsLinkChange(); }
+  const aboEl2 = document.getElementById('vAbono'); if(aboEl2) aboEl2.value = v.abono || 0;
   document.getElementById('vEnvio').value            = v.envio            != null ? v.envio : (parametros.envioDefecto != null ? parametros.envioDefecto : 120);
 
   // Cargar método de pago
@@ -6485,7 +6535,7 @@ function _renderCobrosInterno() {
   const nVencidos = parciales.filter(v=>v.estado==='vencido').length;
   const nHoy      = parciales.filter(v=>v.estado==='hoy').length;
   const nProximos = parciales.filter(v=>v.estado==='proximo').length;
-  const totalPend = parciales.reduce((s,v)=>s+v.total,0);
+  const totalPend = parciales.reduce((s,v)=>s+(v.saldoPendiente||v.total),0);
 
   const badge = document.getElementById('badgeCobros');
   const alertas = nVencidos + nHoy;
@@ -6570,7 +6620,7 @@ function _renderCobrosReporte(filtrados, hoy) {
   const tdStyle = 'padding:9px 12px;font-size:13px;border-bottom:1px solid var(--border2);vertical-align:middle';
 
   const secciones = Object.values(grupos).map(g => {
-    const subtotal = g.items.reduce((s,v)=>s+v.total,0);
+    const subtotal = g.items.reduce((s,v)=>s+(v.saldoPendiente||v.total),0);
     granTotal += subtotal;
 
     const filas = g.items.map(v => {
@@ -6583,9 +6633,10 @@ function _renderCobrosReporte(filtrados, hoy) {
         : '';
 
       // Aging
+      const monto = v.saldoPendiente || v.total;
       const bucket = _agingBucket(v.diffDias);
-      if (bucket) { aging[bucket] += v.total; totalVencido += v.total; }
-      else totalVigente += v.total;
+      if (bucket) { aging[bucket] += monto; totalVencido += monto; }
+      else totalVigente += monto;
 
       return `<tr onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
         <td style="${tdStyle}">
@@ -6600,7 +6651,10 @@ function _renderCobrosReporte(filtrados, hoy) {
           <span style="font-size:11px;font-weight:700;color:${cfg.color};background:${cfg.bg};border:1px solid ${cfg.border};border-radius:10px;padding:2px 8px;white-space:nowrap">${cfg.icon} ${cfg.label}</span>
         </td>
         <td style="${tdStyle};color:var(--text2);font-size:12px">${v.metodoPagoObs||v.metodoPagoLabel||'—'}</td>
-        <td style="${tdStyle};text-align:right;font-weight:700;color:var(--green)">${fmtLPS(v.total)}</td>
+        <td style="${tdStyle};text-align:right">
+          <div style="font-weight:700;color:var(--red)">${fmtLPS(v.saldoPendiente||v.total)}</div>
+          ${v.abono>0?`<div style="font-size:10px;color:var(--text3)">Abono: ${fmtLPS(v.abono)}</div>`:''}
+        </td>
         <td style="${tdStyle};text-align:right">
           <div style="display:flex;gap:4px;justify-content:flex-end">
             <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')" style="padding:4px 8px;font-size:11px">👁️</button>
@@ -6719,8 +6773,9 @@ function _renderCobrosTarjetas(filtrados) {
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:140px">
           <div style="text-align:right">
-            <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">Total Venta</div>
-            <div style="font-size:18px;font-weight:800;color:var(--green)">${fmtLPS(v.total)}</div>
+            <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">Saldo Pendiente</div>
+            <div style="font-size:18px;font-weight:800;color:var(--red)">${fmtLPS(v.saldoPendiente||v.total)}</div>
+            ${v.abono>0?`<div style="font-size:11px;color:var(--text3)">Abono: ${fmtLPS(v.abono)}</div>`:''}
           </div>
           <div style="font-size:11px;color:var(--text3)">Ref: ${(v.id||'').slice(-8)}</div>
           <div style="display:flex;gap:6px;margin-top:4px">
