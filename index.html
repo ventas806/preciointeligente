@@ -5635,33 +5635,36 @@ function renderHistorialVentas() {
 
   el.innerHTML = `<div class="table-wrap"><table>
     <thead><tr>
-      <th>Fecha</th><th>Cliente</th><th>Ciudad</th><th>Vendedor</th><th>Método de Pago</th>
+      <th>Acciones</th>
+      <th>Fecha</th><th>Cliente</th><th>Ciudad</th><th>Vendedor</th>
+      <th>Envío</th><th>Método de Pago</th>
       <th style="text-align:right">Total</th>
       ${verRoi ? '<th style="text-align:right">ROI</th>' : ''}
-      <th style="text-align:right">Comisión</th><th>Acciones</th>
+      <th style="text-align:right">Comisión</th>
     </tr></thead>
     <tbody>
       ${lista.map(v => {
-        const costo = v.subtotalSinISV - v.utilidadBruta;
-        const roi   = costo > 0 ? v.utilidadBruta / costo : 0;
+        const costo  = v.subtotalSinISV - v.utilidadBruta;
+        const roi    = costo > 0 ? v.utilidadBruta / costo : 0;
         const roiCls = roi >= 0.3 ? 'var(--green)' : roi >= 0.2 ? 'var(--gold)' : 'var(--red)';
         return `<tr onclick="verDetalleVenta('${v.id}')" style="cursor:pointer">
+          <td onclick="event.stopPropagation()" style="white-space:nowrap">
+            ${verRoi ? `<button class="btn btn-primary btn-sm" onclick="editarVenta('${v.id}')" title="Editar">✏️</button>` : ''}
+            ${verRoi ? `<button class="btn btn-danger btn-sm" onclick="eliminarVenta('${v.id}')" title="Eliminar">🗑️</button>` : ''}
+            <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')" title="Ver detalle">👁️</button>
+            <button class="btn btn-ghost btn-sm" onclick="copiarResumenVenta('${v.id}',this)" title="Copiar resumen">📋</button>
+            <button class="btn btn-ghost btn-sm" onclick="imprimirEtiquetaEnvio('${v.id}')" title="Imprimir etiqueta">🖨️</button>
+            <button class="btn btn-sm" onclick="compartirWhatsApp('${v.id}')" title="WhatsApp" style="background:#25D366;color:#fff;border:none">📲</button>
+          </td>
           <td style="white-space:nowrap">${fmtFecha(v.fecha)}</td>
           <td style="font-weight:600">${v.clienteNombre}</td>
           <td style="color:var(--text2)">${v.clienteCiudad||'—'}</td>
           <td>${v.vendedorNombre}</td>
+          <td style="font-size:12px;color:var(--text2);white-space:nowrap">${v.metodoEnvio ? `<span style="font-size:11px;background:rgba(0,200,160,.08);border:1px solid rgba(0,200,160,.2);color:var(--accent3);border-radius:10px;padding:2px 8px">🚚 ${v.metodoEnvio}</span>` : '<span style="color:var(--text3)">—</span>'}</td>
           <td>${v.metodoPago ? `<span style="font-size:11px;background:rgba(61,106,255,.1);border:1px solid rgba(61,106,255,.2);color:var(--accent);border-radius:10px;padding:2px 9px;white-space:nowrap">${v.metodoPagoLabel||v.metodoPago}</span>${v.promesaPago?`<div style="font-size:10px;color:var(--gold);margin-top:2px">📅 ${fmtFecha(v.promesaPago)}</div>`:''}` : '<span style="color:var(--text3);font-size:12px">—</span>'}</td>
           <td style="text-align:right;color:var(--green);font-weight:700">${fmtLPS(v.total)}</td>
           ${verRoi ? `<td style="text-align:right;font-weight:700;color:${roiCls}">${fmtPct(roi)}</td>` : ''}
           <td style="text-align:right;color:var(--accent3);font-weight:700">${fmtLPS(v.comision)}</td>
-          <td onclick="event.stopPropagation()" style="white-space:nowrap">
-            <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')">👁️</button>
-            <button class="btn btn-ghost btn-sm" onclick="copiarResumenVenta('${v.id}',this)" title="Copiar resumen del pedido">📋</button>
-            <button class="btn btn-ghost btn-sm" onclick="imprimirEtiquetaEnvio('${v.id}')" title="Imprimir etiqueta de envío">🖨️</button>
-            <button class="btn btn-sm" onclick="compartirWhatsApp('${v.id}')" title="Enviar resumen por WhatsApp" style="background:#25D366;color:#fff;border:none">📲</button>
-            ${verRoi ? `<button class="btn btn-primary btn-sm" onclick="editarVenta('${v.id}')">✏️</button>` : ''}
-            ${verRoi ? `<button class="btn btn-danger btn-sm" onclick="eliminarVenta('${v.id}')">🗑️</button>` : ''}
-          </td>
         </tr>`;
       }).join('')}
     </tbody>
