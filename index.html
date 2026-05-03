@@ -3516,33 +3516,106 @@ async function eliminarProducto(id) {
 function cancelarEdicion() { editingId=null; showTab('productos'); }
 
 // ── Buscar producto en Wix focusstore.net ─────────────────────────────
-function buscarEnWix() {
+async function buscarEnWix() {
   const nombre = (document.getElementById('fProducto')?.value || '').trim();
   if (!nombre) { showToast('⚠️ Primero ingresa el nombre del producto','warn'); return; }
 
-  // Wix mantiene los acentos en el slug (los URL-codifica: í → %C3%AD)
+  // Cerrar cualquier dropdown previo
+  cerrarDropdownWix();
+
+  // Buscar en tabla wix_slugs via RPC
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/search_wix_slug`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+      body: JSON.stringify({ p_nombre: nombre })
+    });
+    const resultados = await resp.json();
+
+    if (resultados && resultados.length > 0) {
+      mostrarDropdownWix(resultados, nombre);
+      return;
+    }
+  } catch(e) { /* fallback silencioso */ }
+
+  // Fallback: generar URL aproximada a partir del nombre
   const slug = nombre
     .toLowerCase()
-    .replace(/[^a-z0-9áéíóúüñàèìòùâêîôûäëïöü\s\-]/g, ' ')  // quitar solo chars especiales, conservar acentos
+    .replace(/[^a-z0-9áéíóúüñàèìòùâêîôûäëïöü\s\-]/g, ' ')
     .trim()
-    .replace(/\s+/g, '-')    // espacios → guiones
-    .replace(/-+/g, '-');    // colapsar guiones dobles
-
-  // encodeURIComponent convierte á→%C3%A1, í→%C3%AD, etc. igual que Wix
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
   const slugEncoded = slug.split('-').map(s => encodeURIComponent(s)).join('-');
   const url = `https://www.focusstore.net/pagina-del-producto/${slugEncoded}`;
 
-  // Rellenar campo
   const campo = document.getElementById('fUrl2');
   if (campo) campo.value = url;
-
-  // Mostrar botón "Abrir"
   const abrirBtn = document.getElementById('fUrl2Abrir');
   if (abrirBtn) { abrirBtn.href = url; abrirBtn.style.display = ''; }
-
-  // Abrir en nueva pestaña para verificar
   window.open(url, '_blank');
-  showToast(`🔍 URL generada → verifica que cargue correctamente`, 'success', 4000);
+  showToast('🔍 No encontrado en tabla → URL aproximada generada. Verifica que cargue.', 'warn', 5000);
+}
+
+function mostrarDropdownWix(resultados, nombreBuscado) {
+  // Crear dropdown anclado al botón Buscar en Wix
+  const btn = document.querySelector('button[onclick="buscarEnWix()"]');
+  if (!btn) return;
+
+  const drop = document.createElement('div');
+  drop.id = 'wixSlugDropdown';
+  drop.style.cssText = `position:fixed;z-index:99999;background:#1e2535;border:1px solid rgba(0,200,160,.4);border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.6);min-width:420px;max-width:600px;overflow:hidden;`;
+
+  const rect = btn.getBoundingClientRect();
+  drop.style.top = (rect.bottom + 6) + 'px';
+  drop.style.left = Math.max(8, rect.left - 200) + 'px';
+
+  const header = document.createElement('div');
+  header.style.cssText = 'padding:10px 14px;background:rgba(0,200,160,.1);border-bottom:1px solid rgba(0,200,160,.2);font-size:12px;color:var(--accent3);font-weight:600;display:flex;justify-content:space-between;align-items:center;';
+  header.innerHTML = `<span>🔍 ${resultados.length} resultado(s) para "${nombreBuscado.substring(0,30)}${nombreBuscado.length>30?'…':''}"</span><button onclick="cerrarDropdownWix()" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:16px;line-height:1;">×</button>`;
+  drop.appendChild(header);
+
+  resultados.forEach((r, i) => {
+    const item = document.createElement('div');
+    item.style.cssText = `padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);transition:background .15s;display:flex;flex-direction:column;gap:3px;`;
+    item.onmouseenter = () => item.style.background = 'rgba(0,200,160,.08)';
+    item.onmouseleave = () => item.style.background = '';
+    const urlFinal = `https://www.focusstore.net/pagina-del-producto/${r.slug}`;
+    item.innerHTML = `
+      <div style="font-size:13px;color:#e8eaf0;font-weight:500;line-height:1.3;">${r.nombre}</div>
+      <div style="font-size:11px;color:#6c7a9c;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.slug}</div>`;
+    item.onclick = () => {
+      const campo = document.getElementById('fUrl2');
+      if (campo) campo.value = urlFinal;
+      const abrirBtn = document.getElementById('fUrl2Abrir');
+      if (abrirBtn) { abrirBtn.href = urlFinal; abrirBtn.style.display = ''; }
+      cerrarDropdownWix();
+      showToast(`✅ URL de Wix seleccionada`, 'success', 3000);
+    };
+    drop.appendChild(item);
+  });
+
+  // Enlace para abrir búsqueda en focusstore.net
+  const footer = document.createElement('div');
+  footer.style.cssText = 'padding:8px 14px;background:rgba(0,0,0,.2);font-size:11px;color:#6c7a9c;text-align:center;';
+  const q = encodeURIComponent(nombreBuscado);
+  footer.innerHTML = `¿No es ninguno? <a href="https://www.focusstore.net/buscar?q=${q}" target="_blank" style="color:var(--accent3);text-decoration:underline;">Buscar directamente en Focus Store</a>`;
+  drop.appendChild(footer);
+
+  document.body.appendChild(drop);
+
+  // Cerrar al hacer click fuera
+  setTimeout(() => document.addEventListener('click', _wixDropOutside), 50);
+}
+
+function _wixDropOutside(e) {
+  const drop = document.getElementById('wixSlugDropdown');
+  if (drop && !drop.contains(e.target)) { cerrarDropdownWix(); }
+}
+
+function cerrarDropdownWix() {
+  const drop = document.getElementById('wixSlugDropdown');
+  if (drop) drop.remove();
+  document.removeEventListener('click', _wixDropOutside);
 }
 
 // Actualizar botón "Abrir" cuando el campo cambia manualmente
