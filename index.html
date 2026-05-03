@@ -4976,12 +4976,16 @@ function buscarProductoVenta() {
     const c      = calcProd(p);
     const precio = c.precioFinalDesc;
     const isv    = p.estado === 'Nuevo';
-    return `<div onclick="agregarProductoCatalogo('${p.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:600">${p.producto}</div>
+    const thumb  = p.imagen
+      ? `<div class="prod-thumb" style="flex-shrink:0;width:40px;height:40px" onmouseenter="mostrarImgPreview('${p.imagen}',event)" onmouseleave="ocultarImgPreview()"><img src="${p.imagen}"></div>`
+      : `<div style="flex-shrink:0;width:40px;height:40px;border-radius:6px;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:20px">📦</div>`;
+    return `<div onclick="agregarProductoCatalogo('${p.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
+      ${thumb}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.producto}</div>
         <div style="font-size:11px;color:var(--text2)">SKU: ${p.sku} · ${isv?'Con ISV':'Sin ISV'} · Stock: ${p.cantidad}</div>
       </div>
-      <div style="text-align:right">
+      <div style="text-align:right;flex-shrink:0">
         <div style="font-size:14px;font-weight:700;color:var(--green)">${fmtLPS(precio)}</div>
         <div style="font-size:10px;color:var(--text3)">precio sugerido</div>
       </div>
@@ -5007,10 +5011,11 @@ function agregarProductoCatalogo(prodId) {
     productoId:   prodId,
     sku:          p.sku,
     descripcion:  p.producto,
+    imagen:       p.imagen || null,
     llevaISV:     isv,
     isvPct,
-    precioBase:   precioSinISV,   // sin ISV — editable
-    precioFinal:  precioConISV,   // con ISV si aplica
+    precioBase:   precioSinISV,
+    precioFinal:  precioConISV,
     costoLPS:     costoTotalLPS,
     cantidad:     1,
     _id:          'vi_' + Date.now() + '_' + Math.random().toString(36).slice(2,6)
@@ -5073,8 +5078,13 @@ function renderItemsVenta() {
   lista.innerHTML = vItemsActuales.map(item => {
     const isvLabel = item.llevaISV ? `+${(item.isvPct*100).toFixed(0)}% ISV` : 'Sin ISV';
     const esManual = item.tipo === 'manual';
+    const thumbHtml = (!esManual && item.imagen)
+      ? `<div class="prod-thumb" style="width:44px;height:44px;flex-shrink:0;align-self:center" onmouseenter="mostrarImgPreview('${item.imagen}',event)" onmouseleave="ocultarImgPreview()"><img src="${item.imagen}"></div>`
+      : (!esManual ? `<div style="width:44px;height:44px;flex-shrink:0;align-self:center;border-radius:6px;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:22px">📦</div>` : '');
     return `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start">
-      <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;gap:10px;align-items:start">
+        ${thumbHtml}
+        <div style="display:flex;flex-direction:column;gap:6px;flex:1;min-width:0">
         ${esManual
           ? `<input type="text" value="${item.descripcion}" placeholder="Descripción del producto *" onchange="actualizarItemVenta('${item._id}','descripcion',this.value)" style="padding:6px 10px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:13px;font-weight:600;outline:none;width:100%">`
           : `<div style="font-size:13px;font-weight:600">${item.descripcion}</div>`
@@ -5092,7 +5102,8 @@ function renderItemsVenta() {
             <input type="number" value="${item.costoLPS||0}" step="0.01" min="0" onchange="actualizarItemVenta('${item._id}','costoLPS',this.value)" style="width:80px;padding:4px 6px;background:var(--bg4);border:1px solid var(--border);border-radius:5px;color:var(--text3);font-size:12px;outline:none" title="Costo en LPS (para calcular comisión)">
           </div>` : ''}
         </div>
-      </div>
+        </div><!-- cierre flex col -->
+      </div><!-- cierre flex row thumb+info -->
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
         <button onclick="quitarItemVenta('${item._id}')" style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:18px;line-height:1" title="Quitar">×</button>
         <div style="display:flex;align-items:center;gap:4px">
