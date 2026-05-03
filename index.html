@@ -1138,6 +1138,15 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                   <label>Correo Electrónico</label>
                   <input type="email" id="vClienteEmail" placeholder="cliente@email.com">
                 </div>
+                <div class="form-field field-full">
+                  <label>📍 Ubicación Google Maps <span style="color:var(--text3);font-weight:400;font-size:11px">(opcional)</span></label>
+                  <input type="url" id="vMapsLink" placeholder="Pega aquí el link de Google Maps..." oninput="onMapsLinkChange()" style="width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+                  <div id="vMapsPreview" style="display:none;margin-top:10px;display:flex;flex-direction:column;gap:6px">
+                    <iframe id="vMapsIframe" width="100%" height="180" frameborder="0" style="border:1px solid var(--border);border-radius:8px;display:none" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" src="about:blank"></iframe>
+                    <a id="vMapsBtn" href="#" target="_blank" rel="noopener" style="display:none;align-items:center;gap:6px;font-size:12px;color:var(--accent3);text-decoration:none;padding:5px 12px;background:rgba(0,200,160,.1);border-radius:6px;border:1px solid rgba(0,200,160,.3);width:fit-content">🗺️ Abrir en Google Maps ↗</a>
+                  </div>
+                  <div id="vMapsLinkStatus" style="font-size:11px;margin-top:4px;color:var(--text3)"></div>
+                </div>
                 <div class="form-field">
                   <label>Fecha de Venta *</label>
                   <input type="date" id="vFecha">
@@ -1879,6 +1888,7 @@ async function sbSaveVenta(venta) {
     pct_comision:     venta.pctComision    || 0,
     comision:         venta.comision       || 0,
     observaciones:    venta.observaciones  || '',
+    maps_link:        venta.mapsLink       || '',
     fecha_registro:   venta.fechaRegistro  || new Date().toISOString(),
     registrado_por:   venta.registradoPor  || '',
     metodo_pago:      venta.metodoPago      || '',
@@ -4610,6 +4620,7 @@ function _mapVentaRow(v) {
     pctComision:     v.pct_comision    || 0,
     comision:        v.comision        || 0,
     observaciones:   v.observaciones   || '',
+    mapsLink:        v.maps_link       || '',
     metodoPago:      v.metodo_pago     || '',
     metodoPagoLabel: v.metodo_pago_label || '',
     metodoPagoObs:   v.metodo_pago_obs || '',
@@ -4902,6 +4913,54 @@ function limpiarCliente() {
   document.getElementById('vClienteResultados').style.display = 'none';
 }
 
+function onMapsLinkChange() {
+  const val     = (document.getElementById('vMapsLink')?.value || '').trim();
+  const preview = document.getElementById('vMapsPreview');
+  const iframe  = document.getElementById('vMapsIframe');
+  const btn     = document.getElementById('vMapsBtn');
+  const status  = document.getElementById('vMapsLinkStatus');
+  if (!preview) return;
+
+  if (!val) {
+    preview.style.display = 'none';
+    if (iframe) { iframe.style.display = 'none'; iframe.src = 'about:blank'; }
+    if (btn)    btn.style.display = 'none';
+    if (status) status.textContent = '';
+    return;
+  }
+
+  const isMapLink = val.includes('google.com/maps') || val.includes('goo.gl/maps') || val.includes('maps.app.goo.gl');
+
+  // Intentar extraer coordenadas para el embed
+  let embedUrl = null;
+  const coordM = val.match(/@(-?\d+\.?\d+),(-?\d+\.?\d+)/);
+  if (coordM) {
+    embedUrl = `https://maps.google.com/maps?q=${coordM[1]},${coordM[2]}&output=embed&z=16`;
+  } else {
+    const qM = val.match(/[?&]q=(-?\d+\.?\d+),(-?\d+\.?\d+)/);
+    if (qM) embedUrl = `https://maps.google.com/maps?q=${qM[1]},${qM[2]}&output=embed&z=16`;
+  }
+
+  preview.style.display = 'flex';
+
+  if (embedUrl && iframe) {
+    iframe.src = embedUrl;
+    iframe.style.display = '';
+    if (status) { status.textContent = '✅ Miniatura cargada'; status.style.color = 'var(--green)'; }
+  } else {
+    if (iframe) { iframe.style.display = 'none'; iframe.src = 'about:blank'; }
+    if (status) {
+      status.textContent = isMapLink ? '🔗 Link válido guardado (sin coordenadas para miniatura)' : '⚠️ No parece un link de Google Maps';
+      status.style.color = isMapLink ? 'var(--text3)' : 'var(--gold)';
+    }
+  }
+
+  if (btn) {
+    btn.href = val;
+    btn.style.display = 'inline-flex';
+  }
+}
+
 // ===== BÚSQUEDA DE PRODUCTO =====
 function buscarProductoVenta() {
   const q   = (document.getElementById('vProdBuscar').value || '').toLowerCase().trim();
@@ -5168,6 +5227,7 @@ async function guardarVenta() {
     pctComision: pctComision * 100,
     comision,
     observaciones: (document.getElementById('vObservaciones').value||'').trim(),
+    mapsLink:      (document.getElementById('vMapsLink')?.value||'').trim(),
     metodoPago:    metodoPagoId,
     metodoPagoLabel: (parametros.metodosPago||[]).find(m=>m.id===metodoPagoId)?.label || metodoPagoId,
     metodoPagoObs: metodoPagoObs,
@@ -5206,7 +5266,8 @@ function limpiarVenta() {
   vEditandoId    = null;
   _ventasSubActivo = 'nueva';
   limpiarCliente();
-  ['vObservaciones','vMetodoPagoObs'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  ['vObservaciones','vMetodoPagoObs','vMapsLink'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  onMapsLinkChange();
   const selMP = document.getElementById('vMetodoPago'); if(selMP) selMP.value = '';
   const proEl = document.getElementById('vPromesaPago'); if(proEl) proEl.value = '';
   onMetodoPagoChange();
@@ -5694,6 +5755,7 @@ function editarVenta(id) {
   document.getElementById('vClienteEmail').value     = cli.email          || '';
   document.getElementById('vFecha').value            = v.fecha            || '';
   document.getElementById('vObservaciones').value    = v.observaciones    || '';
+  const mlEl = document.getElementById('vMapsLink'); if(mlEl) { mlEl.value = v.mapsLink || ''; onMapsLinkChange(); }
   document.getElementById('vEnvio').value            = v.envio            != null ? v.envio : (parametros.envioDefecto != null ? parametros.envioDefecto : 120);
 
   // Cargar método de pago
@@ -5736,6 +5798,7 @@ function editarVenta(id) {
     clienteEmail:   (clientes.find(c=>c.id===v.clienteId)||{}).email || '',
     fecha:          v.fecha         || '',
     observaciones:  v.observaciones || '',
+    mapsLink:       v.mapsLink      || '',
     envio:          v.envio,
     metodoPago:     v.metodoPago    || '',
     metodoPagoObs:  v.metodoPagoObs || '',
@@ -5768,6 +5831,7 @@ function _ventaHaCambiado() {
     clienteEmail:     (document.getElementById('vClienteEmail')?.value     || '').trim(),
     fecha:            (document.getElementById('vFecha')?.value            || ''),
     observaciones:    (document.getElementById('vObservaciones')?.value    || '').trim(),
+    mapsLink:         (document.getElementById('vMapsLink')?.value         || '').trim(),
     envio:            parseFloat(document.getElementById('vEnvio')?.value)||0,
     metodoPago:       (document.getElementById('vMetodoPago')?.value       || ''),
     metodoPagoObs:    (document.getElementById('vMetodoPagoObs')?.value    || '').trim(),
