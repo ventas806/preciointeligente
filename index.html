@@ -6056,24 +6056,34 @@ function renderReporteVendedores() {
   // Sumar comisiones por vendedor usando la lista de comisiones del período
   todasParaComision.forEach(v => {
     const key = v.vendedorId || 'sin_vendedor';
-    if (!porVendedor[key]) porVendedor[key] = { nombre: v.vendedorNombre, ventas:[], totalVentas:0, totalComision:0, totalUtilidad:0, totalCosto:0 };
+    if (!porVendedor[key]) porVendedor[key] = { nombre: v.vendedorNombre, ventas:[], totalVentas:0, totalComision:0, totalUtilidad:0, totalCosto:0, totalPorCobrar:0 };
     porVendedor[key].totalComision += v.comision;
+  });
+  // Sumar saldo pendiente por vendedor
+  lista.filter(v => v.metodoPago === 'parcial' && (v.saldoPendiente||0) > 0).forEach(v => {
+    const key = v.vendedorId || 'sin_vendedor';
+    if (porVendedor[key]) porVendedor[key].totalPorCobrar = (porVendedor[key].totalPorCobrar||0) + (v.saldoPendiente||0);
   });
   const rows = Object.values(porVendedor).sort((a,b) => b.totalVentas - a.totalVentas);
 
   // KPIs globales
-  const totVentas   = lista.reduce((a,v)=>a+v.total,0);
-  const totComision = todasParaComision.reduce((a,v)=>a+v.comision,0);
-  const totUtilidad = lista.reduce((a,v)=>a+v.utilidadBruta,0);
-  const totCosto    = lista.reduce((a,v)=>a+(v.subtotalSinISV - v.utilidadBruta),0);
-  const roiGlobal   = totCosto > 0 ? totUtilidad / totCosto : 0;
+  const totVentas    = lista.reduce((a,v)=>a+v.total,0);
+  const totComision  = todasParaComision.reduce((a,v)=>a+v.comision,0);
+  const totUtilidad  = lista.reduce((a,v)=>a+v.utilidadBruta,0);
+  const totCosto     = lista.reduce((a,v)=>a+(v.subtotalSinISV - v.utilidadBruta),0);
+  const roiGlobal    = totCosto > 0 ? totUtilidad / totCosto : 0;
   const roiGlobalCls = roiGlobal >= 0.3 ? 'stat-green' : roiGlobal >= 0.2 ? 'stat-gold' : 'stat-red';
+  // Crédito pendiente: ventas parciales con saldo > 0 en el período
+  const totPorCobrar = lista.filter(v => v.metodoPago === 'parcial' && (v.saldoPendiente||0) > 0)
+                            .reduce((a,v)=>a+(v.saldoPendiente||0), 0);
+  const cntCredito   = lista.filter(v => v.metodoPago === 'parcial' && (v.saldoPendiente||0) > 0).length;
 
   kpisEl.innerHTML = `
     <div class="stat-card"><div class="stat-label">Ventas Totales</div><div class="stat-value stat-green">${fmtLPS(totVentas)}</div><div class="stat-sub">${lista.length} transacción(es)</div></div>
     <div class="stat-card"><div class="stat-label">Utilidad Bruta</div><div class="stat-value stat-blue">${fmtLPS(totUtilidad)}</div></div>
     <div class="stat-card"><div class="stat-label">ROI Promedio</div><div class="stat-value ${roiGlobalCls}">${fmtPct(roiGlobal)}</div><div class="stat-sub">utilidad / costo</div></div>
-    <div class="stat-card"><div class="stat-label">Total Comisiones</div><div class="stat-value stat-teal">${fmtLPS(totComision)}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Comisiones</div><div class="stat-value stat-teal">${fmtLPS(totComision)}</div><div class="stat-sub">pagos completados</div></div>
+    ${totPorCobrar > 0 ? `<div class="stat-card" style="border-color:rgba(245,200,66,.3)"><div class="stat-label" style="color:var(--gold)">⏳ Por Cobrar</div><div class="stat-value" style="color:var(--gold)">${fmtLPS(totPorCobrar)}</div><div class="stat-sub">${cntCredito} venta(s) en crédito</div></div>` : ''}
     <div class="stat-card"><div class="stat-label">Vendedores Activos</div><div class="stat-value stat-gold">${rows.length}</div></div>
   `;
 
@@ -6091,14 +6101,16 @@ function renderReporteVendedores() {
         <th style="text-align:right">ROI</th>
         <th style="text-align:right">% Comisión</th>
         <th style="text-align:right">Comisión Total</th>
+        <th style="text-align:right;color:var(--gold)">⏳ Por Cobrar</th>
         <th style="text-align:right">Ticket Prom.</th>
       </tr></thead>
       <tbody>
         ${rows.map(r => {
-          const pct    = r.ventas[0]?.pctComision || (parametros.comisionVentas||10);
-          const ticket = r.ventas.length ? r.totalVentas / r.ventas.length : 0;
-          const roi    = r.totalCosto > 0 ? r.totalUtilidad / r.totalCosto : 0;
-          const roiCls = roi >= 0.3 ? 'var(--green)' : roi >= 0.2 ? 'var(--gold)' : 'var(--red)';
+          const pct          = r.ventas[0]?.pctComision || (parametros.comisionVentas||10);
+          const ticket       = r.ventas.length ? r.totalVentas / r.ventas.length : 0;
+          const roi          = r.totalCosto > 0 ? r.totalUtilidad / r.totalCosto : 0;
+          const roiCls       = roi >= 0.3 ? 'var(--green)' : roi >= 0.2 ? 'var(--gold)' : 'var(--red)';
+          const porCobrar    = r.totalPorCobrar || 0;
           return `<tr>
             <td style="font-weight:700">${r.nombre}</td>
             <td style="text-align:center">${r.ventas.length}</td>
@@ -6107,6 +6119,7 @@ function renderReporteVendedores() {
             <td style="text-align:right;font-weight:700;color:${roiCls}">${fmtPct(roi)}</td>
             <td style="text-align:right">${pct.toFixed(1)}%</td>
             <td style="text-align:right;color:var(--accent3);font-weight:700">${fmtLPS(r.totalComision)}</td>
+            <td style="text-align:right;color:${porCobrar>0?'var(--gold)':'var(--text3)'};font-weight:${porCobrar>0?'700':'400'}">${porCobrar>0?fmtLPS(porCobrar):'—'}</td>
             <td style="text-align:right;color:var(--text2)">${fmtLPS(ticket)}</td>
           </tr>`;
         }).join('')}
