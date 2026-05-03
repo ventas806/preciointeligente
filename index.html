@@ -1592,6 +1592,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
           <button id="btnVistaTarjetas" onclick="setCobrosVista('tarjetas')" style="padding:8px 14px;font-size:12px;font-weight:600;background:transparent;color:var(--text2);border:none;cursor:pointer">🗂️ Tarjetas</button>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="renderCobros()">🔄 Actualizar</button>
+        <button class="btn btn-ghost btn-sm" onclick="imprimirReporteCobros()" style="background:rgba(61,106,255,.12);border:1px solid var(--accent);color:var(--accent)">🖨️ Imprimir Reporte</button>
       </div>
 
       <!-- Lista -->
@@ -7085,6 +7086,216 @@ function _renderCobrosTarjetas(filtrados) {
       </div>
     </div>`;
   }).join('');
+}
+
+function imprimirReporteCobros() {
+  // ── Re-calcular datos con los mismos filtros activos ──────────────────
+  const hoy       = new Date(); hoy.setHours(0,0,0,0);
+  const q         = ((document.getElementById('cobrosBuscar')||{}).value||'').toLowerCase().trim();
+  const estadoFil = ((document.getElementById('cobrosEstado')||{}).value||'');
+
+  const esParcialFn = v => v.metodoPago === 'parcial' || (v.metodoPagoLabel||'').toLowerCase().includes('parcial');
+  const enriquecer  = v => {
+    const promesaStr  = v.promesaPago || '';
+    const promesaDate = promesaStr
+      ? (() => { const [y,m,d] = promesaStr.split('-'); const dt = new Date(y,m-1,d); dt.setHours(0,0,0,0); return dt; })()
+      : null;
+    const diffDias = promesaDate ? Math.round((promesaDate - hoy) / 86400000) : null;
+    let estado = 'sin_fecha';
+    if (diffDias !== null) {
+      if (diffDias < 0) estado = 'vencido';
+      else if (diffDias === 0) estado = 'hoy';
+      else if (diffDias <= 3)  estado = 'proximo';
+      else                     estado = 'vigente';
+    }
+    return { ...v, promesaDate, diffDias, estado };
+  };
+
+  let filtrados = ventas.filter(esParcialFn).map(enriquecer).filter(v => {
+    if (q && ![(v.clienteNombre||'').toLowerCase(),(v.id||'').toLowerCase(),(v.clienteCiudad||'').toLowerCase()].some(s=>s.includes(q))) return false;
+    if (estadoFil === 'vencido'  && v.estado !== 'vencido')  return false;
+    if (estadoFil === 'hoy'      && v.estado !== 'hoy')      return false;
+    if (estadoFil === 'proximo'  && v.estado !== 'proximo')  return false;
+    if (estadoFil === 'vigente'  && v.estado !== 'vigente')  return false;
+    return true;
+  });
+  filtrados.sort((a,b) => {
+    const ord = {vencido:0,hoy:1,sin_fecha:2,proximo:3,vigente:4};
+    const od = (ord[a.estado]??5)-(ord[b.estado]??5);
+    return od !== 0 ? od : (a.promesaDate||0)-(b.promesaDate||0);
+  });
+
+  if (!filtrados.length) { showToast('⚠️ No hay datos para imprimir','warn'); return; }
+
+  // ── Formatear fecha Honduras ───────────────────────────────────────────
+  const ahora = new Date(new Date().toLocaleString('en-US',{timeZone:'America/Tegucigalpa'}));
+  const pad   = n => String(n).padStart(2,'0');
+  const fmtHN = d => `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+  const fmtHNfull = () => `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}:${pad(ahora.getSeconds())}`;
+
+  // ── Calcular aging y totales ───────────────────────────────────────────
+  const aging = {'1-30':0,'31-60':0,'61-90':0,'91-120':0,'+120':0};
+  let granTotal = 0, totalVencido = 0, totalVigente = 0;
+
+  // Agrupar por cliente
+  const grupos = {};
+  filtrados.forEach(v => {
+    const key = v.clienteNombre || '—';
+    if (!grupos[key]) grupos[key] = { nombre: key, ciudad: v.clienteCiudad||'', tel: v.clienteTel||'', items: [] };
+    grupos[key].items.push(v);
+    const monto = v.saldoPendiente || v.total;
+    granTotal += monto;
+    const d = v.diffDias;
+    if (d === null || d >= 0) { totalVigente += monto; }
+    else {
+      totalVencido += monto;
+      const ad = Math.abs(d);
+      if (ad <= 30) aging['1-30'] += monto;
+      else if (ad <= 60) aging['31-60'] += monto;
+      else if (ad <= 90) aging['61-90'] += monto;
+      else if (ad <= 120) aging['91-120'] += monto;
+      else aging['+120'] += monto;
+    }
+  });
+
+  const fmtL = n => 'L ' + (n||0).toLocaleString('es-HN',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  // ── Construir filas por cliente ────────────────────────────────────────
+  const estadoLabel = { vencido:'Vencida', hoy:'Vence Hoy', sin_fecha:'Sin Fecha', proximo:'Próxima', vigente:'Vigente' };
+
+  const seccionesHtml = Object.values(grupos).map(g => {
+    const subtotal = g.items.reduce((s,v)=>s+(v.saldoPendiente||v.total),0);
+    const filas = g.items.map(v => {
+      const vencimStr = v.promesaDate ? fmtHN(v.promesaDate) : '—';
+      const items     = (v.items||[]).map(it => it.descripcion||it.nombre||'').filter(Boolean);
+      const descrip   = items.length ? items.slice(0,3).join(', ') + (items.length>3?` +${items.length-3} más`:'') : '—';
+      const esvenc    = v.estado === 'vencido' || v.estado === 'hoy';
+      return `<tr>
+        <td>FAC</td>
+        <td style="font-family:monospace;font-size:11px">${(v.id||'').slice(-12)}</td>
+        <td>${fmtHN(new Date(v.fecha+'T12:00:00'))}</td>
+        <td style="color:${esvenc?'#c0392b':'#333'}">${vencimStr}</td>
+        <td style="color:${esvenc?'#c0392b':'#27ae60'};font-weight:600">${estadoLabel[v.estado]||'—'}</td>
+        <td>${g.nombre}</td>
+        <td style="font-size:11px;color:#555">${descrip}</td>
+        <td style="text-align:right;font-weight:700;color:${esvenc?'#c0392b':'#333'}">${fmtL(v.saldoPendiente||v.total)}</td>
+      </tr>`;
+    }).join('');
+    return `
+      <tr class="cliente-header">
+        <td colspan="8"><strong>${g.nombre}</strong> &nbsp;·&nbsp; ${g.ciudad||'—'} &nbsp;·&nbsp; ${g.tel||'—'} &nbsp;·&nbsp; ${g.items.length} factura(s)</td>
+      </tr>
+      ${filas}
+      <tr class="subtotal-row">
+        <td colspan="7" style="text-align:right">Subtotal ${g.nombre}</td>
+        <td style="text-align:right">${fmtL(subtotal)}</td>
+      </tr>`;
+  }).join('');
+
+  // ── Construir HTML de impresión ────────────────────────────────────────
+  const emisor = currentUser ? currentUser.nombre : 'Sistema';
+  const filtroDesc = estadoFil ? ({ vencido:'Solo Vencidos', hoy:'Vencen Hoy', proximo:'Próximos 3 días', vigente:'Solo Vigentes' }[estadoFil]||'Todos') : 'Todos';
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Reporte de Cobros · Focus Store</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #222; background: #fff; padding: 18px 24px; }
+  h1 { font-size: 20px; font-weight: 900; color: #1a1a2e; margin-bottom: 2px; letter-spacing: 1px; }
+  .header-block { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+  .header-left p { font-size: 11.5px; color: #333; margin: 2px 0; }
+  .header-right { text-align: right; font-size: 11.5px; color: #333; }
+  .divider { border: none; border-top: 2px solid #1a1a2e; margin: 8px 0; }
+  .divider2 { border: none; border-top: 1px solid #aaa; margin: 8px 0; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+  th { background: #f0f0f5; padding: 6px 8px; text-align: left; font-size: 11px; font-weight: 700; color: #333; border-bottom: 2px solid #ccc; white-space: nowrap; }
+  td { padding: 5px 8px; font-size: 11.5px; border-bottom: 1px solid #e8e8e8; vertical-align: middle; }
+  tr.cliente-header td { background: #e8eaf6; font-size: 12px; font-weight: 700; padding: 6px 8px; border-top: 2px solid #9fa8da; color: #1a237e; }
+  tr.subtotal-row td { background: #f5f5f5; font-weight: 700; font-size: 12px; border-top: 1px solid #bbb; }
+  .gran-total { text-align: right; font-size: 20px; font-weight: 900; margin: 10px 0 4px; color: #1a1a2e; }
+  .resumen-grid { display: flex; gap: 32px; margin-top: 16px; }
+  .resumen-block { flex: 1; }
+  .resumen-block h3 { font-size: 12px; font-weight: 700; text-decoration: underline; margin-bottom: 8px; color: #222; }
+  .resumen-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid #ddd; }
+  .resumen-row.total { border-top: 2px solid #333; border-bottom: none; font-weight: 700; font-size: 13px; margin-top: 4px; padding-top: 6px; }
+  .gran-total-row { display: flex; justify-content: space-between; font-size: 15px; font-weight: 900; margin-top: 12px; border-top: 2px solid #333; padding-top: 6px; }
+  @media print {
+    body { padding: 10px 14px; }
+    @page { size: letter portrait; margin: 10mm; }
+    button { display: none; }
+  }
+  .print-btn { margin-bottom: 14px; }
+  .print-btn button { background: #1a1a2e; color: #fff; border: none; padding: 8px 20px; font-size: 13px; font-weight: 700; border-radius: 6px; cursor: pointer; }
+  .print-btn button:hover { background: #2d2d5e; }
+</style>
+</head>
+<body>
+<div class="print-btn"><button onclick="window.print()">🖨️ Imprimir / Guardar PDF</button></div>
+
+<div class="header-block">
+  <div class="header-left">
+    <h1>FOCUS STORE</h1>
+    <p><strong>Reporte de Documentos Pendientes de Pago</strong></p>
+    <p>Tipo de Documento: Todos &nbsp;·&nbsp; Filtro: ${filtroDesc}</p>
+    ${q ? `<p>Búsqueda: "${q}"</p>` : ''}
+  </div>
+  <div class="header-right">
+    <p><strong>Emisor:</strong> ${emisor}</p>
+    <p><strong>Fecha de Impresión:</strong> ${fmtHNfull()}</p>
+    <p>Página 1 / 1</p>
+  </div>
+</div>
+<hr class="divider">
+
+<table>
+  <thead>
+    <tr>
+      <th>Tipo</th>
+      <th>No. Doc.</th>
+      <th>Fecha Emisión</th>
+      <th>Fecha Vencim.</th>
+      <th>Status</th>
+      <th>Emitido a nombre de</th>
+      <th>Descripción</th>
+      <th style="text-align:right">Saldo Doc.</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${seccionesHtml}
+  </tbody>
+</table>
+
+<hr class="divider">
+<div class="gran-total">Gran Total &nbsp;&nbsp; ${fmtL(granTotal)}</div>
+<hr class="divider2">
+
+<div class="resumen-grid">
+  <div class="resumen-block">
+    <h3>Resumen del Reporte</h3>
+    <div class="resumen-row"><span>Total Doc. No-Vencidos</span><span>${fmtL(totalVigente)}</span></div>
+    <div class="resumen-row"><span>Total Doc. Vencidos</span><span>${fmtL(totalVencido)}</span></div>
+    <div class="resumen-row total"><span>Monto Total por Cobrar</span><span>${fmtL(granTotal)}</span></div>
+  </div>
+  <div class="resumen-block">
+    <h3>Desglose de lo Vencido</h3>
+    <div class="resumen-row"><span>De 1 a 30 días</span><span>${fmtL(aging['1-30'])}</span></div>
+    <div class="resumen-row"><span>De 31 a 60 días</span><span>${fmtL(aging['31-60'])}</span></div>
+    <div class="resumen-row"><span>De 61 a 90 días</span><span>${fmtL(aging['61-90'])}</span></div>
+    <div class="resumen-row"><span>De 91 a 120 días</span><span>${fmtL(aging['91-120'])}</span></div>
+    <div class="resumen-row"><span>Más de 120 días</span><span>${fmtL(aging['+120'])}</span></div>
+    <div class="gran-total-row"><span>Gran Total</span><span>${fmtL(granTotal)}</span></div>
+  </div>
+</div>
+
+</body></html>`;
+
+  const win = window.open('', '_blank', 'width=900,height=700');
+  if (!win) { showToast('⚠️ Permite ventanas emergentes para imprimir','warn',4000); return; }
+  win.document.write(html);
+  win.document.close();
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
