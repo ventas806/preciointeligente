@@ -4794,8 +4794,8 @@ function poblarSelectorVendedor(elId) {
   } else if (elId === 'vVendedor') {
     sel.disabled = false;
   }
-  // En el reporte, preseleccionar el usuario logueado por defecto (si no hay valor activo)
-  if (elId === 'vRepVendedor' && currentUser && !actual) {
+  // En el reporte e historial, preseleccionar el usuario logueado por defecto (si no hay valor activo)
+  if ((elId === 'vRepVendedor' || elId === 'vFiltVendedor') && currentUser && !actual) {
     sel.value = currentUser.id;
   }
 }
