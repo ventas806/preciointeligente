@@ -1534,21 +1534,20 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
 
       <!-- Filtros -->
       <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
-        <input type="text" id="cobrosBuscar" placeholder="🔍 Cliente, referencia..." oninput="renderCobros()"
+        <input type="text" id="cobrosBuscar" placeholder="🔍 Buscar cliente..." oninput="renderCobros()"
           style="flex:1;min-width:200px;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
-        <select id="cobrosMetodo" onchange="renderCobros()"
-          style="padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
-          <option value="">Todos los métodos</option>
-        </select>
         <select id="cobrosEstado" onchange="renderCobros()"
           style="padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
           <option value="">Todos</option>
           <option value="vencido">⛔ Vencidos</option>
           <option value="hoy">🔔 Vencen Hoy</option>
           <option value="proximo">⚠️ Próximos 3 días</option>
-          <option value="parcial">💳 Parciales pendientes</option>
-          <option value="ok">✅ Al día</option>
+          <option value="vigente">✅ Vigentes</option>
         </select>
+        <div style="display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);overflow:hidden">
+          <button id="btnVistaReporte" onclick="setCobrosVista('reporte')" style="padding:8px 14px;font-size:12px;font-weight:600;background:var(--accent3);color:#000;border:none;cursor:pointer">📋 Reporte</button>
+          <button id="btnVistaTarjetas" onclick="setCobrosVista('tarjetas')" style="padding:8px 14px;font-size:12px;font-weight:600;background:transparent;color:var(--text2);border:none;cursor:pointer">🗂️ Tarjetas</button>
+        </div>
         <button class="btn btn-ghost btn-sm" onclick="renderCobros()">🔄 Actualizar</button>
       </div>
 
@@ -6420,19 +6419,19 @@ async function renderCombos() {
 //  MÓDULO DE COBROS / SEGUIMIENTO DE PAGOS
 // ===================================================================
 
-function initCobrosFiltroMetodos() {
-  const sel = document.getElementById('cobrosMetodo');
-  if (!sel) return;
-  const actual = sel.value;
-  const metodos = parametros.metodosPago || [];
-  sel.innerHTML = '<option value="">Todos los métodos</option>' +
-    metodos.map(m => `<option value="${m.id}">${m.label}</option>`).join('');
-  if (actual) sel.value = actual;
+let _cobrosVista = 'reporte';
+
+function setCobrosVista(v) {
+  _cobrosVista = v;
+  const btnR = document.getElementById('btnVistaReporte');
+  const btnT = document.getElementById('btnVistaTarjetas');
+  if (btnR) { btnR.style.background = v==='reporte' ? 'var(--accent3)' : 'transparent'; btnR.style.color = v==='reporte' ? '#000' : 'var(--text2)'; }
+  if (btnT) { btnT.style.background = v==='tarjetas' ? 'var(--accent3)' : 'transparent'; btnT.style.color = v==='tarjetas' ? '#000' : 'var(--text2)'; }
+  _renderCobrosInterno();
 }
 
 function renderCobros() {
   if (!ventas || !ventas.length) {
-    // Intentar cargar ventas si no están
     cargarVentasYClientes().then(() => _renderCobrosInterno());
   } else {
     _renderCobrosInterno();
@@ -6440,169 +6439,291 @@ function renderCobros() {
 }
 
 function _renderCobrosInterno() {
-  initCobrosFiltroMetodos();
-
   const hoy       = new Date(); hoy.setHours(0,0,0,0);
-  const q         = ((document.getElementById('cobrosBuscar')  ||{}).value||'').toLowerCase().trim();
-  const metodoFil = ((document.getElementById('cobrosMetodo')  ||{}).value||'');
-  const estadoFil = ((document.getElementById('cobrosEstado')  ||{}).value||'');
+  const q         = ((document.getElementById('cobrosBuscar') ||{}).value||'').toLowerCase().trim();
+  const estadoFil = ((document.getElementById('cobrosEstado')||{}).value||'');
 
-  // Enriquecer cada venta con estado de cobro
-  const items = ventas.map(v => {
-    const cli          = clientes.find(c => c.id === v.clienteId) || {};
-    const promesaStr   = v.promesaPago || '';
-    const promesaDate  = promesaStr ? (() => { const d = new Date(promesaStr); d.setHours(0,0,0,0); return d; })() : null;
-    const esParcial    = v.metodoPago === 'parcial' || (v.metodoPagoLabel||'').toLowerCase().includes('parcial');
-    const diffDias     = promesaDate ? Math.round((promesaDate - hoy) / 86400000) : null;
+  // Solo ventas parciales (crédito pendiente)
+  const esParcialFn = v => v.metodoPago === 'parcial' || (v.metodoPagoLabel||'').toLowerCase().includes('parcial');
 
-    let estado = 'normal'; // no parcial, no requiere seguimiento
-    if (esParcial) {
-      if (diffDias === null)        estado = 'sin_fecha';
-      else if (diffDias < 0)        estado = 'vencido';
-      else if (diffDias === 0)      estado = 'hoy';
-      else if (diffDias <= 3)       estado = 'proximo';
-      else                          estado = 'pendiente';
+  const enriquecer = v => {
+    const promesaStr  = v.promesaPago || '';
+    const promesaDate = promesaStr
+      ? (() => { const [y,m,d] = promesaStr.split('-'); const dt = new Date(y, m-1, d); dt.setHours(0,0,0,0); return dt; })()
+      : null;
+    const diffDias = promesaDate ? Math.round((promesaDate - hoy) / 86400000) : null;
+    let estado = 'sin_fecha';
+    if (diffDias !== null) {
+      if (diffDias < 0)   estado = 'vencido';
+      else if (diffDias === 0) estado = 'hoy';
+      else if (diffDias <= 3)  estado = 'proximo';
+      else                     estado = 'vigente';
     }
-    return { ...v, cli, promesaDate, esParcial, diffDias, estado };
-  });
+    return { ...v, promesaDate, diffDias, estado };
+  };
 
-  // Filtrar
-  let filtrados = items.filter(v => {
-    if (q && ![(v.clienteNombre||'').toLowerCase(),(v.id||'').toLowerCase(),(v.clienteCiudad||'').toLowerCase(),(v.metodoPagoLabel||'').toLowerCase()].some(s=>s.includes(q))) return false;
-    if (metodoFil && v.metodoPago !== metodoFil) return false;
-    if (estadoFil) {
-      if (estadoFil === 'vencido'  && v.estado !== 'vencido')  return false;
-      if (estadoFil === 'hoy'      && v.estado !== 'hoy')      return false;
-      if (estadoFil === 'proximo'  && v.estado !== 'proximo')  return false;
-      if (estadoFil === 'parcial'  && !v.esParcial)            return false;
-      if (estadoFil === 'ok'       && (v.estado === 'vencido' || v.estado === 'hoy' || v.estado === 'sin_fecha')) return false;
-    }
+  const parciales = ventas.filter(esParcialFn).map(enriquecer);
+
+  // Filtro búsqueda
+  let filtrados = parciales.filter(v => {
+    if (q && ![(v.clienteNombre||'').toLowerCase(),(v.id||'').toLowerCase(),(v.clienteCiudad||'').toLowerCase()].some(s=>s.includes(q))) return false;
+    if (estadoFil === 'vencido'  && v.estado !== 'vencido')  return false;
+    if (estadoFil === 'hoy'      && v.estado !== 'hoy')      return false;
+    if (estadoFil === 'proximo'  && v.estado !== 'proximo')  return false;
+    if (estadoFil === 'vigente'  && v.estado !== 'vigente')  return false;
     return true;
   });
 
-  // Ordenar: vencidos primero, luego hoy, luego próximos, luego resto
-  const orden = { vencido:0, hoy:1, sin_fecha:2, proximo:3, pendiente:4, normal:5 };
+  const orden = { vencido:0, hoy:1, sin_fecha:2, proximo:3, vigente:4 };
   filtrados.sort((a,b) => {
     const od = (orden[a.estado]??5) - (orden[b.estado]??5);
     if (od !== 0) return od;
-    if (a.promesaDate && b.promesaDate) return a.promesaDate - b.promesaDate;
-    return new Date(b.fecha||0) - new Date(a.fecha||0);
+    return (a.promesaDate||0) - (b.promesaDate||0);
   });
 
   // Stats
-  const vencidos  = items.filter(v => v.estado === 'vencido').length;
-  const hoyCount  = items.filter(v => v.estado === 'hoy').length;
-  const proximos  = items.filter(v => v.estado === 'proximo').length;
-  const parciales = items.filter(v => v.esParcial).length;
+  const nVencidos = parciales.filter(v=>v.estado==='vencido').length;
+  const nHoy      = parciales.filter(v=>v.estado==='hoy').length;
+  const nProximos = parciales.filter(v=>v.estado==='proximo').length;
+  const totalPend = parciales.reduce((s,v)=>s+v.total,0);
 
-  // Actualizar badge en nav
   const badge = document.getElementById('badgeCobros');
-  const alertas = vencidos + hoyCount;
-  if (badge) { badge.style.display = alertas > 0 ? '' : 'none'; badge.textContent = alertas; }
+  const alertas = nVencidos + nHoy;
+  if (badge) { badge.style.display = alertas>0?'':'none'; badge.textContent = alertas; }
 
-  // Render stats
   const statsEl = document.getElementById('cobrosStats');
   if (statsEl) statsEl.innerHTML = `
-    <div class="stat-card" style="cursor:pointer;border-color:${vencidos?'var(--red)':'var(--border)'}" onclick="document.getElementById('cobrosEstado').value='vencido';renderCobros()">
+    <div class="stat-card" style="cursor:pointer;border-color:${nVencidos?'var(--red)':'var(--border)'}" onclick="document.getElementById('cobrosEstado').value='vencido';renderCobros()">
       <div class="stat-label">⛔ Vencidos</div>
-      <div class="stat-value stat-red">${vencidos}</div>
-      <div class="stat-sub">Promesa de pago expirada</div>
+      <div class="stat-value stat-red">${nVencidos}</div>
+      <div class="stat-sub">Promesa expirada</div>
     </div>
-    <div class="stat-card" style="cursor:pointer;border-color:${hoyCount?'var(--gold)':'var(--border)'}" onclick="document.getElementById('cobrosEstado').value='hoy';renderCobros()">
+    <div class="stat-card" style="cursor:pointer;border-color:${nHoy?'var(--gold)':'var(--border)'}" onclick="document.getElementById('cobrosEstado').value='hoy';renderCobros()">
       <div class="stat-label">🔔 Vencen Hoy</div>
-      <div class="stat-value stat-gold">${hoyCount}</div>
+      <div class="stat-value stat-gold">${nHoy}</div>
       <div class="stat-sub">Cobrar hoy</div>
     </div>
     <div class="stat-card" style="cursor:pointer" onclick="document.getElementById('cobrosEstado').value='proximo';renderCobros()">
       <div class="stat-label">⚠️ Próximos 3 días</div>
-      <div class="stat-value stat-blue">${proximos}</div>
+      <div class="stat-value stat-blue">${nProximos}</div>
       <div class="stat-sub">Vencen pronto</div>
     </div>
-    <div class="stat-card" style="cursor:pointer" onclick="document.getElementById('cobrosEstado').value='parcial';renderCobros()">
-      <div class="stat-label">💳 Total Parciales</div>
-      <div class="stat-value stat-teal">${parciales}</div>
-      <div class="stat-sub">Con pago parcial</div>
+    <div class="stat-card">
+      <div class="stat-label">💰 Total por Cobrar</div>
+      <div class="stat-value stat-teal" style="font-size:18px">${fmtLPS(totalPend)}</div>
+      <div class="stat-sub">${parciales.length} factura(s) pendiente(s)</div>
     </div>`;
 
-  // Render lista
   const lista = document.getElementById('cobrosLista');
   if (!lista) return;
 
   if (!filtrados.length) {
     lista.innerHTML = `<div style="text-align:center;padding:60px 24px;color:var(--text3)">
       <div style="font-size:40px;margin-bottom:12px">✅</div>
-      <div style="font-size:16px;font-weight:600">Sin resultados</div>
-      <div style="font-size:13px;margin-top:6px">No hay ventas que coincidan con los filtros</div>
+      <div style="font-size:16px;font-weight:600">Sin cuentas por cobrar</div>
+      <div style="font-size:13px;margin-top:6px">No hay ventas a crédito pendientes</div>
     </div>`;
     return;
   }
 
-  lista.innerHTML = filtrados.map(v => {
-    const estadoConfig = {
-      vencido:   { color:'var(--red)',    bg:'rgba(255,71,87,.1)',   border:'rgba(255,71,87,.35)',   icon:'⛔', label:'VENCIDO' },
-      hoy:       { color:'var(--gold)',   bg:'rgba(245,200,66,.1)',  border:'rgba(245,200,66,.35)',  icon:'🔔', label:'VENCE HOY' },
-      sin_fecha: { color:'var(--red)',    bg:'rgba(255,71,87,.07)',  border:'rgba(255,71,87,.25)',   icon:'❓', label:'SIN FECHA' },
-      proximo:   { color:'var(--accent)', bg:'rgba(61,106,255,.08)', border:'rgba(61,106,255,.25)',  icon:'⚠️', label:'PRÓXIMO' },
-      pendiente: { color:'var(--accent3)',bg:'rgba(0,200,160,.07)',  border:'rgba(0,200,160,.2)',    icon:'💳', label:'PENDIENTE' },
-      normal:    { color:'var(--text3)',  bg:'transparent',          border:'transparent',           icon:'',   label:'' },
-    };
-    const cfg = estadoConfig[v.estado] || estadoConfig.normal;
+  if (_cobrosVista === 'reporte') {
+    lista.innerHTML = _renderCobrosReporte(filtrados, hoy);
+  } else {
+    lista.innerHTML = _renderCobrosTarjetas(filtrados);
+  }
+}
 
+function _estadoCfg(estado) {
+  return {
+    vencido:  { color:'var(--red)',     bg:'rgba(255,71,87,.12)',  border:'rgba(255,71,87,.4)',  icon:'⛔', label:'Vencida' },
+    hoy:      { color:'var(--gold)',    bg:'rgba(245,200,66,.12)', border:'rgba(245,200,66,.4)', icon:'🔔', label:'Vence Hoy' },
+    sin_fecha:{ color:'var(--red)',     bg:'rgba(255,71,87,.07)',  border:'rgba(255,71,87,.25)', icon:'❓', label:'Sin Fecha' },
+    proximo:  { color:'var(--accent)',  bg:'rgba(61,106,255,.08)', border:'rgba(61,106,255,.3)', icon:'⚠️', label:'Próximo' },
+    vigente:  { color:'var(--accent3)', bg:'rgba(0,200,160,.07)',  border:'rgba(0,200,160,.25)', icon:'✅', label:'Vigente' },
+  }[estado] || { color:'var(--text3)', bg:'transparent', border:'transparent', icon:'', label:'—' };
+}
+
+function _agingBucket(diffDias) {
+  if (diffDias === null || diffDias >= 0) return null; // no vencido
+  const d = Math.abs(diffDias);
+  if (d <= 30)  return '1-30';
+  if (d <= 60)  return '31-60';
+  if (d <= 90)  return '61-90';
+  if (d <= 120) return '91-120';
+  return '+120';
+}
+
+function _renderCobrosReporte(filtrados, hoy) {
+  // Agrupar por cliente
+  const grupos = {};
+  filtrados.forEach(v => {
+    const key = v.clienteNombre || v.clienteId || '—';
+    if (!grupos[key]) grupos[key] = { nombre: key, ciudad: v.clienteCiudad||'', tel: v.clienteTel||'', items: [] };
+    grupos[key].items.push(v);
+  });
+
+  // Aging global
+  const aging = { '1-30':0, '31-60':0, '61-90':0, '91-120':0, '+120':0 };
+  let granTotal = 0, totalVencido = 0, totalVigente = 0;
+
+  const thStyle = 'padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap';
+  const tdStyle = 'padding:9px 12px;font-size:13px;border-bottom:1px solid var(--border2);vertical-align:middle';
+
+  const secciones = Object.values(grupos).map(g => {
+    const subtotal = g.items.reduce((s,v)=>s+v.total,0);
+    granTotal += subtotal;
+
+    const filas = g.items.map(v => {
+      const cfg = _estadoCfg(v.estado);
+      const promesaStr = v.promesaDate
+        ? `${String(v.promesaDate.getDate()).padStart(2,'0')}/${String(v.promesaDate.getMonth()+1).padStart(2,'0')}/${String(v.promesaDate.getFullYear()).slice(-2)}`
+        : '—';
+      const diffLabel = v.diffDias !== null
+        ? (v.diffDias < 0 ? `hace ${Math.abs(v.diffDias)}d` : v.diffDias === 0 ? 'hoy' : `en ${v.diffDias}d`)
+        : '';
+
+      // Aging
+      const bucket = _agingBucket(v.diffDias);
+      if (bucket) { aging[bucket] += v.total; totalVencido += v.total; }
+      else totalVigente += v.total;
+
+      return `<tr onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
+        <td style="${tdStyle}">
+          <span style="font-family:monospace;font-size:11px;color:var(--text3)">${(v.id||'').slice(-8)}</span>
+        </td>
+        <td style="${tdStyle}">${fmtFecha(v.fecha)}</td>
+        <td style="${tdStyle}">
+          <span style="color:${cfg.color}">${promesaStr}</span>
+          ${diffLabel ? `<span style="font-size:10px;color:${cfg.color};margin-left:4px">(${diffLabel})</span>` : ''}
+        </td>
+        <td style="${tdStyle}">
+          <span style="font-size:11px;font-weight:700;color:${cfg.color};background:${cfg.bg};border:1px solid ${cfg.border};border-radius:10px;padding:2px 8px;white-space:nowrap">${cfg.icon} ${cfg.label}</span>
+        </td>
+        <td style="${tdStyle};color:var(--text2);font-size:12px">${v.metodoPagoObs||v.metodoPagoLabel||'—'}</td>
+        <td style="${tdStyle};text-align:right;font-weight:700;color:var(--green)">${fmtLPS(v.total)}</td>
+        <td style="${tdStyle};text-align:right">
+          <div style="display:flex;gap:4px;justify-content:flex-end">
+            <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')" style="padding:4px 8px;font-size:11px">👁️</button>
+            <button class="btn btn-primary btn-sm" onclick="editarVenta('${v.id}')" style="padding:4px 10px;font-size:11px">✏️ Pago</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+    const peorEstado = g.items.reduce((worst, v) => {
+      const ord = {vencido:0,hoy:1,sin_fecha:2,proximo:3,vigente:4};
+      return (ord[v.estado]??5) < (ord[worst]??5) ? v.estado : worst;
+    }, 'vigente');
+    const hdrCfg = _estadoCfg(peorEstado);
+
+    return `<div style="background:var(--bg2);border:1px solid ${hdrCfg.border};border-radius:var(--radius);margin-bottom:16px;overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:${hdrCfg.bg};border-bottom:1px solid ${hdrCfg.border};flex-wrap:wrap;gap:8px">
+        <div>
+          <span style="font-size:15px;font-weight:800">${g.nombre}</span>
+          <span style="font-size:12px;color:var(--text2);margin-left:10px">📍 ${g.ciudad||'—'} · 📱 ${g.tel||'—'}</span>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">${g.items.length} factura(s) · Total pendiente</div>
+          <div style="font-size:18px;font-weight:800;color:${hdrCfg.color}">${fmtLPS(subtotal)}</div>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:var(--bg3)">
+            <th style="${thStyle}">Referencia</th>
+            <th style="${thStyle}">F. Venta</th>
+            <th style="${thStyle}">Promesa Pago</th>
+            <th style="${thStyle}">Estado</th>
+            <th style="${thStyle}">Nota</th>
+            <th style="${thStyle};text-align:right">Saldo</th>
+            <th style="${thStyle}"></th>
+          </tr></thead>
+          <tbody>${filas}</tbody>
+          <tfoot><tr style="background:var(--bg3)">
+            <td colspan="5" style="padding:8px 12px;font-size:12px;font-weight:700;color:var(--text2);text-align:right">Subtotal ${g.nombre}</td>
+            <td style="padding:8px 12px;text-align:right;font-weight:800;font-size:14px;color:var(--green)">${fmtLPS(subtotal)}</td>
+            <td></td>
+          </tfoot>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Resumen aging
+  const agingRows = [
+    ['Vigente (no vencido)', totalVigente],
+    ['De 1 a 30 días', aging['1-30']],
+    ['De 31 a 60 días', aging['31-60']],
+    ['De 61 a 90 días', aging['61-90']],
+    ['De 91 a 120 días', aging['91-120']],
+    ['Más de 120 días',  aging['+120']],
+  ];
+
+  const resumen = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px">
+    <div class="card">
+      <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">📊 Resumen del Reporte</div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border2)">
+        <span style="color:var(--text2)">Total Vigente</span>
+        <span style="font-weight:700;color:var(--accent3)">${fmtLPS(totalVigente)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border2)">
+        <span style="color:var(--text2)">Total Vencido</span>
+        <span style="font-weight:700;color:var(--red)">${fmtLPS(totalVencido)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:15px;padding:10px 0 0;font-weight:800">
+        <span>Monto Total por Cobrar</span>
+        <span style="color:var(--green)">${fmtLPS(granTotal)}</span>
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">📅 Desglose de lo Vencido</div>
+      ${agingRows.filter(r=>r[1]>0).map(([label,amt])=>`
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--border2)">
+          <span style="color:var(--text2)">${label}</span>
+          <span style="font-weight:700;color:${label.startsWith('Vigente')?'var(--accent3)':'var(--red)'}">${fmtLPS(amt)}</span>
+        </div>`).join('')}
+      <div style="display:flex;justify-content:space-between;font-size:14px;padding:10px 0 0;font-weight:800">
+        <span style="color:var(--text2)">Gran Total</span>
+        <span style="color:var(--green)">${fmtLPS(granTotal)}</span>
+      </div>
+    </div>
+  </div>`;
+
+  return secciones + resumen;
+}
+
+function _renderCobrosTarjetas(filtrados) {
+  return filtrados.map(v => {
+    const cfg = _estadoCfg(v.estado);
     const promesaLabel = v.promesaDate
-      ? v.promesaDate.toLocaleDateString('es-HN', {day:'2-digit',month:'short',year:'numeric'})
+      ? `${String(v.promesaDate.getDate()).padStart(2,'0')}/${String(v.promesaDate.getMonth()+1).padStart(2,'0')}/${v.promesaDate.getFullYear()}`
       : '—';
     const diffLabel = v.diffDias !== null
       ? (v.diffDias < 0 ? `hace ${Math.abs(v.diffDias)} día(s)` : v.diffDias === 0 ? 'hoy' : `en ${v.diffDias} día(s)`)
       : '';
-
-    // Mensaje de advertencia para vencidos
-    const warningBanner = (v.estado === 'vencido' || v.estado === 'sin_fecha') ? `
-      <div style="display:flex;align-items:flex-start;gap:8px;background:rgba(255,71,87,.12);border:1px solid rgba(255,71,87,.3);border-radius:7px;padding:8px 12px;margin-bottom:10px">
-        <span style="font-size:16px;flex-shrink:0">⛔</span>
-        <div>
-          <div style="font-size:12px;font-weight:700;color:var(--red);letter-spacing:.3px">${v.estado==='sin_fecha'?'PAGO PARCIAL SIN FECHA DE PROMESA':'PAGO VENCIDO — SIN ACTUALIZACIÓN'}</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:2px">${v.estado==='sin_fecha'?'Este pago parcial no tiene fecha de promesa registrada.':'La fecha de promesa de pago ya pasó ('+promesaLabel+') y no se ha registrado ninguna actualización.'}</div>
-        </div>
-      </div>` : '';
-
-    const hoyBanner = v.estado === 'hoy' ? `
-      <div style="display:flex;align-items:center;gap:8px;background:rgba(245,200,66,.12);border:1px solid rgba(245,200,66,.3);border-radius:7px;padding:8px 12px;margin-bottom:10px">
-        <span style="font-size:16px">🔔</span>
-        <div style="font-size:12px;font-weight:700;color:var(--gold)">COBRAR HOY — La promesa de pago vence hoy</div>
-      </div>` : '';
-
-    const metodoBadgeColor = {
-      efectivo_ce:'rgba(0,200,160,.15)',deposito_cancel:'rgba(61,106,255,.15)',
-      link_cancel:'rgba(106,61,255,.15)',deposito_ce:'rgba(245,200,66,.15)',
-      boton_ce:'rgba(255,107,53,.15)',parcial:'rgba(255,71,87,.15)'
-    }[v.metodoPago] || 'rgba(138,138,138,.15)';
-
-    return `<div style="background:${cfg.bg};border:1px solid ${v.esParcial&&v.estado!=='normal'?cfg.border:'var(--border)'};border-radius:var(--radius);padding:16px 20px;margin-bottom:12px;transition:all .2s">
-      ${warningBanner}${hoyBanner}
+    return `<div style="background:${cfg.bg};border:1px solid ${cfg.border};border-radius:var(--radius);padding:16px 20px;margin-bottom:12px">
       <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
         <div style="flex:1;min-width:220px">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
             <span style="font-size:15px;font-weight:700">${v.clienteNombre}</span>
-            ${v.esParcial && cfg.label ? `<span style="font-size:10px;font-weight:700;background:${cfg.bg};border:1px solid ${cfg.border};color:${cfg.color};border-radius:10px;padding:2px 8px;letter-spacing:.4px">${cfg.icon} ${cfg.label}</span>` : ''}
-            ${v.metodoPago ? `<span style="font-size:11px;background:${metodoBadgeColor};border-radius:10px;padding:2px 9px;color:var(--text2)">${v.metodoPagoLabel||v.metodoPago}</span>` : ''}
+            <span style="font-size:10px;font-weight:700;background:${cfg.bg};border:1px solid ${cfg.border};color:${cfg.color};border-radius:10px;padding:2px 8px">${cfg.icon} ${cfg.label}</span>
+            ${v.metodoPagoLabel ? `<span style="font-size:11px;background:rgba(255,71,87,.15);border-radius:10px;padding:2px 9px;color:var(--text2)">${v.metodoPagoLabel}</span>` : ''}
           </div>
-          <div style="font-size:12px;color:var(--text2);margin-bottom:4px">
-            📍 ${v.clienteCiudad||'—'} · 📱 ${v.clienteTel||'—'} · 📅 Venta: ${fmtFecha(v.fecha)}
-          </div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:4px">📍 ${v.clienteCiudad||'—'} · 📱 ${v.clienteTel||'—'} · 📅 Venta: ${fmtFecha(v.fecha)}</div>
           ${v.metodoPagoObs ? `<div style="font-size:12px;color:var(--text3);font-style:italic;margin-bottom:4px">💬 "${v.metodoPagoObs}"</div>` : ''}
-          ${v.esParcial ? `<div style="font-size:12px;margin-top:4px">
+          <div style="font-size:12px;margin-top:4px">
             <span style="color:var(--text2)">Promesa de pago: </span>
             <strong style="color:${cfg.color}">${promesaLabel}</strong>
             ${diffLabel ? `<span style="color:${cfg.color};margin-left:6px;font-size:11px">(${diffLabel})</span>` : ''}
-          </div>` : ''}
+          </div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:140px">
           <div style="text-align:right">
             <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">Total Venta</div>
             <div style="font-size:18px;font-weight:800;color:var(--green)">${fmtLPS(v.total)}</div>
           </div>
-          <div style="font-size:11px;color:var(--text3)">Ref: ${(v.id||'').substring(0,10)}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+          <div style="font-size:11px;color:var(--text3)">Ref: ${(v.id||'').slice(-8)}</div>
+          <div style="display:flex;gap:6px;margin-top:4px">
             <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')">👁️ Ver</button>
             <button class="btn btn-primary btn-sm" onclick="editarVenta('${v.id}')">✏️ Actualizar Pago</button>
           </div>
