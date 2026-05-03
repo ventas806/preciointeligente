@@ -5576,6 +5576,7 @@ function renderHistorialVentas() {
           <td style="text-align:right;color:var(--accent3);font-weight:700">${fmtLPS(v.comision)}</td>
           <td onclick="event.stopPropagation()" style="white-space:nowrap">
             <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')">👁️</button>
+            <button class="btn btn-ghost btn-sm" onclick="copiarResumenVenta('${v.id}',this)" title="Copiar resumen del pedido">📋</button>
             <button class="btn btn-ghost btn-sm" onclick="imprimirEtiquetaEnvio('${v.id}')" title="Imprimir etiqueta de envío">🖨️</button>
             <button class="btn btn-sm" onclick="compartirWhatsApp('${v.id}')" title="Enviar resumen por WhatsApp" style="background:#25D366;color:#fff;border:none">📲</button>
             ${verRoi ? `<button class="btn btn-primary btn-sm" onclick="editarVenta('${v.id}')">✏️</button>` : ''}
@@ -5640,6 +5641,50 @@ function compartirWhatsApp(id) {
     : 'https://wa.me/?text=' + encodeURIComponent(mensaje);
 
   window.open(url, '_blank');
+}
+
+function copiarResumenVenta(id, el) {
+  const v = ventas.find(x => x.id === id);
+  if (!v) return;
+
+  const cli       = clientes.find(c => c.id === v.clienteId) || {};
+  const direccion = cli.direccion || v.clienteDireccion || '';
+  const sep       = '━'.repeat(20);
+  const nl        = '\n';
+
+  let texto = [
+    '📦 Pedido Focus Store',
+    sep,
+    '👤 Cliente: ' + v.clienteNombre,
+    '📍 Ciudad: '  + (v.clienteCiudad || '—'),
+  ];
+  if (direccion) texto.push('🏠 Dirección: ' + direccion);
+  texto.push('📅 Fecha: '    + fmtFecha(v.fecha));
+  texto.push('👨‍💼 Vendedor: ' + v.vendedorNombre);
+  texto.push(sep);
+  texto.push('💳 Forma de Pago: ' + (v.metodoPagoLabel || v.metodoPago || '—'));
+  if (v.promesaPago) texto.push('📅 Promesa de Pago: ' + fmtFecha(v.promesaPago));
+  if (v.metodoPagoObs) texto.push('', v.metodoPagoObs);
+  if (v.observaciones) texto.push('', '📝 Observaciones de Pago:', v.observaciones);
+  texto.push('', 'Focus Store · Sistema de Gestión');
+
+  const msg = texto.join(nl);
+
+  // Copiar y dar feedback visual en el botón
+  const orig = el ? el.innerHTML : null;
+  navigator.clipboard.writeText(msg)
+    .then(() => {
+      if (el) { el.innerHTML = '✅'; setTimeout(() => { el.innerHTML = orig; }, 1800); }
+      showToast('📋 Resumen copiado al portapapeles', 'success');
+    })
+    .catch(() => {
+      // fallback
+      const ta = document.createElement('textarea');
+      ta.value = msg; ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+      if (el) { el.innerHTML = '✅'; setTimeout(() => { el.innerHTML = orig; }, 1800); }
+      showToast('📋 Resumen copiado al portapapeles', 'success');
+    });
 }
 
 function verDetalleVenta(id) {
