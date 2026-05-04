@@ -1762,6 +1762,11 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 <span>TOTAL</span>
                 <span id="cResTotal" style="color:var(--accent3)">L 0.00</span>
               </div>
+              <!-- 6. Ahorro total -->
+              <div id="cResAhorroRow" style="display:none;align-items:center;justify-content:space-between;font-size:11px;padding:6px 10px;background:rgba(0,200,160,.07);border:1px solid rgba(0,200,160,.2);border-radius:6px;margin-top:4px">
+                <span style="color:var(--accent3);font-weight:600">🎉 Ahorro del cliente</span>
+                <span id="cResAhorro" style="color:var(--accent3);font-weight:700">L 0.00</span>
+              </div>
               <div id="cResVigencia" style="margin-top:10px;font-size:11px;color:var(--text3);text-align:center;padding:6px;background:var(--bg4);border-radius:6px"></div>
             </div>
 
@@ -5723,15 +5728,18 @@ function renderItemsVenta() {
         ${(() => {
           const lista = item.precioLista && item.precioLista > 0 ? item.precioLista : 0;
           if (!lista) return '';
-          const dPct  = lista > item.precioFinal ? +((lista - item.precioFinal) / lista * 100).toFixed(1) : 0;
+          const tipo   = item.descuentoItemTipo || '%';
+          const dPct   = lista > item.precioFinal ? +((lista - item.precioFinal) / lista * 100).toFixed(1) : 0;
+          const dL     = lista > item.precioFinal ? +(lista - item.precioFinal).toFixed(2) : 0;
+          const inputV = tipo === '%' ? dPct : dL;
           const ahorro = Math.max(0, (lista - item.precioFinal) * item.cantidad);
-          return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px">
+          return `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:2px">
             <span style="font-size:11px;color:var(--text3)">Dto. item</span>
-            <input type="number" value="${dPct}" min="0" max="100" step="0.1"
+            <input type="number" value="${inputV}" min="0" step="${tipo==='%'?'0.1':'1'}"
               onchange="actualizarDescItem('${item._id}',this.value)"
-              style="width:58px;padding:2px 6px;background:var(--bg4);border:1px solid rgba(245,166,35,.4);border-radius:5px;color:var(--accent4);font-size:12px;font-weight:700;outline:none;text-align:right"
-              title="% descuento por item">
-            <span style="font-size:11px;color:var(--accent4)">%</span>
+              style="width:62px;padding:2px 6px;background:var(--bg4);border:1px solid rgba(245,166,35,.4);border-radius:5px;color:var(--accent4);font-size:12px;font-weight:700;outline:none;text-align:right">
+            <button onclick="toggleDescItemTipo('${item._id}')"
+              style="padding:2px 7px;background:var(--bg4);border:1px solid rgba(245,166,35,.4);border-radius:5px;color:${tipo==='L'?'var(--accent3)':'var(--accent4)'};font-size:11px;font-weight:700;cursor:pointer;min-width:30px">${tipo}</button>
             ${ahorro > 0 ? `<span style="font-size:11px;color:var(--accent4);background:rgba(245,166,35,.08);padding:1px 6px;border-radius:4px">− ${fmtLPS(ahorro)}</span>` : ''}
             ${lista !== item.precioFinal ? `<span style="font-size:10px;color:var(--text3);text-decoration:line-through">${fmtLPS(lista)}</span>` : ''}
           </div>`;
@@ -5759,11 +5767,22 @@ function renderItemsVenta() {
   calcResumenVenta();
 }
 
-function actualizarDescItem(id, pct) {
+function actualizarDescItem(id, valor) {
   const item = vItemsActuales.find(x => x._id === id);
   if (!item || !item.precioLista) return;
-  const p = Math.max(0, Math.min(100, parseFloat(pct) || 0));
-  item.precioFinal = +(item.precioLista * (1 - p / 100)).toFixed(2);
+  const tipo = item.descuentoItemTipo || '%';
+  const v    = Math.max(0, parseFloat(valor) || 0);
+  if (tipo === '%') {
+    item.precioFinal = +(item.precioLista * (1 - Math.min(100, v) / 100)).toFixed(2);
+  } else {
+    item.precioFinal = +Math.max(0, item.precioLista - v).toFixed(2);
+  }
+  renderItemsVenta();
+}
+function toggleDescItemTipo(id) {
+  const item = vItemsActuales.find(x => x._id === id);
+  if (!item || !item.precioLista) return;
+  item.descuentoItemTipo = (item.descuentoItemTipo || '%') === '%' ? 'L' : '%';
   renderItemsVenta();
 }
 
@@ -7734,6 +7753,17 @@ function calcResumenCotizacion() {
   const isvAjustado  = subtotalSinISV > 0 ? totalISV * (subtotalDesc / subtotalSinISV) : 0;
   const total = subtotalDesc + isvAjustado;
 
+  // Ahorro total = descuentos por item + descuento general
+  const cAhorroItems = cItemsActuales.reduce((s, it) => {
+    if (!it.precioLista || it.precioLista <= it.precioFinal) return s;
+    return s + (it.precioLista - it.precioFinal) * (it.cantidad || 1);
+  }, 0);
+  const cAhorroTotal = cAhorroItems + descMonto;
+  const cAhorroRow = document.getElementById('cResAhorroRow');
+  if (cAhorroRow) cAhorroRow.style.display = cAhorroTotal > 0 ? 'flex' : 'none';
+  const cAhorroEl = document.getElementById('cResAhorro');
+  if (cAhorroEl) cAhorroEl.textContent = fmtLPS(cAhorroTotal);
+
   const el = id => document.getElementById(id);
   const descRow = el('cResDescRow');
   if (descRow) descRow.style.display = descMonto > 0 ? 'flex' : 'none';
@@ -7800,6 +7830,25 @@ function renderItemsCotizacion() {
             </label>
             <span style="font-size:11px;color:${item.llevaISV?'var(--gold)':'var(--text3)'}">${isvLabel}</span>
           </div>
+          ${(() => {
+            const lista = item.precioLista && item.precioLista > 0 ? item.precioLista : 0;
+            if (!lista) return '';
+            const tipo   = item.descuentoItemTipo || '%';
+            const dPct   = lista > item.precioFinal ? +((lista - item.precioFinal) / lista * 100).toFixed(1) : 0;
+            const dL     = lista > item.precioFinal ? +(lista - item.precioFinal).toFixed(2) : 0;
+            const inputV = tipo === '%' ? dPct : dL;
+            const ahorro = Math.max(0, (lista - item.precioFinal) * item.cantidad);
+            return `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:2px">
+              <span style="font-size:11px;color:var(--text3)">Dto. item</span>
+              <input type="number" value="${inputV}" min="0" step="${tipo==='%'?'0.1':'1'}"
+                onchange="cActualizarDescItem('${item._id}',this.value)"
+                style="width:62px;padding:2px 6px;background:var(--bg4);border:1px solid rgba(245,166,35,.4);border-radius:5px;color:var(--accent4);font-size:12px;font-weight:700;outline:none;text-align:right">
+              <button onclick="cToggleDescItemTipo('${item._id}')"
+                style="padding:2px 7px;background:var(--bg4);border:1px solid rgba(245,166,35,.4);border-radius:5px;color:${tipo==='L'?'var(--accent3)':'var(--accent4)'};font-size:11px;font-weight:700;cursor:pointer;min-width:30px">${tipo}</button>
+              ${ahorro > 0 ? `<span style="font-size:11px;color:var(--accent4);background:rgba(245,166,35,.08);padding:1px 6px;border-radius:4px">− ${fmtLPS(ahorro)}</span>` : ''}
+              ${lista !== item.precioFinal ? `<span style="font-size:10px;color:var(--text3);text-decoration:line-through">${fmtLPS(lista)}</span>` : ''}
+            </div>`;
+          })()}
         </div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
@@ -7858,6 +7907,25 @@ function cAgregarManual() {
   }, 50);
 }
 
+function cActualizarDescItem(id, valor) {
+  const it = cItemsActuales.find(x => x._id === id);
+  if (!it || !it.precioLista) return;
+  const tipo = it.descuentoItemTipo || '%';
+  const v    = Math.max(0, parseFloat(valor) || 0);
+  if (tipo === '%') {
+    it.precioFinal = +(it.precioLista * (1 - Math.min(100, v) / 100)).toFixed(2);
+  } else {
+    it.precioFinal = +Math.max(0, it.precioLista - v).toFixed(2);
+  }
+  renderItemsCotizacion();
+}
+function cToggleDescItemTipo(id) {
+  const it = cItemsActuales.find(x => x._id === id);
+  if (!it || !it.precioLista) return;
+  it.descuentoItemTipo = (it.descuentoItemTipo || '%') === '%' ? 'L' : '%';
+  renderItemsCotizacion();
+}
+
 function cActualizarItem(id, campo, valor) {
   const it = cItemsActuales.find(x=>x._id===id);
   if (!it) return;
@@ -7904,7 +7972,11 @@ function cAgregarProducto(prodId) {
   const isvPct = isv ? parametros.isvNuevo : 0;
   cItemsActuales.push({
     tipo:'catalogo', productoId:prodId, sku:p.sku, descripcion:p.producto,
-    imagen:p.imagen||null, llevaISV:isv, isvPct, precioFinal:c.precioFinalDesc, cantidad:1,
+    imagen:p.imagen||null, llevaISV:isv, isvPct,
+    precioLista: +c.precioConISV.toFixed(2),
+    precioFinal: c.precioFinalDesc,
+    descuentoItemTipo: '%',
+    cantidad:1,
     _id:'vi_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)
   });
   document.getElementById('cProdBuscar').value='';
