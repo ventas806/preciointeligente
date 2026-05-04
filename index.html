@@ -1285,10 +1285,18 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                     <input type="number" id="vEnvio" value="" step="1" min="0" oninput="calcResumenVenta()" style="width:80px;padding:4px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-weight:600;outline:none;text-align:right">
                   </div>
                 </div>
-                <!-- 6. TOTAL -->
-                <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;justify-content:space-between;font-size:16px;font-weight:800">
-                  <span>TOTAL</span>
-                  <span id="vResTotal" style="color:var(--green)">L 0.00</span>
+                <!-- 6. TOTAL (editable para redondear) -->
+                <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;justify-content:space-between;align-items:center;font-size:16px;font-weight:800">
+                  <span title="Puedes editar el total para redondear — el descuento se calcula automático">TOTAL <span style="font-size:10px;font-weight:400;color:var(--text3)">✏️</span></span>
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <span style="font-size:13px;color:var(--text3);font-weight:400">L</span>
+                    <input type="number" id="vResTotal" min="0" step="1"
+                      title="Escribe el total deseado y presiona Enter — se calcula el descuento automáticamente"
+                      onchange="ajustarTotalDeseado(this.value)"
+                      onfocus="this.select()"
+                      style="width:110px;padding:3px 6px;background:transparent;border:none;border-bottom:2px solid var(--green);color:var(--green);font-size:16px;font-weight:800;outline:none;text-align:right;-moz-appearance:textfield"
+                      placeholder="0">
+                  </div>
                 </div>
                 <!-- 7. Saldo Pendiente (solo cuando metodo pago = parcial y saldo > 0) -->
                 <div id="vResSaldoRow" style="display:none;justify-content:space-between;align-items:center;font-size:14px;padding:8px 12px;background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.3);border-radius:8px;margin-top:4px">
@@ -5762,7 +5770,7 @@ function renderItemsVenta() {
             <span style="font-size:11px;color:var(--text3)">Dto. item</span>
             <button onclick="toggleDescItemTipo('${item._id}')" title="Clic para cambiar entre % y L"
               style="padding:3px 9px;background:${tipo==='L'?'rgba(0,200,160,.15)':'rgba(245,166,35,.15)'};border:1px solid ${tipo==='L'?'rgba(0,200,160,.5)':'rgba(245,166,35,.5)'};border-radius:5px;color:${tipo==='L'?'var(--accent3)':'var(--accent4)'};font-size:12px;font-weight:800;cursor:pointer;min-width:34px;transition:all .15s">${tipo}</button>
-            <input type="number" value="${inputV}" min="0" step="${tipo==='%'?'0.1':'1'}"
+            <input type="number" id="iDto_${item._id}" value="${inputV}" min="0" step="${tipo==='%'?'0.1':'1'}"
               onchange="actualizarDescItem('${item._id}',this.value)"
               style="width:110px;padding:3px 8px;background:var(--bg4);border:1px solid rgba(245,166,35,.4);border-radius:5px;color:var(--accent4);font-size:13px;font-weight:700;outline:none;text-align:right">
             ${ahorro > 0 ? `<span style="font-size:11px;color:var(--accent4);background:rgba(245,166,35,.08);padding:1px 6px;border-radius:4px">− ${fmtLPS(ahorro)}</span>` : ''}
@@ -5781,11 +5789,13 @@ function renderItemsVenta() {
         <div style="display:flex;align-items:center;gap:4px">
           <span style="font-size:11px;color:var(--text3)">L</span>
           <input type="number" value="${item.precioFinal.toFixed(2)}" step="0.01" min="0"
-            onchange="actualizarItemVenta('${item._id}','precioFinal',this.value)"
+            oninput="vistaItemEnVivo('${item._id}', this.value)"
+            onchange="ajustarPrecioItem('${item._id}', this.value)"
+            onfocus="this.select()"
             style="width:100px;padding:5px 8px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--green);font-size:14px;font-weight:700;outline:none;text-align:right"
-            title="Precio final (editable)">
+            title="Escribe el precio deseado y presiona Enter — el descuento se calcula automático">
         </div>
-        <div style="font-size:11px;color:var(--text3)">× ${item.cantidad} = <strong style="color:var(--text2)">${fmtLPS(item.precioFinal * item.cantidad)}</strong></div>
+        <div id="iSubtot_${item._id}" style="font-size:11px;color:var(--text3)">× ${item.cantidad} = <strong style="color:var(--text2)">${fmtLPS(item.precioFinal * item.cantidad)}</strong></div>
       </div>
     </div>`;
   }).join('');
@@ -5809,6 +5819,55 @@ function toggleDescItemTipo(id) {
   if (!item || !item.precioLista) return;
   item.descuentoItemTipo = (item.descuentoItemTipo || '%') === '%' ? 'L' : '%';
   renderItemsVenta();
+}
+
+// Actualización en tiempo real mientras el usuario escribe el precio
+function vistaItemEnVivo(id, valorStr) {
+  const item = vItemsActuales.find(x => x._id === id);
+  if (!item) return;
+  const precio = parseFloat(valorStr) || 0;
+
+  // Actualizar "× N = L" en tiempo real
+  const subEl = document.getElementById('iSubtot_' + id);
+  if (subEl) subEl.innerHTML = `× ${item.cantidad} = <strong style="color:var(--text2)">${fmtLPS(precio * item.cantidad)}</strong>`;
+
+  // Actualizar Dto. item en tiempo real si hay precioLista
+  if (item.precioLista && item.precioLista > 0) {
+    const dtoEl = document.getElementById('iDto_' + id);
+    if (dtoEl) {
+      const tipo = item.descuentoItemTipo || '%';
+      if (tipo === 'L') {
+        dtoEl.value = Math.max(0, item.precioLista - precio).toFixed(2);
+      } else {
+        dtoEl.value = precio < item.precioLista
+          ? ((item.precioLista - precio) / item.precioLista * 100).toFixed(1)
+          : '0';
+      }
+    }
+  }
+}
+
+// Cambia el precio de un item y calcula el descuento automáticamente
+function ajustarPrecioItem(id, valorStr) {
+  const item = vItemsActuales.find(x => x._id === id);
+  if (!item) return;
+  const precioDeseado = parseFloat(valorStr);
+  if (isNaN(precioDeseado) || precioDeseado < 0) return;
+
+  if (item.precioLista && item.precioLista > 0) {
+    // Tiene precio lista → calcular descuento automáticamente
+    if (precioDeseado < item.precioLista) {
+      item.descuentoItemTipo = 'L'; // mostrar en Lempiras
+    }
+    // Si precio deseado >= lista → sin descuento
+    item.precioFinal = precioDeseado;
+  } else {
+    // Sin precio lista (manual o sin referencia) → cambio directo
+    item.precioFinal = precioDeseado;
+  }
+  // Actualizar base sin ISV
+  item.precioBase = item.llevaISV ? item.precioFinal / (1 + (item.isvPct || 0)) : item.precioFinal;
+  renderItemsVenta(); // re-renderiza toda la fila → Dto. item y × N = L se actualizan
 }
 
 // ── Toggle % / L para descuento (prefijo 'v' = ventas, 'c' = cotización) ──
@@ -5919,7 +5978,9 @@ function calcResumenVenta() {
       }
     }
   }
-  set('vResTotal',    fmtLPS(total));
+  // vResTotal es ahora un <input> editable — solo actualizar si el usuario no está escribiendo
+  const totalInputEl = document.getElementById('vResTotal');
+  if (totalInputEl && document.activeElement !== totalInputEl) totalInputEl.value = total.toFixed(2);
   set('vResUtilidad', fmtLPS(utilidadAjustada));
   set('vResComision', fmtLPS(comisionVis));
   set('vResPct',      ((pctComision)*100).toFixed(1));
@@ -6346,6 +6407,65 @@ async function guardarNotaVenta(id, valor) {
   } catch(e) {
     showToast('❌ Error guardando nota', 'error');
   }
+}
+
+// ===== AJUSTAR TOTAL DESEADO (redondeo) =====
+function ajustarTotalDeseado(valorStr) {
+  const totalDeseado = parseFloat(valorStr);
+  if (isNaN(totalDeseado) || totalDeseado <= 0) return;
+
+  // Leer envío actual
+  const envio = parseFloat(document.getElementById('vEnvio')?.value) || 0;
+
+  // Calcular subtotal sin ISV y total ISV de los items actuales
+  let subtotalSinISV = 0;
+  let totalISV = 0;
+  for (const it of vItemsActuales) {
+    const precio = it.precioFinal || 0;
+    const qty    = it.cantidad   || 1;
+    const monto  = precio * qty;
+    if (it.llevaISV && it.isvPct > 0) {
+      const base = monto / (1 + it.isvPct);
+      subtotalSinISV += base;
+      totalISV       += monto - base;
+    } else {
+      subtotalSinISV += monto;
+    }
+  }
+
+  if (subtotalSinISV <= 0) {
+    showToast('⚠️ Agrega productos primero', 'warning');
+    return;
+  }
+
+  // isvRate efectivo sobre el subtotal sin ISV
+  const isvRate = totalISV / subtotalSinISV; // ej. 0.15
+
+  // El total deseado = subtotalDesc*(1+isvRate) + envio
+  // → subtotalDesc = (totalDeseado - envio) / (1 + isvRate)
+  const subtotalDesc = (totalDeseado - envio) / (1 + isvRate);
+
+  // El descuento en L requerido sobre el subtotal sin ISV
+  const descuentoL = subtotalSinISV - subtotalDesc;
+
+  if (descuentoL < 0) {
+    showToast('⚠️ El total deseado es mayor que el actual', 'warning');
+    // Restaurar valor mostrado al total real
+    calcResumenVenta();
+    return;
+  }
+
+  // Aplicar descuento en Lempiras
+  const vda = document.getElementById('vDescActivo');
+  const vdv = document.getElementById('vDescValor');
+  const vdb = document.getElementById('vDescTipoBtn');
+
+  if (vda) vda.checked = true;
+  if (vdb) { vdb.textContent = 'L'; vdb.style.color = 'var(--accent3)'; }
+  if (vdv) vdv.value = descuentoL.toFixed(2);
+
+  calcResumenVenta();
+  showToast(`✅ Descuento de ${fmtLPS(descuentoL)} aplicado`, 'success');
 }
 
 function compartirWhatsApp(id) {
