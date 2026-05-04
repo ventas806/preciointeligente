@@ -5897,10 +5897,22 @@ function calcResumenVenta() {
   const set = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
   set('vResSubtotal', fmtLPS(subtotalSinISV));
   set('vResISV',      fmtLPS(isvAjustado));
-  // Etiqueta ISV con porcentaje promedio
-  const isvPctProm = subtotalDesc > 0 && isvAjustado > 0 ? Math.round(isvAjustado / subtotalDesc * 100) : 0;
+  // Etiqueta ISV: mostrar tasa real si todos los items con ISV usan la misma, o "mixto"
   const isvPctEl = document.getElementById('vResISVPct');
-  if (isvPctEl) isvPctEl.textContent = isvAjustado > 0 ? isvPctProm + '%' : '0%';
+  if (isvPctEl) {
+    if (isvAjustado <= 0) {
+      isvPctEl.textContent = '0%';
+    } else {
+      const tasasUsadas = [...new Set(vItemsActuales.filter(it => it.llevaISV && it.isvPct > 0).map(it => it.isvPct))];
+      if (tasasUsadas.length === 1) {
+        isvPctEl.textContent = tasasUsadas[0] + '%';
+      } else if (tasasUsadas.length > 1) {
+        isvPctEl.textContent = 'mixto';
+      } else {
+        isvPctEl.textContent = '15%'; // default Honduras
+      }
+    }
+  }
   set('vResTotal',    fmtLPS(total));
   set('vResUtilidad', fmtLPS(utilidadAjustada));
   set('vResComision', fmtLPS(comisionVis));
@@ -7856,9 +7868,16 @@ function calcResumenCotizacion() {
   if (cSubDescRow) cSubDescRow.style.display = descMonto > 0 ? 'flex' : 'none';
   const cSubDescEl = el('cResSubtotalDesc');
   if (cSubDescEl) cSubDescEl.textContent = fmtLPS(subtotalDesc);
-  // ISV con %
+  // ISV con % — mostrar tasa real si todos usan la misma, o "mixto"
   const cIsvPctEl = el('cResISVPct');
-  if (cIsvPctEl) { const p = subtotalDesc > 0 && isvAjustado > 0 ? Math.round(isvAjustado/subtotalDesc*100) : 0; cIsvPctEl.textContent = p + '%'; }
+  if (cIsvPctEl) {
+    if (isvAjustado <= 0) {
+      cIsvPctEl.textContent = '0%';
+    } else {
+      const cTasas = [...new Set(cItemsActuales.filter(it => it.llevaISV && it.isvPct > 0).map(it => it.isvPct))];
+      cIsvPctEl.textContent = cTasas.length === 1 ? cTasas[0] + '%' : cTasas.length > 1 ? 'mixto' : '15%';
+    }
+  }
 
   if(el('cResSubtotal')) el('cResSubtotal').textContent = fmtLPS(subtotalSinISV);
   if(el('cResISV'))      el('cResISV').textContent      = fmtLPS(isvAjustado);
