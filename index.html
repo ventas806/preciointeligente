@@ -1244,22 +1244,12 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
               <div class="card-title" style="margin-bottom:16px">🧾 Resumen de Venta</div>
 
               <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+                <!-- 1. Subtotal sin ISV -->
                 <div style="display:flex;justify-content:space-between;font-size:13px">
                   <span style="color:var(--text2)">Subtotal (sin ISV)</span>
                   <span id="vResSubtotal" style="font-weight:600">L 0.00</span>
                 </div>
-                <div style="display:flex;justify-content:space-between;font-size:13px">
-                  <span style="color:var(--text2)">ISV</span>
-                  <span id="vResISV" style="font-weight:600">L 0.00</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
-                  <span style="color:var(--text2)">Envío</span>
-                  <div style="display:flex;align-items:center;gap:6px">
-                    <span style="font-size:11px;color:var(--text3)">L</span>
-                    <input type="number" id="vEnvio" value="" step="1" min="0" oninput="calcResumenVenta()" style="width:80px;padding:4px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-weight:600;outline:none;text-align:right">
-                  </div>
-                </div>
-                <!-- Descuento general -->
+                <!-- 2. Descuento (control + línea de detalle) -->
                 <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
                   <label style="display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--text2)">
                     <input type="checkbox" id="vDescActivo" onchange="calcResumenVenta()" style="accent-color:var(--accent4);width:14px;height:14px">
@@ -1274,9 +1264,28 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                   </div>
                 </div>
                 <div id="vResDescRow" style="display:none;justify-content:space-between;font-size:12px">
-                  <span style="color:var(--accent4)">− Descuento aplicado</span>
+                  <span id="vResDescLabel" style="color:var(--accent4)">− Descuento</span>
                   <span id="vResDesc" style="color:var(--accent4);font-weight:600">L 0.00</span>
                 </div>
+                <!-- 3. Subtotal con descuento (solo visible cuando hay descuento) -->
+                <div id="vResSubtotalDescRow" style="display:none;justify-content:space-between;font-size:13px;padding:5px 8px;background:rgba(61,106,255,.06);border-radius:6px">
+                  <span style="color:var(--text2)">Subtotal con descuento</span>
+                  <span id="vResSubtotalDesc" style="font-weight:700">L 0.00</span>
+                </div>
+                <!-- 4. ISV (con % en etiqueta) -->
+                <div style="display:flex;justify-content:space-between;font-size:13px">
+                  <span style="color:var(--text2)">ISV (<span id="vResISVPct">—</span>)</span>
+                  <span id="vResISV" style="font-weight:600">L 0.00</span>
+                </div>
+                <!-- 5. Envío -->
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+                  <span style="color:var(--text2)">Envío</span>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="font-size:11px;color:var(--text3)">L</span>
+                    <input type="number" id="vEnvio" value="" step="1" min="0" oninput="calcResumenVenta()" style="width:80px;padding:4px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-weight:600;outline:none;text-align:right">
+                  </div>
+                </div>
+                <!-- 6. TOTAL -->
                 <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;justify-content:space-between;font-size:16px;font-weight:800">
                   <span>TOTAL</span>
                   <span id="vResTotal" style="color:var(--green)">L 0.00</span>
@@ -5759,10 +5768,22 @@ function calcResumenVenta() {
   const isvAjustado  = subtotalSinISV > 0 ? totalISV * (subtotalDesc / subtotalSinISV) : 0;
   const total        = subtotalDesc + isvAjustado + envio;
 
+  // Filas de descuento y subtotal con descuento
   const descRow = document.getElementById('vResDescRow');
   if (descRow) descRow.style.display = descMonto > 0 ? 'flex' : 'none';
   const descEl = document.getElementById('vResDesc');
   if (descEl) descEl.textContent = fmtLPS(descMonto);
+  // Etiqueta del descuento: muestra % si aplica
+  const descLabelEl = document.getElementById('vResDescLabel');
+  if (descLabelEl) {
+    const lbl = descTipo === '%' && descValor > 0 ? `− Descuento (${descValor}%)` : '− Descuento';
+    descLabelEl.textContent = lbl;
+  }
+  // Subtotal con descuento
+  const subDescRow = document.getElementById('vResSubtotalDescRow');
+  if (subDescRow) subDescRow.style.display = descMonto > 0 ? 'flex' : 'none';
+  const subDescEl = document.getElementById('vResSubtotalDesc');
+  if (subDescEl) subDescEl.textContent = fmtLPS(subtotalDesc);
 
   // ── Utilidad: el descuento sale de la utilidad, no del costo ──────────────
   const utilidadAjustada = Math.max(0, utilidadBruta - descMonto);
@@ -5787,8 +5808,12 @@ function calcResumenVenta() {
   const verRoiPanel = ['admin','gerencia'].includes(currentUser?.rol);
 
   const set = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
-  set('vResSubtotal', fmtLPS(subtotalSinISV));  // subtotal original (el descuento se muestra abajo)
-  set('vResISV',      fmtLPS(isvAjustado));     // ISV recalculado sobre subtotal descontado
+  set('vResSubtotal', fmtLPS(subtotalSinISV));
+  set('vResISV',      fmtLPS(isvAjustado));
+  // Etiqueta ISV con porcentaje promedio
+  const isvPctProm = subtotalDesc > 0 && isvAjustado > 0 ? Math.round(isvAjustado / subtotalDesc * 100) : 0;
+  const isvPctEl = document.getElementById('vResISVPct');
+  if (isvPctEl) isvPctEl.textContent = isvAjustado > 0 ? isvPctProm + '%' : '0%';
   set('vResTotal',    fmtLPS(total));
   set('vResUtilidad', fmtLPS(utilidadAjustada));
   set('vResComision', fmtLPS(comisionVis));
