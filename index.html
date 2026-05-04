@@ -6250,13 +6250,12 @@ function renderHistorialVentas() {
   el.innerHTML = `<div class="table-wrap"><table>
     <thead><tr>
       <th>Acciones</th>
-      <th>Fecha</th><th>Cliente</th><th>Ciudad</th><th>Vendedor</th>
+      <th>Fecha</th><th>Cliente</th><th>Nota</th><th>Vendedor</th>
       <th>Envío</th><th>Método de Pago</th>
       <th style="text-align:right">Total</th>
       <th style="text-align:right;color:var(--red)">Saldo Pend.</th>
       ${verRoi ? '<th style="text-align:right">ROI</th>' : ''}
       <th style="text-align:right">Comisión</th>
-      <th>Nota</th>
     </tr></thead>
     <tbody>
       ${lista.map(v => {
@@ -6296,14 +6295,6 @@ function renderHistorialVentas() {
             ${fechaIng ? `<div style="font-size:10px;color:var(--text3);margin-top:2px">🕐 ${fechaIng}</div>` : ''}
           </td>
           <td style="font-weight:600">${v.clienteNombre}${thumbsHtml}</td>
-          <td style="color:var(--text2)">${v.clienteCiudad||'—'}</td>
-          <td>${v.vendedorNombre}</td>
-          <td style="font-size:12px;color:var(--text2);white-space:nowrap">${v.metodoEnvio ? `<span style="font-size:11px;background:rgba(0,200,160,.08);border:1px solid rgba(0,200,160,.2);color:var(--accent3);border-radius:10px;padding:2px 8px">🚚 ${v.metodoEnvio}</span>` : '<span style="color:var(--text3)">—</span>'}</td>
-          <td>${v.metodoPago ? `<span style="font-size:11px;background:rgba(61,106,255,.1);border:1px solid rgba(61,106,255,.2);color:var(--accent);border-radius:10px;padding:2px 9px;white-space:nowrap">${v.metodoPagoLabel||v.metodoPago}</span>${v.promesaPago?`<div style="font-size:10px;color:var(--gold);margin-top:2px">📅 ${fmtFecha(v.promesaPago)}</div>`:''}` : '<span style="color:var(--text3);font-size:12px">—</span>'}</td>
-          <td style="text-align:right;color:var(--green);font-weight:700">${fmtLPS(v.total)}</td>
-          <td style="text-align:right">${saldo > 0 ? `<span style="color:var(--red);font-weight:700">⚠️ ${fmtLPS(saldo)}</span>` : '<span style="color:var(--text3);font-size:12px">—</span>'}</td>
-          ${verRoi ? `<td style="text-align:right;font-weight:700;color:${roiCls}">${fmtPct(roi)}</td>` : ''}
-          <td style="text-align:right;color:var(--accent3);font-weight:700">${fmtLPS(v.comision)}</td>
           <td onclick="event.stopPropagation()">
             <input type="text" value="${(v.nota||'').replace(/"/g,'&quot;')}" maxlength="12"
               onclick="event.stopPropagation()"
@@ -6313,6 +6304,13 @@ function renderHistorialVentas() {
               onblur="this.style.borderColor='var(--border)'"
               placeholder="Nota...">
           </td>
+          <td>${v.vendedorNombre}</td>
+          <td style="font-size:12px;color:var(--text2);white-space:nowrap">${v.metodoEnvio ? `<span style="font-size:11px;background:rgba(0,200,160,.08);border:1px solid rgba(0,200,160,.2);color:var(--accent3);border-radius:10px;padding:2px 8px">🚚 ${v.metodoEnvio}</span>` : '<span style="color:var(--text3)">—</span>'}</td>
+          <td>${v.metodoPago ? `<span style="font-size:11px;background:rgba(61,106,255,.1);border:1px solid rgba(61,106,255,.2);color:var(--accent);border-radius:10px;padding:2px 9px;white-space:nowrap">${v.metodoPagoLabel||v.metodoPago}</span>${v.promesaPago?`<div style="font-size:10px;color:var(--gold);margin-top:2px">📅 ${fmtFecha(v.promesaPago)}</div>`:''}` : '<span style="color:var(--text3);font-size:12px">—</span>'}</td>
+          <td style="text-align:right;color:var(--green);font-weight:700">${fmtLPS(v.total)}</td>
+          <td style="text-align:right">${saldo > 0 ? `<span style="color:var(--red);font-weight:700">⚠️ ${fmtLPS(saldo)}</span>` : '<span style="color:var(--text3);font-size:12px">—</span>'}</td>
+          ${verRoi ? `<td style="text-align:right;font-weight:700;color:${roiCls}">${fmtPct(roi)}</td>` : ''}
+          <td style="text-align:right;color:var(--accent3);font-weight:700">${fmtLPS(v.comision)}</td>
         </tr>`;
       }).join('')}
     </tbody>
