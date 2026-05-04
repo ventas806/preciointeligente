@@ -5730,38 +5730,40 @@ function vToggleDescTipo(prefijo) {
 function calcResumenVenta() {
   let subtotalSinISV = 0, totalISV = 0, utilidadBruta = 0;
   vItemsActuales.forEach(item => {
-    const cant         = item.cantidad || 1;
-    const precioFinal  = item.precioFinal || 0;
-    const isvPct       = item.llevaISV ? item.isvPct : 0;
-    const sinISV       = item.llevaISV ? precioFinal / (1 + isvPct) : precioFinal;
-    const isv          = precioFinal - sinISV;
-    const costo        = (item.costoLPS || 0);
-    subtotalSinISV    += sinISV * cant;
-    totalISV          += isv    * cant;
-    utilidadBruta     += (sinISV - costo) * cant;
+    const cant        = item.cantidad || 1;
+    const precioFinal = item.precioFinal || 0;
+    const isvPct      = item.llevaISV ? item.isvPct : 0;
+    const sinISV      = item.llevaISV ? precioFinal / (1 + isvPct) : precioFinal;
+    subtotalSinISV   += sinISV * cant;
+    totalISV         += (precioFinal - sinISV) * cant;
+    utilidadBruta    += (sinISV - (item.costoLPS || 0)) * cant;
   });
   const envio = parseFloat(document.getElementById('vEnvio')?.value) || 0;
-  const bruto = subtotalSinISV + totalISV + envio;
 
-  // Descuento general
+  // ── Descuento: se aplica sobre subtotalSinISV ──────────────────────────────
   const descActivo = document.getElementById('vDescActivo')?.checked;
   const descTipo   = document.getElementById('vDescTipoBtn')?.textContent.trim() || '%';
   const descValor  = parseFloat(document.getElementById('vDescValor')?.value) || 0;
   let descMonto = 0;
-  if (descActivo && descValor > 0) {
-    descMonto = descTipo === '%' ? bruto * (descValor / 100) : descValor;
-    descMonto = Math.min(descMonto, bruto); // no puede ser mayor al total
+  if (descActivo && descValor > 0 && subtotalSinISV > 0) {
+    descMonto = descTipo === '%' ? subtotalSinISV * (descValor / 100) : descValor;
+    descMonto = Math.min(descMonto, subtotalSinISV); // no puede superar el subtotal
   }
-  const total = bruto - descMonto;
+
+  // ISV se recalcula sobre el subtotal ya descontado (proporcional)
+  const subtotalDesc = subtotalSinISV - descMonto;
+  const isvAjustado  = subtotalSinISV > 0 ? totalISV * (subtotalDesc / subtotalSinISV) : 0;
+  const total        = subtotalDesc + isvAjustado + envio;
+
   const descRow = document.getElementById('vResDescRow');
   if (descRow) descRow.style.display = descMonto > 0 ? 'flex' : 'none';
   const descEl = document.getElementById('vResDesc');
   if (descEl) descEl.textContent = fmtLPS(descMonto);
 
-  // Utilidad ajustada: el descuento sale directo de la utilidad
+  // ── Utilidad: el descuento sale de la utilidad, no del costo ──────────────
   const utilidadAjustada = Math.max(0, utilidadBruta - descMonto);
 
-  // Comisión = % de utilidad ajustada (sin ISV, sin envío) — nunca negativa
+  // ── Comisión sobre utilidad ajustada ──────────────────────────────────────
   const vendedorId  = document.getElementById('vVendedor')?.value;
   const vendedor    = usuarios.find(u => String(u.id) === String(vendedorId));
   const pctComision = (vendedor && vendedor.comision != null ? vendedor.comision : (parametros.comisionVentas || 10)) / 100;
@@ -5775,8 +5777,8 @@ function calcResumenVenta() {
   const comisionVis  = (esParcial && saldoPend > 0) ? 0 : comision;
 
   const set = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
-  set('vResSubtotal', fmtLPS(subtotalSinISV));
-  set('vResISV',      fmtLPS(totalISV));
+  set('vResSubtotal', fmtLPS(subtotalSinISV));  // subtotal original (el descuento se muestra abajo)
+  set('vResISV',      fmtLPS(isvAjustado));     // ISV recalculado sobre subtotal descontado
   set('vResTotal',    fmtLPS(total));
   set('vResUtilidad', fmtLPS(utilidadAjustada));
   set('vResComision', fmtLPS(comisionVis));
@@ -5787,14 +5789,14 @@ function calcResumenVenta() {
   // Abonos: suma y saldo pendiente
   const aboWrap = document.getElementById('vAbonoWrap');
   if (aboWrap && aboWrap.style.display !== 'none') {
-    const totalAbonado = vItemsAbonos.reduce((s, a) => s + (a.monto||0), 0);
-    const saldo        = Math.max(0, total - totalAbonado);
-    const resumen      = document.getElementById('vAbonoResumen');
-    const totalAboEl   = document.getElementById('vTotalAbonado');
-    const saldoVal     = document.getElementById('vSaldoPendienteVal');
-    if (resumen)    resumen.style.display   = vItemsAbonos.length ? '' : 'none';
-    if (totalAboEl) totalAboEl.textContent  = fmtLPS(totalAbonado);
-    if (saldoVal)   saldoVal.textContent    = fmtLPS(saldo);
+    const totalAbonado2 = vItemsAbonos.reduce((s, a) => s + (a.monto||0), 0);
+    const saldo         = Math.max(0, total - totalAbonado2);
+    const resumen       = document.getElementById('vAbonoResumen');
+    const totalAboEl    = document.getElementById('vTotalAbonado');
+    const saldoVal      = document.getElementById('vSaldoPendienteVal');
+    if (resumen)    resumen.style.display  = vItemsAbonos.length ? '' : 'none';
+    if (totalAboEl) totalAboEl.textContent = fmtLPS(totalAbonado2);
+    if (saldoVal)   saldoVal.textContent   = fmtLPS(saldo);
   }
 }
 
@@ -5859,16 +5861,18 @@ async function guardarVenta() {
     utilidadBruta   += (sinISV - (item.costoLPS||0)) * cant;
   });
   const envio       = parseFloat(document.getElementById('vEnvio').value)||0;
-  const brutoVenta  = subtotalSinISV + totalISV + envio;
   const descActivoV = document.getElementById('vDescActivo')?.checked;
   const descTipoV   = document.getElementById('vDescTipoBtn')?.textContent.trim() || '%';
   const descValorV  = parseFloat(document.getElementById('vDescValor')?.value) || 0;
-  let descMontoV    = 0;
-  if (descActivoV && descValorV > 0) {
-    descMontoV = descTipoV === '%' ? brutoVenta * (descValorV / 100) : descValorV;
-    descMontoV = Math.min(descMontoV, brutoVenta);
+  // Descuento se aplica sobre subtotalSinISV; ISV se recalcula proporcional
+  let descMontoV = 0;
+  if (descActivoV && descValorV > 0 && subtotalSinISV > 0) {
+    descMontoV = descTipoV === '%' ? subtotalSinISV * (descValorV / 100) : descValorV;
+    descMontoV = Math.min(descMontoV, subtotalSinISV);
   }
-  const total              = brutoVenta - descMontoV;
+  const subtotalDescV = subtotalSinISV - descMontoV;
+  const isvAjustadoV  = subtotalSinISV > 0 ? totalISV * (subtotalDescV / subtotalSinISV) : 0;
+  const total              = subtotalDescV + isvAjustadoV + envio;
   const utilidadAjustadaV  = Math.max(0, utilidadBruta - descMontoV);
   const vendedor    = usuarios.find(u => String(u.id) === String(vendedorId));
   const pctComision = (vendedor && vendedor.comision != null ? vendedor.comision : (parametros.comisionVentas||10)) / 100;
@@ -5889,7 +5893,7 @@ async function guardarVenta() {
     descuentoTipo:  descTipoV,
     descuentoValor: descValorV,
     subtotalSinISV,
-    totalISV,
+    totalISV: isvAjustadoV,
     total,
     utilidadBruta: utilidadAjustadaV,
     pctComision: pctComision * 100,
@@ -7627,18 +7631,20 @@ function calcResumenCotizacion() {
     subtotalSinISV += sinISV*cant;
     totalISV       += (precio-sinISV)*cant;
   });
-  const bruto = subtotalSinISV + totalISV;
 
-  // Descuento general
+  // Descuento se aplica sobre subtotalSinISV; ISV se recalcula proporcional
   const descActivo = document.getElementById('cDescActivo')?.checked;
   const descTipo   = document.getElementById('cDescTipoBtn')?.textContent.trim() || '%';
   const descValor  = parseFloat(document.getElementById('cDescValor')?.value) || 0;
   let descMonto = 0;
-  if (descActivo && descValor > 0) {
-    descMonto = descTipo === '%' ? bruto * (descValor / 100) : descValor;
-    descMonto = Math.min(descMonto, bruto);
+  if (descActivo && descValor > 0 && subtotalSinISV > 0) {
+    descMonto = descTipo === '%' ? subtotalSinISV * (descValor / 100) : descValor;
+    descMonto = Math.min(descMonto, subtotalSinISV);
   }
-  const total = bruto - descMonto;
+  const subtotalDesc = subtotalSinISV - descMonto;
+  const isvAjustado  = subtotalSinISV > 0 ? totalISV * (subtotalDesc / subtotalSinISV) : 0;
+  const total = subtotalDesc + isvAjustado;
+
   const el = id => document.getElementById(id);
   const descRow = el('cResDescRow');
   if (descRow) descRow.style.display = descMonto > 0 ? 'flex' : 'none';
@@ -7646,7 +7652,7 @@ function calcResumenCotizacion() {
   if (descEl)  descEl.textContent = fmtLPS(descMonto);
 
   if(el('cResSubtotal')) el('cResSubtotal').textContent = fmtLPS(subtotalSinISV);
-  if(el('cResISV'))      el('cResISV').textContent      = fmtLPS(totalISV);
+  if(el('cResISV'))      el('cResISV').textContent      = fmtLPS(isvAjustado);
   if(el('cResTotal'))    el('cResTotal').textContent    = fmtLPS(total);
 
   // Vigencia
@@ -7663,7 +7669,7 @@ function calcResumenCotizacion() {
       vigEl.innerHTML = `⏳ Válida hasta: <strong>${fmtFecha(venc)}</strong>`;
     }
   }
-  return { subtotalSinISV, totalISV, descuento: descMonto, descuentoTipo: descTipo, descuentoValor: descValor, total };
+  return { subtotalSinISV, totalISV: isvAjustado, descuento: descMonto, descuentoTipo: descTipo, descuentoValor: descValor, total };
 }
 
 function renderItemsCotizacion() {
