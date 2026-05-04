@@ -2920,7 +2920,7 @@ function renderDashboard() {
 // ===== TABLA PRODUCTOS =====
 function getHeadersPorRol() {
   const perms = PERMS[currentUser.rol];
-  const base = [{k:'img',l:'IMG'},{k:'sku',l:'SKU'},{k:'producto',l:'Producto'},{k:'estado',l:'Estado'},{k:'cantidad',l:'Cant.'},{k:'notaRapida',l:'Nota'},{k:'webPublicado',l:'🌐 Web'},{k:'link',l:'🔗'},{k:'descVend',l:'💰'}];
+  const base = [{k:'img',l:'IMG'},{k:'sku',l:'SKU'},{k:'producto',l:'Producto'},{k:'estado',l:'Estado'},{k:'cantidad',l:'Cant.'},{k:'notaRapida',l:'Nota'},{k:'webPublicado',l:'🌐 Web'},{k:'link',l:'🔗'},{k:'wix',l:'🛒'},{k:'descVend',l:'💰'}];
   const costFields  = [{k:'costoTotalLPS',l:'Costo LPS'}];
   const priceFields = [{k:'descMax',l:'Desc.MAX'},{k:'precioConDesc',l:'Precio c/Desc'}];
   const utilFields  = [{k:'utilBrutaLPS',l:'Utilidad LPS'},{k:'roi',l:'ROI %'}];
@@ -3063,6 +3063,7 @@ function renderTablaProductos() {
         case 'roi': { const roiCls = c.roi < c.roiRef ? 'bad' : 'good'; return `<td class="td-roi ${roiCls}">${fmtPct(c.roi)}</td>`; }
         case 'utilBrutaCant': return `<td style="color:var(--gold);font-weight:700">${fmtLPS(c.utilBrutaCant)}</td>`;
         case 'link': return `<td onclick="event.stopPropagation()" style="text-align:center">${p.url1 ? `<a href="${p.url1}" target="_blank" title="${p.url1}" style="color:var(--accent);font-size:16px;text-decoration:none">🔗</a>` : `<span style="color:var(--text3);font-size:13px">—</span>`}</td>`;
+        case 'wix': return `<td onclick="event.stopPropagation()" style="text-align:center">${p.url2 ? `<a href="${p.url2}" target="_blank" title="Ver en Focus Store: ${p.url2}" style="font-size:16px;text-decoration:none;opacity:.85;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.85">🛒</a>` : `<span style="color:var(--text3);font-size:13px">—</span>`}</td>`;
         case 'notaRapida': return `<td onclick="event.stopPropagation()">
           <input type="text" value="${(p.notaRapida||'').substring(0,12)}" maxlength="12"
             onclick="event.stopPropagation()"
