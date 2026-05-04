@@ -1657,11 +1657,17 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             <!-- Productos -->
             <div class="card">
               <div class="card-header"><div class="card-title">📦 Productos</div></div>
-              <div style="position:relative;margin-bottom:12px">
-                <input type="text" id="cProdBuscar" placeholder="🔍 Buscar producto del catálogo..."
-                  oninput="buscarProductoCot(this.value)"
-                  style="width:100%;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
-                <div id="cProdResultados" style="display:none;position:absolute;z-index:200;width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);max-height:220px;overflow-y:auto;box-shadow:var(--shadow);top:100%;left:0"></div>
+              <div style="display:flex;gap:8px;margin-bottom:12px">
+                <div style="position:relative;flex:1">
+                  <input type="text" id="cProdBuscar" placeholder="🔍 Buscar producto del catálogo..."
+                    oninput="buscarProductoCot(this.value)"
+                    style="width:100%;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+                  <div id="cProdResultados" style="display:none;position:absolute;z-index:200;width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);max-height:220px;overflow-y:auto;box-shadow:var(--shadow);top:100%;left:0"></div>
+                </div>
+                <button onclick="cAgregarManual()" title="Agregar producto que no está en el catálogo"
+                  style="white-space:nowrap;padding:10px 14px;background:rgba(61,106,255,.12);border:1px solid rgba(61,106,255,.35);color:var(--accent);border-radius:var(--radius2);cursor:pointer;font-size:12px;font-weight:600;flex-shrink:0">
+                  ✏️ Manual
+                </button>
               </div>
               <div id="cItemsEmpty" style="text-align:center;padding:24px;color:var(--text3);font-size:13px">
                 Busca y agrega productos del catálogo
@@ -7556,28 +7562,42 @@ function renderItemsCotizacion() {
     const esManual = item.tipo==='manual';
     const thumbHtml = (!esManual && item.imagen)
       ? `<div class="prod-thumb" style="width:40px;height:40px;flex-shrink:0" onmouseenter="mostrarImgPreview('${item.imagen}',event)" onmouseleave="ocultarImgPreview()"><img src="${item.imagen}"></div>`
-      : '';
-    return `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center">
-      ${thumbHtml}
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;margin-bottom:4px">${item.descripcion}</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          ${item.sku?`<span style="font-size:11px;color:var(--text3);font-family:monospace">SKU: ${item.sku}</span>`:''}
-          <span style="font-size:11px;color:${item.llevaISV?'var(--gold)':'var(--text3)'}">
-            ${item.llevaISV?`+${(item.isvPct*100).toFixed(0)}% ISV`:'Sin ISV'}
-          </span>
+      : (!esManual ? `<div style="width:40px;height:40px;flex-shrink:0;border-radius:6px;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:20px">📦</div>` : '');
+    const isvLabel = item.llevaISV ? `+${(item.isvPct*100).toFixed(0)}% ISV` : 'Sin ISV';
+    return `<div style="background:var(--bg3);border:1px solid ${esManual?'rgba(61,106,255,.3)':'var(--border)'};border-radius:8px;padding:10px 12px;margin-bottom:8px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start">
+      <div style="display:flex;gap:10px;align-items:start">
+        ${thumbHtml}
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+          ${esManual
+            ? `<input type="text" value="${item.descripcion.replace(/"/g,'&quot;')}" placeholder="Descripción del producto *"
+                onchange="cActualizarItem('${item._id}','descripcion',this.value)"
+                style="padding:6px 10px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:13px;font-weight:600;outline:none;width:100%">`
+            : `<div style="font-size:13px;font-weight:600">${item.descripcion}</div>`}
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            ${item.sku?`<span style="font-size:11px;color:var(--text3);font-family:monospace">SKU: ${item.sku}</span>`:''}
+            <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);cursor:pointer">
+              <input type="checkbox" ${item.llevaISV?'checked':''} onchange="cActualizarItem('${item._id}','llevaISV',this.checked);renderItemsCotizacion()" style="accent-color:var(--accent3)">
+              ISV (${(parametros.isvNuevo*100).toFixed(0)}%)
+            </label>
+            <span style="font-size:11px;color:${item.llevaISV?'var(--gold)':'var(--text3)'}">${isvLabel}</span>
+          </div>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <button onclick="cCambiarCant('${item._id}',-1)" style="width:28px;height:28px;background:var(--bg4);border:1px solid var(--border);border-radius:4px;color:var(--text);cursor:pointer;font-size:14px">−</button>
-        <span style="min-width:24px;text-align:center;font-weight:700">${item.cantidad}</span>
-        <button onclick="cCambiarCant('${item._id}',1)" style="width:28px;height:28px;background:var(--bg4);border:1px solid var(--border);border-radius:4px;color:var(--text);cursor:pointer;font-size:14px">+</button>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+        <button onclick="cQuitarItem('${item._id}')" style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:18px;line-height:1" title="Quitar">×</button>
+        <div style="display:flex;align-items:center;gap:4px">
+          <button onclick="cCambiarCant('${item._id}',-1)" style="width:24px;height:24px;background:var(--bg4);border:1px solid var(--border);border-radius:5px;color:var(--text);cursor:pointer;font-size:13px">−</button>
+          <span style="min-width:22px;text-align:center;font-weight:700">${item.cantidad}</span>
+          <button onclick="cCambiarCant('${item._id}',1)" style="width:24px;height:24px;background:var(--bg4);border:1px solid var(--border);border-radius:5px;color:var(--text);cursor:pointer;font-size:13px">+</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="font-size:11px;color:var(--text3)">L</span>
+          <input type="number" value="${item.precioFinal.toFixed(2)}" step="0.01" min="0"
+            onchange="cActualizarItem('${item._id}','precioFinal',this.value)"
+            style="width:96px;padding:5px 8px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--accent3);font-size:13px;font-weight:700;outline:none;text-align:right">
+        </div>
+        <div style="font-size:11px;color:var(--text3)">× ${item.cantidad} = <strong style="color:var(--text2)">${fmtLPS(item.precioFinal*item.cantidad)}</strong></div>
       </div>
-      <div style="text-align:right;min-width:90px">
-        <div style="font-size:13px;font-weight:700;color:var(--accent3)">${fmtLPS(item.precioFinal)}</div>
-        <div style="font-size:11px;color:var(--text3)">c/u · Total: ${fmtLPS(item.precioFinal*item.cantidad)}</div>
-      </div>
-      <button onclick="cQuitarItem('${item._id}')" style="background:rgba(255,71,87,.12);border:1px solid rgba(255,71,87,.3);color:var(--red);border-radius:4px;padding:4px 8px;cursor:pointer;font-size:12px">✕</button>
     </div>`;
   }).join('');
   calcResumenCotizacion();
@@ -7592,6 +7612,46 @@ function cCambiarCant(id, delta) {
 function cQuitarItem(id) {
   cItemsActuales = cItemsActuales.filter(x=>x._id!==id);
   renderItemsCotizacion();
+}
+
+function cAgregarManual() {
+  const isvPct = parametros.isvNuevo || 0.15;
+  cItemsActuales.push({
+    tipo: 'manual',
+    productoId: null,
+    sku: '',
+    descripcion: '',
+    imagen: null,
+    llevaISV: true,
+    isvPct,
+    precioFinal: 0,
+    costoLPS: 0,
+    cantidad: 1,
+    _id: 'cm_' + Date.now() + '_' + Math.random().toString(36).slice(2,6)
+  });
+  const empty = document.getElementById('cItemsEmpty');
+  if (empty) empty.style.display = 'none';
+  renderItemsCotizacion();
+  // Enfocar el campo descripción del nuevo item
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('#cItemsLista input[type="text"]');
+    if (inputs.length) inputs[inputs.length-1].focus();
+  }, 50);
+}
+
+function cActualizarItem(id, campo, valor) {
+  const it = cItemsActuales.find(x=>x._id===id);
+  if (!it) return;
+  if (campo === 'precioFinal' || campo === 'costoLPS') {
+    it[campo] = parseFloat(valor) || 0;
+  } else if (campo === 'cantidad') {
+    it[campo] = Math.max(1, parseInt(valor)||1);
+  } else if (campo === 'llevaISV') {
+    it[campo] = !!valor;
+  } else {
+    it[campo] = valor;
+  }
+  calcResumenCotizacion();
 }
 
 function buscarProductoCot(q) {
