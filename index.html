@@ -5882,6 +5882,8 @@ async function guardarVenta() {
     items:          [...vItemsActuales],
     envio,
     descuento:      descMontoV,
+    descuentoTipo:  descTipoV,
+    descuentoValor: descValorV,
     subtotalSinISV,
     totalISV,
     total,
@@ -6563,6 +6565,20 @@ function editarVenta(id) {
   if (cancelWrap) cancelWrap.style.display = '';
   const limpiarBtn = document.getElementById('btnLimpiarVenta');
   if (limpiarBtn) limpiarBtn.style.display = 'none';
+
+  // Restaurar descuento
+  const _vda = document.getElementById('vDescActivo');
+  const _vdv = document.getElementById('vDescValor');
+  const _vdb = document.getElementById('vDescTipoBtn');
+  const _vdr = document.getElementById('vResDescRow');
+  if (_vda) _vda.checked = !!(v.descuento > 0);
+  if (_vdv) _vdv.value   = v.descuentoValor != null ? v.descuentoValor : (v.descuento || 0);
+  if (_vdb) {
+    const tipo = v.descuentoTipo || '%';
+    _vdb.textContent = tipo;
+    _vdb.style.color = tipo === 'L' ? 'var(--accent3)' : 'var(--accent4)';
+  }
+  if (_vdr) _vdr.style.display = v.descuento > 0 ? 'flex' : 'none';
 
   document.getElementById('vPanelNueva').scrollIntoView({ behavior: 'smooth' });
   showToast('✏️ Editando venta de ' + v.clienteNombre, 'success');
@@ -7643,7 +7659,7 @@ function calcResumenCotizacion() {
       vigEl.innerHTML = `⏳ Válida hasta: <strong>${fmtFecha(venc)}</strong>`;
     }
   }
-  return { subtotalSinISV, totalISV, descuento: descMonto, total };
+  return { subtotalSinISV, totalISV, descuento: descMonto, descuentoTipo: descTipo, descuentoValor: descValor, total };
 }
 
 function renderItemsCotizacion() {
@@ -7867,6 +7883,8 @@ async function guardarCotizacion() {
     subtotalSinISV: totales.subtotalSinISV,
     totalISV:       totales.totalISV,
     descuento:      totales.descuento || 0,
+    descuentoTipo:  totales.descuentoTipo || '%',
+    descuentoValor: totales.descuentoValor || 0,
     total:          totales.total,
     estado:         'activa',
     ventaId:        '',
@@ -7913,6 +7931,11 @@ function editarCotizacion(id) {
   const btn=document.getElementById('cBtnGuardar'); if(btn){btn.textContent='💾 Actualizar Cotización';btn.style.background='var(--gold)';btn.style.color='#000';}
   const cw=document.getElementById('cBtnCancelarWrap'); if(cw) cw.style.display='';
   const bl=document.getElementById('cBtnLimpiar'); if(bl) bl.style.display='none';
+  // Restaurar descuento
+  const _cda=document.getElementById('cDescActivo');  if(_cda) _cda.checked=!!(c.descuento>0);
+  const _cdv=document.getElementById('cDescValor');   if(_cdv) _cdv.value=c.descuentoValor!=null?c.descuentoValor:(c.descuento||0);
+  const _cdb=document.getElementById('cDescTipoBtn'); if(_cdb){const t=c.descuentoTipo||'%';_cdb.textContent=t;_cdb.style.color=t==='L'?'var(--accent3)':'var(--accent4)';}
+  const _cdr=document.getElementById('cResDescRow');  if(_cdr) _cdr.style.display=c.descuento>0?'flex':'none';
   document.getElementById('cPanelNueva').scrollIntoView({behavior:'smooth'});
   showToast('✏️ Editando cotización '+c.numero,'success');
 }
@@ -7954,6 +7977,11 @@ function convertirAVenta(id) {
     document.getElementById('vObservaciones').value    = c.observaciones  || '';
     vItemsActuales=(c.items||[]).map(it=>({...it,_id:'vi_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)}));
     renderItemsVenta();
+    // Restaurar descuento de la cotización
+    const _vda2=document.getElementById('vDescActivo');  if(_vda2) _vda2.checked=!!(c.descuento>0);
+    const _vdv2=document.getElementById('vDescValor');   if(_vdv2) _vdv2.value=c.descuentoValor!=null?c.descuentoValor:(c.descuento||0);
+    const _vdb2=document.getElementById('vDescTipoBtn'); if(_vdb2){const t=c.descuentoTipo||'%';_vdb2.textContent=t;_vdb2.style.color=t==='L'?'var(--accent3)':'var(--accent4)';}
+    const _vdr2=document.getElementById('vResDescRow');  if(_vdr2) _vdr2.style.display=c.descuento>0?'flex':'none';
     calcResumenVenta();
     showToast(`📋 Cotización ${c.numero} cargada → completa el método de pago y envío`,'success',6000);
   },300);
