@@ -1719,15 +1719,12 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
           <div style="position:sticky;top:20px;display:flex;flex-direction:column;gap:12px">
             <div class="card" style="background:var(--bg3)">
               <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px">📄 Resumen de Cotización</div>
+              <!-- 1. Subtotal sin ISV -->
               <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px">
                 <span style="color:var(--text2)">Subtotal (sin ISV)</span>
                 <span id="cResSubtotal">L 0.00</span>
               </div>
-              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px">
-                <span style="color:var(--text2)">ISV</span>
-                <span id="cResISV">L 0.00</span>
-              </div>
-              <!-- Descuento general cotización -->
+              <!-- 2. Descuento (control + detalle) -->
               <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:8px">
                 <label style="display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--text2)">
                   <input type="checkbox" id="cDescActivo" onchange="calcResumenCotizacion()" style="accent-color:var(--accent4);width:14px;height:14px">
@@ -1742,9 +1739,20 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 </div>
               </div>
               <div id="cResDescRow" style="display:none;justify-content:space-between;font-size:12px;margin-bottom:8px">
-                <span style="color:var(--accent4)">− Descuento aplicado</span>
+                <span id="cResDescLabel" style="color:var(--accent4)">− Descuento</span>
                 <span id="cResDesc" style="color:var(--accent4);font-weight:600">L 0.00</span>
               </div>
+              <!-- 3. Subtotal con descuento -->
+              <div id="cResSubtotalDescRow" style="display:none;justify-content:space-between;font-size:13px;margin-bottom:8px;padding:5px 8px;background:rgba(61,106,255,.06);border-radius:6px">
+                <span style="color:var(--text2)">Subtotal con descuento</span>
+                <span id="cResSubtotalDesc" style="font-weight:700">L 0.00</span>
+              </div>
+              <!-- 4. ISV con % -->
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px">
+                <span style="color:var(--text2)">ISV (<span id="cResISVPct">0%</span>)</span>
+                <span id="cResISV">L 0.00</span>
+              </div>
+              <!-- 5. TOTAL -->
               <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;justify-content:space-between;font-size:18px;font-weight:800">
                 <span>TOTAL</span>
                 <span id="cResTotal" style="color:var(--accent3)">L 0.00</span>
@@ -7690,6 +7698,17 @@ function calcResumenCotizacion() {
   if (descRow) descRow.style.display = descMonto > 0 ? 'flex' : 'none';
   const descEl  = el('cResDesc');
   if (descEl)  descEl.textContent = fmtLPS(descMonto);
+  // Etiqueta descuento con %
+  const cDescLabelEl = el('cResDescLabel');
+  if (cDescLabelEl) cDescLabelEl.textContent = descTipo === '%' && descValor > 0 ? `− Descuento (${descValor}%)` : '− Descuento';
+  // Subtotal con descuento
+  const cSubDescRow = el('cResSubtotalDescRow');
+  if (cSubDescRow) cSubDescRow.style.display = descMonto > 0 ? 'flex' : 'none';
+  const cSubDescEl = el('cResSubtotalDesc');
+  if (cSubDescEl) cSubDescEl.textContent = fmtLPS(subtotalDesc);
+  // ISV con %
+  const cIsvPctEl = el('cResISVPct');
+  if (cIsvPctEl) { const p = subtotalDesc > 0 && isvAjustado > 0 ? Math.round(isvAjustado/subtotalDesc*100) : 0; cIsvPctEl.textContent = p + '%'; }
 
   if(el('cResSubtotal')) el('cResSubtotal').textContent = fmtLPS(subtotalSinISV);
   if(el('cResISV'))      el('cResISV').textContent      = fmtLPS(isvAjustado);
@@ -7888,6 +7907,7 @@ function limpiarCotizacion() {
   const cdv = document.getElementById('cDescValor');  if(cdv) cdv.value  = 0;
   const cdb = document.getElementById('cDescTipoBtn'); if(cdb) { cdb.textContent='%'; cdb.style.color='var(--accent4)'; }
   const cdr = document.getElementById('cResDescRow'); if(cdr) cdr.style.display='none';
+  const csdr = document.getElementById('cResSubtotalDescRow'); if(csdr) csdr.style.display='none';
   limpiarClienteCot();
   ['cObservaciones'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const fd=document.getElementById('cFecha'); if(fd) fd.value=new Date().toISOString().split('T')[0];
@@ -7986,6 +8006,7 @@ function editarCotizacion(id) {
   const _cdv=document.getElementById('cDescValor');   if(_cdv) _cdv.value=c.descuentoValor!=null?c.descuentoValor:(c.descuento||0);
   const _cdb=document.getElementById('cDescTipoBtn'); if(_cdb){const t=c.descuentoTipo||'%';_cdb.textContent=t;_cdb.style.color=t==='L'?'var(--accent3)':'var(--accent4)';}
   const _cdr=document.getElementById('cResDescRow');  if(_cdr) _cdr.style.display=c.descuento>0?'flex':'none';
+  const _csdr=document.getElementById('cResSubtotalDescRow'); if(_csdr) _csdr.style.display=c.descuento>0?'flex':'none';
   document.getElementById('cPanelNueva').scrollIntoView({behavior:'smooth'});
   showToast('✏️ Editando cotización '+c.numero,'success');
 }
