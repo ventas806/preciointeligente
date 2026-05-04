@@ -6506,6 +6506,11 @@ function verDetalleVenta(id) {
         ${v.metodoPagoObs ? `<span style="font-size:13px;color:var(--text2)">— ${v.metodoPagoObs}</span>` : ''}
       </div>
       ${v.promesaPago ? `<div style="margin-top:8px;font-size:13px;color:var(--gold)">📅 Promesa de pago: <strong>${fmtFecha(v.promesaPago)}</strong></div>` : ''}
+      ${(v.saldoPendiente || 0) > 0 ? `
+      <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.3);border-radius:8px">
+        <span style="color:var(--red);font-weight:700;font-size:14px">⚠️ Saldo Pendiente</span>
+        <span style="color:var(--red);font-weight:800;font-size:16px">${fmtLPS(v.saldoPendiente)}</span>
+      </div>` : ''}
     </div>` : ''}
   `;
   // Add print button at bottom of modal
