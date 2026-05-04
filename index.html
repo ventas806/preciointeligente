@@ -5735,11 +5735,11 @@ function renderItemsVenta() {
           const ahorro = Math.max(0, (lista - item.precioFinal) * item.cantidad);
           return `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:2px">
             <span style="font-size:11px;color:var(--text3)">Dto. item</span>
+            <button onclick="toggleDescItemTipo('${item._id}')" title="Clic para cambiar entre % y L"
+              style="padding:3px 9px;background:${tipo==='L'?'rgba(0,200,160,.15)':'rgba(245,166,35,.15)'};border:1px solid ${tipo==='L'?'rgba(0,200,160,.5)':'rgba(245,166,35,.5)'};border-radius:5px;color:${tipo==='L'?'var(--accent3)':'var(--accent4)'};font-size:12px;font-weight:800;cursor:pointer;min-width:34px;transition:all .15s">${tipo}</button>
             <input type="number" value="${inputV}" min="0" step="${tipo==='%'?'0.1':'1'}"
-              onchange="actualizarDescItem('${item._id}',this.value)"
-              style="width:62px;padding:2px 6px;background:var(--bg4);border:1px solid rgba(245,166,35,.4);border-radius:5px;color:var(--accent4);font-size:12px;font-weight:700;outline:none;text-align:right">
-            <button onclick="toggleDescItemTipo('${item._id}')"
-              style="padding:2px 7px;background:var(--bg4);border:1px solid rgba(245,166,35,.4);border-radius:5px;color:${tipo==='L'?'var(--accent3)':'var(--accent4)'};font-size:11px;font-weight:700;cursor:pointer;min-width:30px">${tipo}</button>
+              oninput="actualizarDescItem('${item._id}',this.value)"
+              style="width:72px;padding:3px 8px;background:var(--bg4);border:1px solid rgba(245,166,35,.4);border-radius:5px;color:var(--accent4);font-size:13px;font-weight:700;outline:none;text-align:right">
             ${ahorro > 0 ? `<span style="font-size:11px;color:var(--accent4);background:rgba(245,166,35,.08);padding:1px 6px;border-radius:4px">− ${fmtLPS(ahorro)}</span>` : ''}
             ${lista !== item.precioFinal ? `<span style="font-size:10px;color:var(--text3);text-decoration:line-through">${fmtLPS(lista)}</span>` : ''}
           </div>`;
@@ -7840,11 +7840,11 @@ function renderItemsCotizacion() {
             const ahorro = Math.max(0, (lista - item.precioFinal) * item.cantidad);
             return `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:2px">
               <span style="font-size:11px;color:var(--text3)">Dto. item</span>
+              <button onclick="cToggleDescItemTipo('${item._id}')" title="Clic para cambiar entre % y L"
+                style="padding:3px 9px;background:${tipo==='L'?'rgba(0,200,160,.15)':'rgba(245,166,35,.15)'};border:1px solid ${tipo==='L'?'rgba(0,200,160,.5)':'rgba(245,166,35,.5)'};border-radius:5px;color:${tipo==='L'?'var(--accent3)':'var(--accent4)'};font-size:12px;font-weight:800;cursor:pointer;min-width:34px;transition:all .15s">${tipo}</button>
               <input type="number" value="${inputV}" min="0" step="${tipo==='%'?'0.1':'1'}"
-                onchange="cActualizarDescItem('${item._id}',this.value)"
-                style="width:62px;padding:2px 6px;background:var(--bg4);border:1px solid rgba(245,166,35,.4);border-radius:5px;color:var(--accent4);font-size:12px;font-weight:700;outline:none;text-align:right">
-              <button onclick="cToggleDescItemTipo('${item._id}')"
-                style="padding:2px 7px;background:var(--bg4);border:1px solid rgba(245,166,35,.4);border-radius:5px;color:${tipo==='L'?'var(--accent3)':'var(--accent4)'};font-size:11px;font-weight:700;cursor:pointer;min-width:30px">${tipo}</button>
+                oninput="cActualizarDescItem('${item._id}',this.value)"
+                style="width:72px;padding:3px 8px;background:var(--bg4);border:1px solid rgba(245,166,35,.4);border-radius:5px;color:var(--accent4);font-size:13px;font-weight:700;outline:none;text-align:right">
               ${ahorro > 0 ? `<span style="font-size:11px;color:var(--accent4);background:rgba(245,166,35,.08);padding:1px 6px;border-radius:4px">− ${fmtLPS(ahorro)}</span>` : ''}
               ${lista !== item.precioFinal ? `<span style="font-size:10px;color:var(--text3);text-decoration:line-through">${fmtLPS(lista)}</span>` : ''}
             </div>`;
