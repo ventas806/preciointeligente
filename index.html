@@ -1259,6 +1259,24 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                     <input type="number" id="vEnvio" value="" step="1" min="0" oninput="calcResumenVenta()" style="width:80px;padding:4px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-weight:600;outline:none;text-align:right">
                   </div>
                 </div>
+                <!-- Descuento general -->
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+                  <label style="display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--text2)">
+                    <input type="checkbox" id="vDescActivo" onchange="calcResumenVenta()" style="accent-color:var(--accent4);width:14px;height:14px">
+                    Descuento
+                  </label>
+                  <div style="display:flex;align-items:center;gap:5px" id="vDescControles">
+                    <button id="vDescTipoBtn" onclick="vToggleDescTipo('v')"
+                      style="padding:3px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--accent4);font-size:11px;font-weight:700;cursor:pointer;min-width:32px">%</button>
+                    <input type="number" id="vDescValor" value="0" min="0" step="0.01"
+                      oninput="calcResumenVenta()"
+                      style="width:80px;padding:4px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--accent4);font-size:13px;font-weight:600;outline:none;text-align:right">
+                  </div>
+                </div>
+                <div id="vResDescRow" style="display:none;justify-content:space-between;font-size:12px">
+                  <span style="color:var(--accent4)">− Descuento aplicado</span>
+                  <span id="vResDesc" style="color:var(--accent4);font-weight:600">L 0.00</span>
+                </div>
                 <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;justify-content:space-between;font-size:16px;font-weight:800">
                   <span>TOTAL</span>
                   <span id="vResTotal" style="color:var(--green)">L 0.00</span>
@@ -1695,6 +1713,24 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
               <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px">
                 <span style="color:var(--text2)">ISV</span>
                 <span id="cResISV">L 0.00</span>
+              </div>
+              <!-- Descuento general cotización -->
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:8px">
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--text2)">
+                  <input type="checkbox" id="cDescActivo" onchange="calcResumenCotizacion()" style="accent-color:var(--accent4);width:14px;height:14px">
+                  Descuento
+                </label>
+                <div style="display:flex;align-items:center;gap:5px">
+                  <button id="cDescTipoBtn" onclick="vToggleDescTipo('c')"
+                    style="padding:3px 8px;background:var(--bg4);border:1px solid var(--border);border-radius:5px;color:var(--accent4);font-size:11px;font-weight:700;cursor:pointer;min-width:32px">%</button>
+                  <input type="number" id="cDescValor" value="0" min="0" step="0.01"
+                    oninput="calcResumenCotizacion()"
+                    style="width:80px;padding:4px 8px;background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--accent4);font-size:13px;font-weight:600;outline:none;text-align:right">
+                </div>
+              </div>
+              <div id="cResDescRow" style="display:none;justify-content:space-between;font-size:12px;margin-bottom:8px">
+                <span style="color:var(--accent4)">− Descuento aplicado</span>
+                <span id="cResDesc" style="color:var(--accent4);font-weight:600">L 0.00</span>
               </div>
               <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;justify-content:space-between;font-size:18px;font-weight:800">
                 <span>TOTAL</span>
@@ -5680,6 +5716,17 @@ function renderItemsVenta() {
   calcResumenVenta();
 }
 
+// ── Toggle % / L para descuento (prefijo 'v' = ventas, 'c' = cotización) ──
+function vToggleDescTipo(prefijo) {
+  const btn = document.getElementById(prefijo+'DescTipoBtn');
+  if (!btn) return;
+  const esPct = btn.textContent.trim() === '%';
+  btn.textContent = esPct ? 'L' : '%';
+  btn.style.color = esPct ? 'var(--accent3)' : 'var(--accent4)';
+  if (prefijo === 'v') calcResumenVenta();
+  else calcResumenCotizacion();
+}
+
 function calcResumenVenta() {
   let subtotalSinISV = 0, totalISV = 0, utilidadBruta = 0;
   vItemsActuales.forEach(item => {
@@ -5694,7 +5741,22 @@ function calcResumenVenta() {
     utilidadBruta     += (sinISV - costo) * cant;
   });
   const envio = parseFloat(document.getElementById('vEnvio')?.value) || 0;
-  const total = subtotalSinISV + totalISV + envio;
+  const bruto = subtotalSinISV + totalISV + envio;
+
+  // Descuento general
+  const descActivo = document.getElementById('vDescActivo')?.checked;
+  const descTipo   = document.getElementById('vDescTipoBtn')?.textContent.trim() || '%';
+  const descValor  = parseFloat(document.getElementById('vDescValor')?.value) || 0;
+  let descMonto = 0;
+  if (descActivo && descValor > 0) {
+    descMonto = descTipo === '%' ? bruto * (descValor / 100) : descValor;
+    descMonto = Math.min(descMonto, bruto); // no puede ser mayor al total
+  }
+  const total = bruto - descMonto;
+  const descRow = document.getElementById('vResDescRow');
+  if (descRow) descRow.style.display = descMonto > 0 ? 'flex' : 'none';
+  const descEl = document.getElementById('vResDesc');
+  if (descEl) descEl.textContent = fmtLPS(descMonto);
 
   // Comisión = % de utilidad bruta (sin ISV, sin envío) — nunca negativa
   const vendedorId  = document.getElementById('vVendedor')?.value;
@@ -5794,7 +5856,16 @@ async function guardarVenta() {
     utilidadBruta   += (sinISV - (item.costoLPS||0)) * cant;
   });
   const envio       = parseFloat(document.getElementById('vEnvio').value)||0;
-  const total       = subtotalSinISV + totalISV + envio;
+  const brutoVenta  = subtotalSinISV + totalISV + envio;
+  const descActivoV = document.getElementById('vDescActivo')?.checked;
+  const descTipoV   = document.getElementById('vDescTipoBtn')?.textContent.trim() || '%';
+  const descValorV  = parseFloat(document.getElementById('vDescValor')?.value) || 0;
+  let descMontoV    = 0;
+  if (descActivoV && descValorV > 0) {
+    descMontoV = descTipoV === '%' ? brutoVenta * (descValorV / 100) : descValorV;
+    descMontoV = Math.min(descMontoV, brutoVenta);
+  }
+  const total       = brutoVenta - descMontoV;
   const vendedor    = usuarios.find(u => String(u.id) === String(vendedorId));
   const pctComision = (vendedor && vendedor.comision != null ? vendedor.comision : (parametros.comisionVentas||10)) / 100;
   const comision    = Math.max(0, utilidadBruta * pctComision);
@@ -5810,6 +5881,7 @@ async function guardarVenta() {
     vendedorNombre: vendedor ? vendedor.nombre : '—',
     items:          [...vItemsActuales],
     envio,
+    descuento:      descMontoV,
     subtotalSinISV,
     totalISV,
     total,
@@ -5881,6 +5953,11 @@ function limpiarVenta() {
   if (fd) fd.value = new Date().toISOString().split('T')[0];
   const envioEl = document.getElementById('vEnvio');
   if (envioEl) envioEl.value = parametros.envioDefecto != null ? parametros.envioDefecto : 120;
+  // Reset descuento
+  const vda = document.getElementById('vDescActivo'); if(vda) vda.checked = false;
+  const vdv = document.getElementById('vDescValor');  if(vdv) vdv.value  = 0;
+  const vdb = document.getElementById('vDescTipoBtn'); if(vdb) { vdb.textContent='%'; vdb.style.color='var(--accent4)'; }
+  const vdr = document.getElementById('vResDescRow'); if(vdr) vdr.style.display='none';
   renderItemsVenta();
   poblarSelectorVendedor('vVendedor');
   // Reset botones
@@ -7530,8 +7607,24 @@ function calcResumenCotizacion() {
     subtotalSinISV += sinISV*cant;
     totalISV       += (precio-sinISV)*cant;
   });
-  const total = subtotalSinISV + totalISV;
+  const bruto = subtotalSinISV + totalISV;
+
+  // Descuento general
+  const descActivo = document.getElementById('cDescActivo')?.checked;
+  const descTipo   = document.getElementById('cDescTipoBtn')?.textContent.trim() || '%';
+  const descValor  = parseFloat(document.getElementById('cDescValor')?.value) || 0;
+  let descMonto = 0;
+  if (descActivo && descValor > 0) {
+    descMonto = descTipo === '%' ? bruto * (descValor / 100) : descValor;
+    descMonto = Math.min(descMonto, bruto);
+  }
+  const total = bruto - descMonto;
   const el = id => document.getElementById(id);
+  const descRow = el('cResDescRow');
+  if (descRow) descRow.style.display = descMonto > 0 ? 'flex' : 'none';
+  const descEl  = el('cResDesc');
+  if (descEl)  descEl.textContent = fmtLPS(descMonto);
+
   if(el('cResSubtotal')) el('cResSubtotal').textContent = fmtLPS(subtotalSinISV);
   if(el('cResISV'))      el('cResISV').textContent      = fmtLPS(totalISV);
   if(el('cResTotal'))    el('cResTotal').textContent    = fmtLPS(total);
@@ -7550,7 +7643,7 @@ function calcResumenCotizacion() {
       vigEl.innerHTML = `⏳ Válida hasta: <strong>${fmtFecha(venc)}</strong>`;
     }
   }
-  return { subtotalSinISV, totalISV, total };
+  return { subtotalSinISV, totalISV, descuento: descMonto, total };
 }
 
 function renderItemsCotizacion() {
@@ -7724,6 +7817,11 @@ function limpiarClienteCot() {
 
 function limpiarCotizacion() {
   cItemsActuales=[]; cEditandoId=null;
+  // Reset descuento cotización
+  const cda = document.getElementById('cDescActivo'); if(cda) cda.checked = false;
+  const cdv = document.getElementById('cDescValor');  if(cdv) cdv.value  = 0;
+  const cdb = document.getElementById('cDescTipoBtn'); if(cdb) { cdb.textContent='%'; cdb.style.color='var(--accent4)'; }
+  const cdr = document.getElementById('cResDescRow'); if(cdr) cdr.style.display='none';
   limpiarClienteCot();
   ['cObservaciones'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const fd=document.getElementById('cFecha'); if(fd) fd.value=new Date().toISOString().split('T')[0];
@@ -7768,6 +7866,7 @@ async function guardarCotizacion() {
     observaciones:  (document.getElementById('cObservaciones').value||'').trim(),
     subtotalSinISV: totales.subtotalSinISV,
     totalISV:       totales.totalISV,
+    descuento:      totales.descuento || 0,
     total:          totales.total,
     estado:         'activa',
     ventaId:        '',
