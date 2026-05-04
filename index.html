@@ -5693,10 +5693,16 @@ function actualizarItemVenta(vid, campo, valor) {
   const item = vItemsActuales.find(x => x._id === vid);
   if (!item) return;
   if (campo === 'llevaISV') {
+    // Derivar precioBase del precioFinal actual ANTES de cambiar el estado ISV
+    // (evita que quede en 0 cuando el item viene de Supabase sin precioBase guardado)
+    const tasaAnterior = item.llevaISV ? (item.isvPct || 0) : 0;
+    item.precioBase = tasaAnterior > 0
+      ? item.precioFinal / (1 + tasaAnterior)
+      : item.precioFinal;
     item.llevaISV = valor;
-    item.isvPct   = valor ? parametros.isvNuevo : 0;
-    // Recalcular precioFinal desde precioBase
-    item.precioFinal = item.precioBase * (1 + item.isvPct);
+    item.isvPct   = valor ? (parametros.isvNuevo || 0.15) : 0;
+    // Recalcular precioFinal desde la base derivada
+    item.precioFinal = +( item.precioBase * (1 + item.isvPct) ).toFixed(2);
   } else if (campo === 'precioFinal') {
     item.precioFinal = parseFloat(valor) || 0;
     // Derivar base sin ISV
