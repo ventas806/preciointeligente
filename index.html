@@ -2104,10 +2104,10 @@ async function sbSaveHistorial(entry) {
 
 // Guardar parámetro individual
 async function sbSaveParametro(clave, valor) {
-  const { error } = await sbExec(() => sb.from('parametros').upsert(
-    { clave, valor: JSON.stringify(valor), updated_at: new Date().toISOString(), updated_by: currentUser?.user||'' },
-    { onConflict: 'clave' }
-  ));
+  const u = currentUser?.user || '';
+  const { error } = await sbExec(() =>
+    sb.rpc('save_parametro', { p_user: u, p_clave: clave, p_valor: JSON.stringify(valor) })
+  );
   if (error) throw new Error(error.message);
   return { ok: true };
 }
