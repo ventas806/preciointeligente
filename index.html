@@ -5758,11 +5758,14 @@ function calcResumenVenta() {
   const descEl = document.getElementById('vResDesc');
   if (descEl) descEl.textContent = fmtLPS(descMonto);
 
-  // Comisión = % de utilidad bruta (sin ISV, sin envío) — nunca negativa
+  // Utilidad ajustada: el descuento sale directo de la utilidad
+  const utilidadAjustada = Math.max(0, utilidadBruta - descMonto);
+
+  // Comisión = % de utilidad ajustada (sin ISV, sin envío) — nunca negativa
   const vendedorId  = document.getElementById('vVendedor')?.value;
   const vendedor    = usuarios.find(u => String(u.id) === String(vendedorId));
   const pctComision = (vendedor && vendedor.comision != null ? vendedor.comision : (parametros.comisionVentas || 10)) / 100;
-  const comision    = Math.max(0, utilidadBruta * pctComision);
+  const comision    = Math.max(0, utilidadAjustada * pctComision);
 
   // Si el método de pago es parcial y aún hay saldo → comisión se difiere
   const metodoPago   = document.getElementById('vMetodoPago')?.value || '';
@@ -5775,7 +5778,7 @@ function calcResumenVenta() {
   set('vResSubtotal', fmtLPS(subtotalSinISV));
   set('vResISV',      fmtLPS(totalISV));
   set('vResTotal',    fmtLPS(total));
-  set('vResUtilidad', fmtLPS(utilidadBruta));
+  set('vResUtilidad', fmtLPS(utilidadAjustada));
   set('vResComision', fmtLPS(comisionVis));
   set('vResPct',      ((pctComision)*100).toFixed(1));
   const notaEl = document.getElementById('vComisionNota');
@@ -5865,10 +5868,11 @@ async function guardarVenta() {
     descMontoV = descTipoV === '%' ? brutoVenta * (descValorV / 100) : descValorV;
     descMontoV = Math.min(descMontoV, brutoVenta);
   }
-  const total       = brutoVenta - descMontoV;
+  const total              = brutoVenta - descMontoV;
+  const utilidadAjustadaV  = Math.max(0, utilidadBruta - descMontoV);
   const vendedor    = usuarios.find(u => String(u.id) === String(vendedorId));
   const pctComision = (vendedor && vendedor.comision != null ? vendedor.comision : (parametros.comisionVentas||10)) / 100;
-  const comision    = Math.max(0, utilidadBruta * pctComision);
+  const comision    = Math.max(0, utilidadAjustadaV * pctComision);
 
   const venta = {
     id:            vEditandoId || 'vta_' + Date.now(),
@@ -5887,7 +5891,7 @@ async function guardarVenta() {
     subtotalSinISV,
     totalISV,
     total,
-    utilidadBruta,
+    utilidadBruta: utilidadAjustadaV,
     pctComision: pctComision * 100,
     comision,
     observaciones: (document.getElementById('vObservaciones').value||'').trim(),
