@@ -6308,7 +6308,7 @@ function renderHistorialVentas() {
           <td style="font-size:12px;color:var(--text2);white-space:nowrap">${v.metodoEnvio ? `<span style="font-size:11px;background:rgba(0,200,160,.08);border:1px solid rgba(0,200,160,.2);color:var(--accent3);border-radius:10px;padding:2px 8px">🚚 ${v.metodoEnvio}</span>` : '<span style="color:var(--text3)">—</span>'}</td>
           <td>${v.metodoPago ? `<span style="font-size:11px;background:rgba(61,106,255,.1);border:1px solid rgba(61,106,255,.2);color:var(--accent);border-radius:10px;padding:2px 9px;white-space:nowrap">${v.metodoPagoLabel||v.metodoPago}</span>${v.promesaPago?`<div style="font-size:10px;color:var(--gold);margin-top:2px">📅 ${fmtFecha(v.promesaPago)}</div>`:''}` : '<span style="color:var(--text3);font-size:12px">—</span>'}</td>
           <td style="text-align:right;color:var(--green);font-weight:700">${fmtLPS(v.total)}</td>
-          <td style="text-align:right">${saldo > 0 ? `<span style="color:var(--red);font-weight:700">⚠️ ${fmtLPS(saldo)}</span>` : '<span style="color:var(--text3);font-size:12px">—</span>'}</td>
+          <td style="text-align:right">${v.metodoPago === 'parcial' && saldo > 0 ? `<span style="color:var(--red);font-weight:700">⚠️ ${fmtLPS(saldo)}</span>` : '<span style="color:var(--text3);font-size:12px">—</span>'}</td>
           ${verRoi ? `<td style="text-align:right;font-weight:700;color:${roiCls}">${fmtPct(roi)}</td>` : ''}
           <td style="text-align:right;color:var(--accent3);font-weight:700">${fmtLPS(v.comision)}</td>
         </tr>`;
@@ -6506,7 +6506,7 @@ function verDetalleVenta(id) {
         ${v.metodoPagoObs ? `<span style="font-size:13px;color:var(--text2)">— ${v.metodoPagoObs}</span>` : ''}
       </div>
       ${v.promesaPago ? `<div style="margin-top:8px;font-size:13px;color:var(--gold)">📅 Promesa de pago: <strong>${fmtFecha(v.promesaPago)}</strong></div>` : ''}
-      ${(v.saldoPendiente || 0) > 0 ? `
+      ${v.metodoPago === 'parcial' && (v.saldoPendiente || 0) > 0 ? `
       <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.3);border-radius:8px">
         <span style="color:var(--red);font-weight:700;font-size:14px">⚠️ Saldo Pendiente</span>
         <span style="color:var(--red);font-weight:800;font-size:16px">${fmtLPS(v.saldoPendiente)}</span>
