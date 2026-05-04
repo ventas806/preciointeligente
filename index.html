@@ -1290,6 +1290,11 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                   <span>TOTAL</span>
                   <span id="vResTotal" style="color:var(--green)">L 0.00</span>
                 </div>
+                <!-- 7. Nota de ahorro total (visible solo si hay ahorro) -->
+                <div id="vResAhorroRow" style="display:none;align-items:center;justify-content:space-between;font-size:11px;padding:6px 10px;background:rgba(0,200,160,.07);border:1px solid rgba(0,200,160,.2);border-radius:6px;margin-top:4px">
+                  <span style="color:var(--accent3);font-weight:600">🎉 Ahorro del cliente</span>
+                  <span id="vResAhorro" style="color:var(--accent3);font-weight:700">L 0.00</span>
+                </div>
               </div>
 
               <div style="background:rgba(0,200,160,.08);border:1px solid rgba(0,200,160,.2);border-radius:8px;padding:12px;margin-bottom:16px">
@@ -5626,6 +5631,7 @@ function agregarProductoCatalogo(prodId) {
     llevaISV:     isv,
     isvPct,
     precioBase:   precioSinISV,
+    precioLista:  +c.precioConISV.toFixed(2),   // precio sin descuento (col X), con ISV
     precioFinal:  precioConISV,
     costoLPS:     costoTotalLPS,
     cantidad:     1,
@@ -5712,8 +5718,24 @@ function renderItemsVenta() {
             <span style="font-size:11px;color:var(--text3)">Costo L</span>
             <input type="number" value="${item.costoLPS||0}" step="0.01" min="0" onchange="actualizarItemVenta('${item._id}','costoLPS',this.value)" style="width:80px;padding:4px 6px;background:var(--bg4);border:1px solid var(--border);border-radius:5px;color:var(--text3);font-size:12px;outline:none" title="Costo en LPS (para calcular comisión)">
           </div>` : ''}
-          ${(!esManual && ['admin','gerencia'].includes(currentUser?.rol) && item.costoLPS) ? `<span style="font-size:11px;color:var(--text3);background:rgba(255,255,255,.05);padding:2px 7px;border-radius:4px;border:1px solid var(--border)">Costo: ${fmtLPS(item.costoLPS)}</span>` : ''}
+          ${(!esManual && ['admin','gerencia'].includes(currentUser?.rol) && item.costoLPS) ? `<span style="font-size:11px;color:var(--text3);background:rgba(255,255,255,.05);padding:2px 7px;border-radius:4px;border:1px solid var(--border)">Costo L</span><span style="font-size:11px;color:var(--text3)">${fmtLPS(item.costoLPS)}</span>` : ''}
         </div>
+        ${(() => {
+          const lista = item.precioLista && item.precioLista > 0 ? item.precioLista : 0;
+          if (!lista) return '';
+          const dPct  = lista > item.precioFinal ? +((lista - item.precioFinal) / lista * 100).toFixed(1) : 0;
+          const ahorro = Math.max(0, (lista - item.precioFinal) * item.cantidad);
+          return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px">
+            <span style="font-size:11px;color:var(--text3)">Dto. item</span>
+            <input type="number" value="${dPct}" min="0" max="100" step="0.1"
+              onchange="actualizarDescItem('${item._id}',this.value)"
+              style="width:58px;padding:2px 6px;background:var(--bg4);border:1px solid rgba(245,166,35,.4);border-radius:5px;color:var(--accent4);font-size:12px;font-weight:700;outline:none;text-align:right"
+              title="% descuento por item">
+            <span style="font-size:11px;color:var(--accent4)">%</span>
+            ${ahorro > 0 ? `<span style="font-size:11px;color:var(--accent4);background:rgba(245,166,35,.08);padding:1px 6px;border-radius:4px">− ${fmtLPS(ahorro)}</span>` : ''}
+            ${lista !== item.precioFinal ? `<span style="font-size:10px;color:var(--text3);text-decoration:line-through">${fmtLPS(lista)}</span>` : ''}
+          </div>`;
+        })()}
         </div><!-- cierre flex col -->
       </div><!-- cierre flex row thumb+info -->
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
@@ -5735,6 +5757,14 @@ function renderItemsVenta() {
     </div>`;
   }).join('');
   calcResumenVenta();
+}
+
+function actualizarDescItem(id, pct) {
+  const item = vItemsActuales.find(x => x._id === id);
+  if (!item || !item.precioLista) return;
+  const p = Math.max(0, Math.min(100, parseFloat(pct) || 0));
+  item.precioFinal = +(item.precioLista * (1 - p / 100)).toFixed(2);
+  renderItemsVenta();
 }
 
 // ── Toggle % / L para descuento (prefijo 'v' = ventas, 'c' = cotización) ──
@@ -5808,6 +5838,17 @@ function calcResumenVenta() {
   const totalAbonado = esParcial ? vItemsAbonos.reduce((s,a)=>s+(a.monto||0),0) : total;
   const saldoPend    = Math.max(0, total - totalAbonado);
   const comisionVis  = (esParcial && saldoPend > 0) ? 0 : comision;
+
+  // Ahorro total del cliente = descuentos por item + descuento general
+  const ahorroItems = vItemsActuales.reduce((s, it) => {
+    if (!it.precioLista || it.precioLista <= it.precioFinal) return s;
+    return s + (it.precioLista - it.precioFinal) * (it.cantidad || 1);
+  }, 0);
+  const ahorroTotal = ahorroItems + descMonto;
+  const ahorroRow = document.getElementById('vResAhorroRow');
+  if (ahorroRow) ahorroRow.style.display = ahorroTotal > 0 ? 'flex' : 'none';
+  const ahorroEl = document.getElementById('vResAhorro');
+  if (ahorroEl) ahorroEl.textContent = fmtLPS(ahorroTotal);
 
   // ROI = utilidad ajustada / costo real (costo no cambia por descuento)
   const totalCostos = subtotalSinISV - utilidadBruta; // costo original de los productos
