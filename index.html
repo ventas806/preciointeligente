@@ -7615,7 +7615,7 @@ function _renderCobrosReporte(filtrados, hoy) {
         <td style="${tdStyle};text-align:right">
           <div style="display:flex;gap:4px;justify-content:flex-end">
             <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')" style="padding:4px 8px;font-size:11px">👁️</button>
-            <button class="btn btn-primary btn-sm" onclick="editarVenta('${v.id}')" style="padding:4px 10px;font-size:11px">✏️ Pago</button>
+            <button class="btn btn-primary btn-sm" onclick="editarVenta('${v.id}')" style="padding:4px 10px;font-size:11px">✏️ Ingresar Abono</button>
           </div>
         </td>
       </tr>`;
@@ -7737,7 +7737,7 @@ function _renderCobrosTarjetas(filtrados) {
           <div style="font-size:11px;color:var(--text3)">Ref: ${(v.id||'').slice(-8)}</div>
           <div style="display:flex;gap:6px;margin-top:4px">
             <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')">👁️ Ver</button>
-            <button class="btn btn-primary btn-sm" onclick="editarVenta('${v.id}')">✏️ Actualizar Pago</button>
+            <button class="btn btn-primary btn-sm" onclick="editarVenta('${v.id}')">✏️ Ingresar Abono</button>
           </div>
         </div>
       </div>
