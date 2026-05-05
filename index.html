@@ -1179,9 +1179,17 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             </div>
 
             <!-- Banner modo abono (solo visible en modo abono) -->
-            <div id="vBannerAbono" style="display:none;padding:12px 16px;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.4);border-radius:8px;margin-bottom:4px">
-              <div style="font-size:13px;font-weight:700;color:var(--gold)">✏️ Modo Ingreso de Abono</div>
-              <div id="vBannerAbonoInfo" style="font-size:12px;color:var(--text2);margin-top:3px"></div>
+            <div id="vBannerAbono" style="display:none;padding:14px 18px;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.4);border-radius:8px;margin-bottom:4px">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+                <div>
+                  <div style="font-size:13px;font-weight:700;color:var(--gold)">✏️ Modo Ingreso de Abono</div>
+                  <div id="vBannerAbonoInfo" style="font-size:12px;color:var(--text2);margin-top:3px"></div>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button onclick="cancelarEdicionVenta()" style="padding:9px 18px;background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-size:13px;font-weight:600;cursor:pointer">✕ Cancelar</button>
+                  <button onclick="guardarVenta()" style="padding:9px 24px;background:var(--gold);border:none;border-radius:8px;color:#000;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(245,166,35,.35)">💾 Guardar Abono</button>
+                </div>
+              </div>
             </div>
 
             <!-- Método de Pago -->
