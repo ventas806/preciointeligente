@@ -6398,6 +6398,7 @@ function renderHistorialVentas() {
             <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')" title="Ver detalle">👁️</button>
             <button class="btn btn-ghost btn-sm" onclick="copiarResumenVenta('${v.id}',this)" title="Copiar resumen">📋</button>
             <button class="btn btn-ghost btn-sm" onclick="imprimirEtiquetaEnvio('${v.id}')" title="Imprimir etiqueta">🖨️</button>
+            <button class="btn btn-sm" onclick="imprimirReciboTermico('${v.id}')" title="Imprimir recibo en impresora térmica" style="background:#555;color:#fff;border:none">🧾</button>
             <button class="btn btn-sm" onclick="compartirWhatsApp('${v.id}')" title="WhatsApp" style="background:#25D366;color:#fff;border:none">📲</button>
           </td>
           <td style="white-space:nowrap">
@@ -6497,6 +6498,146 @@ function ajustarTotalDeseado(valorStr) {
 
   calcResumenVenta();
   showToast(`✅ Descuento de ${fmtLPS(descuentoL)} aplicado`, 'success');
+}
+
+// ===== RECIBO TÉRMICO 80mm =====
+function imprimirReciboTermico(id) {
+  const v = ventas.find(x => x.id === id);
+  if (!v) return;
+
+  const pad  = n  => String(n).padStart(2, '0');
+  const fmtL = n  => 'L ' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const fmtD = s  => { if (!s) return '—'; const [y,m,d] = s.split('-'); return `${pad(d)}/${pad(m)}/${y}`; };
+  const line = (w=42) => '─'.repeat(w);
+  const ahora = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Tegucigalpa'}));
+  const fmtNow = () => `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()}  ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}`;
+
+  const empresa = parametros.empresa || 'FOCUS STORE';
+  const items   = v.items || [];
+
+  // Filas de productos
+  const filasItems = items.map(it => {
+    const nombre = (it.descripcion || it.nombre || 'Producto').substring(0, 30);
+    const qty    = it.cantidad || 1;
+    const precio = it.precioFinal || 0;
+    const sub    = precio * qty;
+    return `
+      <tr>
+        <td colspan="3" style="padding:1px 0;font-size:12px;word-break:break-word">${nombre}</td>
+      </tr>
+      <tr>
+        <td style="padding:0 0 4px;font-size:12px;color:#555">${qty} x ${fmtL(precio)}</td>
+        <td></td>
+        <td style="text-align:right;padding:0 0 4px;font-size:12px;font-weight:700">${fmtL(sub)}</td>
+      </tr>`;
+  }).join('');
+
+  const totalVenta   = v.total || 0;
+  const envio        = v.envio || 0;
+  const subtotal     = totalVenta - envio;
+  const abonos       = v.abonos || [];
+  const totalAbonado = abonos.reduce((s,a) => s+(a.monto||0), 0);
+  const saldo        = Math.max(0, totalVenta - totalAbonado);
+  const esParcial    = v.metodoPago === 'parcial';
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Recibo</title>
+<style>
+  * { margin:0;padding:0;box-sizing:border-box }
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    width: 72mm;
+    margin: 0 auto;
+    padding: 4mm 3mm;
+    color: #000;
+    background: #fff;
+  }
+  .center { text-align:center }
+  .right  { text-align:right }
+  .bold   { font-weight:700 }
+  .small  { font-size:11px }
+  .divider { border:none;border-top:1px dashed #333;margin:5px 0 }
+  .divider-solid { border:none;border-top:2px solid #000;margin:5px 0 }
+  table { width:100%;border-collapse:collapse }
+  td { vertical-align:top }
+  .total-row td { font-size:13px;font-weight:700;padding-top:3px }
+  .gran-total td { font-size:16px;font-weight:900;padding-top:4px }
+  .saldo-row td { font-size:13px;font-weight:700;color:#c00;padding-top:3px }
+  .print-btn { margin:10px 0;text-align:center }
+  .print-btn button { background:#222;color:#fff;border:none;padding:8px 20px;font-size:13px;font-weight:700;border-radius:5px;cursor:pointer }
+  @media print {
+    .print-btn { display:none }
+    body { width:72mm;margin:0;padding:3mm 2mm }
+    @page { size:80mm auto;margin:0 }
+  }
+</style>
+</head>
+<body>
+
+<div class="print-btn"><button onclick="window.print()">🖨️ Imprimir</button></div>
+
+<!-- Encabezado -->
+<div class="center bold" style="font-size:18px;letter-spacing:1px">${empresa}</div>
+<div class="center small" style="margin-top:2px">Fecha impresión: ${fmtNow()}</div>
+<hr class="divider-solid" style="margin:6px 0">
+
+<!-- Info venta -->
+<table>
+  <tr><td class="small" style="color:#555">Ref:</td><td class="right small">${(v.id||'').slice(-12)}</td></tr>
+  <tr><td class="small" style="color:#555">Fecha venta:</td><td class="right small">${fmtD(v.fecha)}</td></tr>
+  <tr><td class="small" style="color:#555">Cliente:</td><td class="right small bold">${v.clienteNombre||'—'}</td></tr>
+  ${v.clienteTel ? `<tr><td class="small" style="color:#555">Tel:</td><td class="right small">${v.clienteTel}</td></tr>` : ''}
+  ${v.vendedorNombre ? `<tr><td class="small" style="color:#555">Vendedor:</td><td class="right small">${v.vendedorNombre}</td></tr>` : ''}
+</table>
+<hr class="divider" style="margin:5px 0">
+
+<!-- Productos -->
+<div class="small bold" style="margin-bottom:3px">DETALLE</div>
+<table>${filasItems}</table>
+<hr class="divider">
+
+<!-- Totales -->
+<table>
+  ${envio > 0 ? `
+  <tr><td class="small">Subtotal productos</td><td class="right small">${fmtL(subtotal)}</td></tr>
+  <tr><td class="small">Envío</td><td class="right small">${fmtL(envio)}</td></tr>` : ''}
+  ${v.descuento > 0 ? `<tr><td class="small">Descuento</td><td class="right small" style="color:#c00">- ${fmtL(v.descuento)}</td></tr>` : ''}
+</table>
+<hr class="divider-solid" style="margin:4px 0">
+<table>
+  <tr class="gran-total"><td>TOTAL</td><td class="right">${fmtL(totalVenta)}</td></tr>
+</table>
+
+${esParcial ? `
+<hr class="divider" style="margin:5px 0">
+<table>
+  <tr class="total-row"><td>Total Abonado</td><td class="right" style="color:green">${fmtL(totalAbonado)}</td></tr>
+  ${saldo > 0 ? `<tr class="saldo-row"><td>⚠ SALDO PENDIENTE</td><td class="right">${fmtL(saldo)}</td></tr>` : ''}
+</table>` : ''}
+
+${v.metodoPagoLabel||v.metodoPago ? `
+<hr class="divider" style="margin:5px 0">
+<div class="center small">Pago: <strong>${v.metodoPagoLabel||v.metodoPago}</strong></div>` : ''}
+
+${v.promesaPago && esParcial ? `<div class="center small">Promesa de pago: <strong>${fmtD(v.promesaPago)}</strong></div>` : ''}
+
+<hr class="divider" style="margin:8px 0">
+<div class="center small">¡Gracias por su compra!</div>
+<div class="center small" style="margin-top:2px;color:#555">${fmtNow()}</div>
+<br>
+
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=320,height=600');
+  win.document.write(html);
+  win.document.close();
+  // Auto-print después de cargar
+  win.onload = () => { win.focus(); win.print(); };
 }
 
 function compartirWhatsApp(id) {
