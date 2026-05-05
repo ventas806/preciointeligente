@@ -6657,6 +6657,41 @@ function verDetalleVenta(id) {
         ${v.metodoPagoObs ? `<span style="font-size:13px;color:var(--text2)">— ${v.metodoPagoObs}</span>` : ''}
       </div>
       ${v.promesaPago ? `<div style="margin-top:8px;font-size:13px;color:var(--gold)">📅 Promesa de pago: <strong>${fmtFecha(v.promesaPago)}</strong></div>` : ''}
+
+      ${(() => {
+        const abonos = v.abonos || [];
+        if (!abonos.length) return '';
+        const totalAbonado = abonos.reduce((s,a) => s + (a.monto||0), 0);
+        const filasAbonos  = abonos.map((a,i) => `
+          <tr>
+            <td style="padding:6px 10px;font-size:12px;color:var(--text3)">#${i+1}</td>
+            <td style="padding:6px 10px;font-size:12px">${a.fecha ? fmtFecha(a.fecha) : '—'}</td>
+            <td style="padding:6px 10px;font-size:12px;color:var(--text2)">${a.nota || '—'}</td>
+            <td style="padding:6px 10px;font-size:13px;font-weight:700;color:var(--accent3);text-align:right">${fmtLPS(a.monto||0)}</td>
+          </tr>`).join('');
+        return `
+        <div style="margin-top:12px">
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:700;letter-spacing:.4px;margin-bottom:6px">📋 Registro de Abonos</div>
+          <table style="width:100%;border-collapse:collapse;background:var(--bg2);border-radius:6px;overflow:hidden">
+            <thead>
+              <tr style="background:var(--bg4)">
+                <th style="padding:6px 10px;font-size:11px;color:var(--text3);font-weight:600;text-align:left">#</th>
+                <th style="padding:6px 10px;font-size:11px;color:var(--text3);font-weight:600;text-align:left">Fecha</th>
+                <th style="padding:6px 10px;font-size:11px;color:var(--text3);font-weight:600;text-align:left">Nota</th>
+                <th style="padding:6px 10px;font-size:11px;color:var(--text3);font-weight:600;text-align:right">Monto</th>
+              </tr>
+            </thead>
+            <tbody>${filasAbonos}</tbody>
+            <tfoot>
+              <tr style="border-top:1px solid var(--border)">
+                <td colspan="3" style="padding:7px 10px;font-size:12px;font-weight:700;color:var(--text2)">Total Abonado</td>
+                <td style="padding:7px 10px;font-size:13px;font-weight:800;color:var(--accent3);text-align:right">${fmtLPS(totalAbonado)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>`;
+      })()}
+
       ${v.metodoPago === 'parcial' && (v.saldoPendiente || 0) > 0 ? `
       <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.3);border-radius:8px">
         <span style="color:var(--red);font-weight:700;font-size:14px">⚠️ Saldo Pendiente</span>
