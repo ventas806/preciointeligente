@@ -9057,6 +9057,7 @@ function renderHistorialCotizaciones() {
           <button class="btn btn-ghost btn-sm" onclick="verDetalleCotizacion('${c.id}')" title="Ver">👁️</button>
           <button class="btn btn-primary btn-sm" onclick="editarCotizacion('${c.id}')" title="Editar">✏️</button>
           <button class="btn btn-ghost btn-sm" onclick="imprimirCotizacion('${c.id}')" title="Imprimir">🖨️</button>
+          <button class="btn btn-ghost btn-sm" onclick="abrirEmailCotizacion('${c.id}')" title="Enviar por Gmail" style="color:#EA4335">📧</button>
           ${c.estado!=='convertida'&&c.estado!=='rechazada'?`<button class="btn btn-sm" onclick="convertirAVenta('${c.id}')" title="Convertir a Venta" style="background:var(--gold);color:#000;border:none">🔄 Venta</button>`:''}
           ${c.estado==='activa'||c.estado==='vencida'?`<button class="btn btn-sm" onclick="marcarCotizacionRechazada('${c.id}')" title="Rechazar" style="background:rgba(255,71,87,.12);border:1px solid rgba(255,71,87,.3);color:var(--red)">❌</button>`:''}
           <button class="btn btn-danger btn-sm" onclick="eliminarCotizacion('${c.id}')" title="Eliminar">🗑️</button>
@@ -9113,6 +9114,7 @@ function verDetalleCotizacion(id) {
     <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
       <button class="btn btn-ghost" onclick="cerrarModal('modalDetalleCotizacion');editarCotizacion('${c.id}')">✏️ Editar</button>
       <button class="btn btn-ghost" onclick="imprimirCotizacion('${c.id}')">🖨️ Imprimir</button>
+      <button class="btn btn-ghost" onclick="abrirEmailCotizacion('${c.id}')" style="color:#EA4335;border-color:rgba(234,67,53,.3)">📧 Enviar Gmail</button>
       ${c.estado!=='convertida'&&c.estado!=='rechazada'?`<button class="btn btn-success" onclick="cerrarModal('modalDetalleCotizacion');convertirAVenta('${c.id}')">🔄 Convertir a Venta</button>`:''}
       <button class="btn btn-ghost" onclick="cerrarModal('modalDetalleCotizacion')">Cerrar</button>
     </div>`;
@@ -9232,6 +9234,37 @@ ${c.observaciones?`<div class="obs">📝 <strong>Condiciones y Observaciones:</s
   const win=window.open('','_blank','width=900,height=700');
   if(!win){showToast('⚠️ Permite ventanas emergentes para imprimir','warn',4000);return;}
   win.document.write(html); win.document.close();
+}
+
+function abrirEmailCotizacion(id) {
+  const c = cotizaciones.find(x => x.id === id);
+  if (!c) return;
+  // Pre-fill To
+  document.getElementById('emailCotiTo').value = c.clienteEmail || '';
+  // Pre-fill Subject
+  document.getElementById('emailCotiSubject').value = `Cotización ${c.numero||''} - Focus Store`;
+  // Pre-fill body
+  const fmtL = n => 'L ' + ((n||0).toLocaleString('es-HN',{minimumFractionDigits:2,maximumFractionDigits:2}));
+  const pad = n => String(n).padStart(2,'0');
+  const fv = c.fechaVencimiento ? (() => { const d=new Date(c.fechaVencimiento+'T12:00:00'); return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`; })() : '15 días';
+  const lineasItems = (c.items||[]).map((it,i) =>
+    `  ${i+1}. ${it.descripcion||it.nombre||'—'} (x${it.cantidad}) - ${fmtL((it.precioFinal||0)*(it.cantidad||1))}`
+  ).join('\n');
+  const cuerpo = `Estimado/a ${c.clienteNombre||'cliente'},\n\nAdjunto encontrará la cotización ${c.numero||''} con los siguientes detalles:\n\n${lineasItems}\n\nTotal: ${fmtL(c.total)}\nVálida hasta: ${fv}\n\nPara cualquier consulta estamos a su disposición.\n\nSaludos,\nFocus Store`;
+  document.getElementById('emailCotiBody').value = cuerpo;
+  // Store id for PDF button
+  document.getElementById('emailCotiPdfBtn').onclick = () => { imprimirCotizacion(id); };
+  abrirModal('modalEmailCotizacion');
+}
+
+function enviarEmailCotizacion() {
+  const to = encodeURIComponent(document.getElementById('emailCotiTo').value.trim());
+  const su = encodeURIComponent(document.getElementById('emailCotiSubject').value.trim());
+  const body = encodeURIComponent(document.getElementById('emailCotiBody').value);
+  if (!to) { showToast('⚠️ Ingresa el correo del destinatario','warning'); return; }
+  const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${su}&body=${body}`;
+  window.open(url, '_blank');
+  showToast('✅ Gmail abierto — adjunta el PDF manualmente','success', 5000);
 }
 
 function imprimirReporteCobros() {
@@ -10739,6 +10772,52 @@ document.addEventListener('mousemove', e => {
       <button class="modal-close" onclick="cerrarModal('modalDetalleVenta')">✕</button>
     </div>
     <div class="modal-body" id="modalDetalleVentaBody"></div>
+  </div>
+</div>
+
+<!-- ── Modal Email Cotización ─────────────────────────────────────── -->
+<div class="modal-overlay" id="modalEmailCotizacion">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title" style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:20px">📧</span> Enviar Cotización por Gmail
+      </div>
+      <button class="modal-close" onclick="cerrarModal('modalEmailCotizacion')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Info banner -->
+      <div style="background:rgba(234,67,53,.08);border:1px solid rgba(234,67,53,.25);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--text2)">
+        ℹ️ Gmail no permite adjuntar archivos desde el navegador automáticamente.<br>
+        <strong style="color:var(--text1)">Flujo recomendado:</strong> 1️⃣ Genera el PDF → guárdalo en tu computadora → 2️⃣ Abre Gmail y adjúntalo.
+      </div>
+      <!-- Para -->
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Para (correo del cliente)</label>
+        <input id="emailCotiTo" type="email" class="form-control" placeholder="cliente@ejemplo.com" style="width:100%">
+      </div>
+      <!-- Asunto -->
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Asunto</label>
+        <input id="emailCotiSubject" type="text" class="form-control" style="width:100%">
+      </div>
+      <!-- Cuerpo -->
+      <div style="margin-bottom:16px">
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Mensaje</label>
+        <textarea id="emailCotiBody" class="form-control" rows="9" style="width:100%;resize:vertical;font-size:12px;line-height:1.5"></textarea>
+      </div>
+      <!-- Botones -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button id="emailCotiPdfBtn" class="btn" style="background:#1a237e;color:#fff;border:none;flex:1;min-width:160px;font-weight:700">
+          1️⃣ Generar PDF (imprime / guarda)
+        </button>
+        <button onclick="enviarEmailCotizacion()" class="btn" style="background:#EA4335;color:#fff;border:none;flex:1;min-width:160px;font-weight:700">
+          2️⃣ Abrir Gmail
+        </button>
+      </div>
+      <div style="margin-top:10px;text-align:center">
+        <button class="btn btn-ghost" onclick="cerrarModal('modalEmailCotizacion')" style="font-size:12px">Cancelar</button>
+      </div>
+    </div>
   </div>
 </div>
 
