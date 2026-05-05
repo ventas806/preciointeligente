@@ -1111,7 +1111,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
           <div style="display:flex;flex-direction:column;gap:16px">
 
             <!-- Datos del cliente -->
-            <div class="card">
+            <div class="card" id="vCardCliente">
               <div class="card-header" style="margin-bottom:14px">
                 <div class="card-title">👤 Cliente</div>
                 <div style="display:flex;gap:8px">
@@ -1166,7 +1166,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             </div>
 
             <!-- Método de Envío -->
-            <div class="card">
+            <div class="card" id="vCardEnvio">
               <div class="card-header" style="margin-bottom:14px">
                 <div class="card-title">🚚 Método de Envío</div>
               </div>
@@ -1178,8 +1178,14 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
               </div>
             </div>
 
+            <!-- Banner modo abono (solo visible en modo abono) -->
+            <div id="vBannerAbono" style="display:none;padding:12px 16px;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.4);border-radius:8px;margin-bottom:4px">
+              <div style="font-size:13px;font-weight:700;color:var(--gold)">✏️ Modo Ingreso de Abono</div>
+              <div id="vBannerAbonoInfo" style="font-size:12px;color:var(--text2);margin-top:3px"></div>
+            </div>
+
             <!-- Método de Pago -->
-            <div class="card">
+            <div class="card" id="vCardPago">
               <div class="card-header" style="margin-bottom:14px">
                 <div class="card-title">💳 Método de Pago</div>
               </div>
@@ -1220,7 +1226,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             </div>
 
             <!-- Productos de la venta -->
-            <div class="card">
+            <div class="card" id="vCardProductos">
               <div class="card-header" style="margin-bottom:14px">
                 <div class="card-title">📦 Productos de la Venta</div>
               </div>
@@ -1239,7 +1245,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
           </div>
 
           <!-- Columna derecha: resumen y totales -->
-          <div style="position:sticky;top:80px;display:flex;flex-direction:column;gap:16px">
+          <div id="vColResumen" style="position:sticky;top:80px;display:flex;flex-direction:column;gap:16px">
             <div class="card">
               <div class="card-title" style="margin-bottom:16px">🧾 Resumen de Venta</div>
 
@@ -6193,6 +6199,14 @@ function limpiarVenta() {
   if (cancelWrap) cancelWrap.style.display = 'none';
   const limpiarBtn = document.getElementById('btnLimpiarVenta');
   if (limpiarBtn) limpiarBtn.style.display = '';
+  // Restaurar secciones ocultas por modo abono
+  ['vCardCliente','vCardEnvio','vCardProductos','vColResumen'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = '';
+  });
+  const banner = document.getElementById('vBannerAbono');
+  if (banner) banner.style.display = 'none';
+  const grid = document.querySelector('#vPanelNueva > div[style*="grid-template-columns"]');
+  if (grid) grid.style.gridTemplateColumns = '1fr 380px';
 }
 
 // ===== HISTORIAL DE VENTAS =====
@@ -6798,9 +6812,12 @@ function imprimirEtiquetaEnvio(id) {
 }
 
 
-function editarVenta(id) {
+function editarVenta(id, _modoAbono) {
   const v = ventas.find(x => x.id === id);
   if (!v) return;
+  // modoAbono: true cuando viene de Cobros → vendedor solo ve sección de pago
+  const esVendedor = currentUser?.rol === 'ventas';
+  const modoAbono = _modoAbono === true || esVendedor;
 
   // Cerrar modal si está abierto
   cerrarModal('modalDetalleVenta');
@@ -6913,8 +6930,31 @@ function editarVenta(id) {
   }
   if (_vdr) _vdr.style.display = v.descuento > 0 ? 'flex' : 'none';
 
+  // ── Modo Abono: ocultar secciones que no debe editar un vendedor ──────
+  const _ids = ['vCardCliente','vCardEnvio','vCardProductos','vColResumen'];
+  if (modoAbono) {
+    _ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    // Banner informativo
+    const banner = document.getElementById('vBannerAbono');
+    const bannerInfo = document.getElementById('vBannerAbonoInfo');
+    if (banner) banner.style.display = '';
+    if (bannerInfo) bannerInfo.textContent = `Cliente: ${v.clienteNombre}  ·  Ref: ${(v.id||'').slice(-10)}  ·  Total: ${fmtLPS(v.total||0)}`;
+    // Cambiar botón guardar a modo abono
+    if (btn) { btn.textContent = '💾 Guardar Abono'; btn.style.background = 'var(--gold)'; btn.style.color = '#000'; }
+    // Cambiar layout a 1 columna (la sección de pago ocupa todo el ancho)
+    const grid = document.querySelector('#vPanelNueva > div[style*="grid-template-columns"]');
+    if (grid) grid.style.gridTemplateColumns = '1fr';
+  } else {
+    // Restaurar todas las secciones si viene de edición normal
+    _ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = ''; });
+    const banner = document.getElementById('vBannerAbono');
+    if (banner) banner.style.display = 'none';
+    const grid = document.querySelector('#vPanelNueva > div[style*="grid-template-columns"]');
+    if (grid) grid.style.gridTemplateColumns = '1fr 380px';
+  }
+
   document.getElementById('vPanelNueva').scrollIntoView({ behavior: 'smooth' });
-  showToast('✏️ Editando venta de ' + v.clienteNombre, 'success');
+  showToast(modoAbono ? `💳 Ingresar abono — ${v.clienteNombre}` : `✏️ Editando venta de ${v.clienteNombre}`, 'success');
 }
 
 function _ventaHaCambiado() {
@@ -7753,7 +7793,7 @@ function _renderCobrosReporte(filtrados, hoy) {
         <td style="${tdStyle};text-align:right">
           <div style="display:flex;gap:4px;justify-content:flex-end">
             <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')" style="padding:4px 8px;font-size:11px">👁️</button>
-            <button onclick="editarVenta('${v.id}')" style="padding:6px 13px;font-size:13px;font-weight:700;background:var(--gold);border:none;border-radius:6px;color:#000;cursor:pointer">✏️ Ingresar Abono</button>
+            <button onclick="editarVenta('${v.id}', true)" style="padding:6px 13px;font-size:13px;font-weight:700;background:var(--gold);border:none;border-radius:6px;color:#000;cursor:pointer">✏️ Ingresar Abono</button>
           </div>
         </td>
       </tr>`;
@@ -7875,7 +7915,7 @@ function _renderCobrosTarjetas(filtrados) {
           <div style="font-size:11px;color:var(--text3)">Ref: ${(v.id||'').slice(-8)}</div>
           <div style="display:flex;gap:6px;margin-top:4px">
             <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')">👁️ Ver</button>
-            <button onclick="editarVenta('${v.id}')" style="padding:6px 13px;font-size:13px;font-weight:700;background:var(--gold);border:none;border-radius:6px;color:#000;cursor:pointer">✏️ Ingresar Abono</button>
+            <button onclick="editarVenta('${v.id}', true)" style="padding:6px 13px;font-size:13px;font-weight:700;background:var(--gold);border:none;border-radius:6px;color:#000;cursor:pointer">✏️ Ingresar Abono</button>
           </div>
         </div>
       </div>
