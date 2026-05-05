@@ -1504,6 +1504,10 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 <label>Dirección</label>
                 <input type="text" id="cliDireccion" placeholder="Calle, colonia, número de casa...">
               </div>
+              <div class="form-field field-full">
+                <label>Observaciones <span style="color:var(--text3);font-weight:400;font-size:11px">(instrucciones de entrega, referencias, etc.)</span></label>
+                <textarea id="cliObservaciones" placeholder="Ej: Tocar timbre, preguntar por…" style="min-height:55px;width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:var(--font)"></textarea>
+              </div>
             </div>
             <div class="btn-row">
               <button class="btn btn-primary" onclick="guardarCliente()">💾 Guardar Cliente</button>
@@ -2324,9 +2328,10 @@ async function sbSaveCliente(c) {
     direccion:   c.direccion || '',
     ciudad:      c.ciudad    || '',
     tel:         c.tel       || '',
-    tel2:        c.tel2      || '',
-    email:       c.email     || '',
-    fecha_creado:c.fechaCreado || new Date().toISOString()
+    tel2:         c.tel2         || '',
+    email:        c.email        || '',
+    observaciones:c.observaciones|| '',
+    fecha_creado: c.fechaCreado  || new Date().toISOString()
   };
   const { error } = await sb.rpc('upsert_cliente', {
     p_user: currentUser?.user || '',
@@ -5184,6 +5189,115 @@ let _ventasCargadas = false;
 
 // ── Guardar en Supabase (reemplaza localStorage) ──
 async function guardarVentasLS()   { /* ventas se guardan en sbSaveVenta() directamente */ }
+function imprimirEtiquetaCliente(id) {
+  const c = clientes.find(x => x.id === id);
+  if (!c) return;
+
+  const empresa   = parametros.empresa   || 'FOCUS STORE';
+  const logoUrl   = parametros.logoUrl   || '';
+  const telEmpresa= parametros.tel       || '+504 9916-9059';
+  const emailEmp  = parametros.email     || 'ventas@focusstore.net';
+  const pad = n => String(n).padStart(2,'0');
+  const ahora = new Date(new Date().toLocaleString('en-US',{timeZone:'America/Tegucigalpa'}));
+  const fmtNow = `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()}`;
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Etiqueta: ${c.nombre}</title>
+<style>
+  * { box-sizing:border-box;margin:0;padding:0 }
+  body { font-family:Arial,sans-serif;background:#f0f0f0;display:flex;justify-content:center;align-items:flex-start;padding:20px }
+  .label {
+    background:#fff;
+    width:10.16cm; height:13.97cm;
+    padding:14px 16px;
+    border:1px solid #ccc;
+    border-radius:6px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    font-size:13px;
+    color:#111;
+    position:relative;
+  }
+  .header { display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #111;padding-bottom:8px }
+  .logo { height:44px;object-fit:contain }
+  .logo-text { font-size:20px;font-weight:900;letter-spacing:1px;color:#1a1a2e }
+  .tagline { font-size:10px;color:#666;letter-spacing:2px;text-align:center;margin-top:2px }
+  .section-label { font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:3px }
+  .dest-name { font-size:22px;font-weight:900;color:#111;line-height:1.15 }
+  .dest-tel { font-size:15px;font-weight:700;color:#333;margin-top:3px }
+  .dest-dir { font-size:12px;color:#333;margin-top:4px;line-height:1.4 }
+  .dest-city { font-size:18px;font-weight:900;color:#111;margin-top:6px;text-transform:uppercase }
+  .obs-box { background:#f8f8f8;border:1px solid #ddd;border-radius:4px;padding:7px 10px;font-size:11.5px;color:#333;line-height:1.4 }
+  .obs-label { font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:3px }
+  .footer { border-top:1px solid #eee;padding-top:8px;display:flex;justify-content:space-between;align-items:flex-end;font-size:10px;color:#888;margin-top:auto }
+  .footer-contact { text-align:right;font-size:11px;color:#444 }
+  .print-bar { margin-bottom:14px;display:flex;gap:10px;align-items:center }
+  .print-bar button { background:#1a1a2e;color:#fff;border:none;padding:8px 20px;font-size:13px;font-weight:700;border-radius:6px;cursor:pointer }
+  .size-tag { font-size:12px;color:#888;font-family:monospace }
+  @media print {
+    body { background:#fff;padding:0 }
+    .print-bar { display:none }
+    .label { border:none;border-radius:0;width:10.16cm;height:13.97cm;padding:10px 12px }
+    @page { size:10.16cm 13.97cm;margin:0 }
+  }
+</style>
+</head>
+<body>
+<div>
+  <div class="print-bar">
+    <button onclick="window.print()">🖨️ Imprimir</button>
+    <span class="size-tag">10.79 × 13.97 cm</span>
+  </div>
+  <div class="label">
+    <!-- Encabezado -->
+    <div class="header">
+      <div>
+        ${logoUrl ? `<img src="${logoUrl}" class="logo" alt="logo">` : `<div class="logo-text">${empresa}</div>`}
+        <div class="tagline">HONDURAS &nbsp;·&nbsp; ENVÍO SEGURO</div>
+      </div>
+    </div>
+
+    <!-- Destinatario -->
+    <div>
+      <div class="section-label">Destinatario</div>
+      <div class="dest-name">${c.nombre}</div>
+      ${c.tel ? `<div class="dest-tel">${c.tel}${c.tel2 ? ' · ' + c.tel2 : ''}</div>` : ''}
+      ${c.direccion ? `<div class="dest-dir">${c.direccion}</div>` : ''}
+      ${c.ciudad ? `<div class="dest-city">${c.ciudad}</div>` : ''}
+    </div>
+
+    <!-- Observaciones -->
+    ${c.observaciones ? `
+    <div>
+      <div class="obs-label">Observaciones / Instrucciones</div>
+      <div class="obs-box">${c.observaciones}</div>
+    </div>` : ''}
+
+    <!-- Footer -->
+    <div class="footer">
+      <div>
+        <div>Fecha: ${fmtNow}</div>
+      </div>
+      <div class="footer-contact">
+        <div style="font-weight:700;font-size:12px">¡Gracias por tu compra!</div>
+        <div style="margin-top:2px;color:#666">Cualquier consulta no dudes en llamarnos o escribirnos.</div>
+        <div style="margin-top:3px">${telEmpresa} &nbsp;|&nbsp; ${emailEmp}</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=440,height=620');
+  win.document.write(html);
+  win.document.close();
+}
+
 async function guardarClientesLS() { /* clientes se guardan en sbSaveCliente() directamente */ }
 
 // ── Cargar ventas y clientes desde Supabase al abrir la pestaña ──
@@ -5263,8 +5377,9 @@ async function cargarVentasYClientes() {
         ciudad:      r.ciudad    || '',
         tel:         r.tel       || '',
         tel2:        r.tel2      || '',
-        email:       r.email     || '',
-        fechaCreado: r.fecha_creado || ''
+        email:         r.email         || '',
+        observaciones: r.observaciones || '',
+        fechaCreado:   r.fecha_creado  || ''
       }));
       console.log('✅ Clientes cargados:', clientes.length);
     }
@@ -5391,6 +5506,7 @@ function renderTablaClientes() {
     <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2);font-size:12px" title="${c.direccion||''}">${c.direccion||'—'}</td>
     <td onclick="event.stopPropagation()" style="white-space:nowrap">
       <button class="btn btn-ghost btn-sm" onclick="abrirModalCliente('${c.id}')" title="Editar">✏️</button>
+      <button class="btn btn-ghost btn-sm" onclick="imprimirEtiquetaCliente('${c.id}')" title="Imprimir etiqueta cliente" style="background:rgba(61,106,255,.12);border:1px solid rgba(61,106,255,.3);color:var(--accent)">🖨️</button>
       <button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="eliminarCliente('${c.id}','${(c.nombre||'').replace(/'/g,"\'")}')">🗑️</button>
     </td>
   </tr>`).join('');
@@ -5405,7 +5521,8 @@ function abrirModalCliente(id) {
   document.getElementById('cliTel').value       = c?.tel       || '';
   document.getElementById('cliTel2').value      = c?.tel2      || '';
   document.getElementById('cliEmail').value     = c?.email     || '';
-  document.getElementById('cliDireccion').value = c?.direccion || '';
+  document.getElementById('cliDireccion').value     = c?.direccion     || '';
+  document.getElementById('cliObservaciones').value = c?.observaciones || '';
   document.getElementById('modalCliente').classList.add('open');
   setTimeout(() => document.getElementById('cliNombre').focus(), 100);
 }
@@ -5422,7 +5539,8 @@ async function guardarCliente() {
     tel:       document.getElementById('cliTel').value.trim(),
     tel2:      document.getElementById('cliTel2').value.trim(),
     email:     document.getElementById('cliEmail').value.trim(),
-    direccion: document.getElementById('cliDireccion').value.trim(),
+    direccion:     document.getElementById('cliDireccion').value.trim(),
+    observaciones: document.getElementById('cliObservaciones').value.trim(),
     fechaCreado: cliEditandoId
       ? (clientes.find(c=>c.id===cliEditandoId)?.fechaCreado || new Date().toISOString())
       : new Date().toISOString()
