@@ -1413,6 +1413,8 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             <option value="hoy">Hoy</option>
             <option value="semana">Esta semana</option>
             <option value="mes" selected>Este mes</option>
+            <option value="6meses">Últimos 6 meses</option>
+            <option value="anio">Último año</option>
             <option value="todo">Todo el tiempo</option>
             <option value="rango">📅 Rango de fechas</option>
           </select>
@@ -1425,6 +1427,10 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             <span style="color:var(--text3);font-size:13px">→</span>
             <input type="date" id="vRepHasta" style="padding:7px 10px;background:var(--bg3);border:1px solid var(--accent);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none" onchange="renderReporteVendedores()">
             <button onclick="limpiarRangoRep()" style="padding:6px 10px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text2);font-size:12px;cursor:pointer" title="Limpiar rango">✕</button>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <button onclick="pdfComisionVendedor()" style="padding:9px 16px;background:rgba(0,200,160,.15);border:1px solid rgba(0,200,160,.4);border-radius:8px;color:var(--accent3);font-size:13px;font-weight:700;cursor:pointer" title="PDF con detalle de comisiones del vendedor seleccionado">📄 PDF por Vendedor</button>
+            <button onclick="pdfReporteEquipo()" style="padding:9px 16px;background:var(--green);border:none;border-radius:8px;color:#000;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(0,200,100,.3)">📊 PDF Equipo Completo</button>
           </div>
         </div>
         <div id="vReporteKPIs" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px"></div>
@@ -6235,6 +6241,18 @@ function filtrarVentasPorPeriodo(lista, periodo, desde, hasta) {
       return fechaStr.startsWith(mesStr);
     }
 
+    if (periodo === '6meses') {
+      const d = new Date(ahora); d.setMonth(d.getMonth() - 6);
+      const limStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      return fechaStr >= limStr;
+    }
+
+    if (periodo === 'anio') {
+      const d = new Date(ahora); d.setFullYear(d.getFullYear() - 1);
+      const limStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      return fechaStr >= limStr;
+    }
+
     if (periodo === 'rango') {
       if (desde && hasta) return fechaStr >= desde && fechaStr <= hasta;
       if (desde) return fechaStr >= desde;
@@ -7162,6 +7180,222 @@ function renderReporteVendedores() {
       </tbody>
     </table></div>
   </div>`;
+}
+
+// ===== PDF REPORTE VENDEDORES =====
+function _getDatosReporte() {
+  const periodo = (document.getElementById('vRepPeriodo')||{}).value||'mes';
+  const vidFilt = (document.getElementById('vRepVendedor')||{}).value||'';
+  const desde   = periodo === 'rango' ? ((document.getElementById('vRepDesde')||{}).value||'') : '';
+  const hasta   = periodo === 'rango' ? ((document.getElementById('vRepHasta')||{}).value||'') : '';
+  const labelPeriodo = { hoy:'Hoy', semana:'Esta semana', mes:'Este mes', '6meses':'Últimos 6 meses', anio:'Último año', todo:'Todo el tiempo', rango:`${desde} → ${hasta}` }[periodo] || periodo;
+
+  let lista = rentasPorRol(ventas);
+  lista = filtrarVentasPorPeriodo(lista, periodo, desde, hasta);
+  if (vidFilt) lista = lista.filter(v => String(v.vendedorId) === String(vidFilt));
+
+  const todasParaComision = rentasPorRol(ventas).filter(v => {
+    const fechaCom = _fechaComision(v);
+    if (!fechaCom) return false;
+    return filtrarVentasPorPeriodo([{...v, fecha: fechaCom}], periodo, desde, hasta).length > 0;
+  }).filter(v => !vidFilt || String(v.vendedorId) === String(vidFilt));
+
+  const porVendedor = {};
+  lista.forEach(v => {
+    const key = v.vendedorId||'?';
+    if (!porVendedor[key]) porVendedor[key] = { nombre: v.vendedorNombre||'Sin vendedor', pct: v.pctComision||(parametros.comisionVentas||10), ventas:[], comision:0, utilidad:0, costo:0, porCobrar:0 };
+    porVendedor[key].ventas.push(v);
+    porVendedor[key].utilidad += v.utilidadBruta||0;
+    porVendedor[key].costo    += (v.subtotalSinISV - (v.utilidadBruta||0) - (v.descuento||0));
+  });
+  todasParaComision.forEach(v => {
+    const key = v.vendedorId||'?';
+    if (!porVendedor[key]) porVendedor[key] = { nombre: v.vendedorNombre||'Sin vendedor', pct: v.pctComision||(parametros.comisionVentas||10), ventas:[], comision:0, utilidad:0, costo:0, porCobrar:0 };
+    porVendedor[key].comision += v.comision||0;
+  });
+  lista.filter(v => v.metodoPago==='parcial' && (v.saldoPendiente||0)>0).forEach(v => {
+    const key = v.vendedorId||'?';
+    if (porVendedor[key]) porVendedor[key].porCobrar += v.saldoPendiente||0;
+  });
+
+  return { rows: Object.values(porVendedor).sort((a,b)=>b.ventas.reduce((s,v)=>s+v.total,0)-a.ventas.reduce((s,v)=>s+v.total,0)), lista, todasParaComision, labelPeriodo, vidFilt };
+}
+
+function _estilosPDF() {
+  return `* { box-sizing:border-box;margin:0;padding:0 }
+  body { font-family:Arial,sans-serif;font-size:12px;color:#222;background:#fff;padding:20px 28px }
+  h1 { font-size:22px;font-weight:900;color:#1a1a2e;letter-spacing:1px }
+  h2 { font-size:14px;font-weight:700;color:#1a1a2e;margin:16px 0 6px }
+  .header { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px }
+  .header-right { text-align:right;font-size:11px;color:#555 }
+  hr { border:none;border-top:2px solid #1a1a2e;margin:8px 0 14px }
+  hr.thin { border-top:1px solid #ccc;margin:10px 0 }
+  table { width:100%;border-collapse:collapse;margin-bottom:12px }
+  th { background:#f0f0f5;padding:6px 8px;text-align:left;font-size:11px;font-weight:700;color:#333;border-bottom:2px solid #ccc;white-space:nowrap }
+  td { padding:5px 8px;font-size:11.5px;border-bottom:1px solid #eee }
+  .right { text-align:right } .center { text-align:center }
+  .green { color:#1a7a4a;font-weight:700 } .red { color:#c0392b;font-weight:700 } .gold { color:#b8860b;font-weight:700 } .blue { color:#1a3a8e;font-weight:700 }
+  .total-row td { font-weight:800;font-size:13px;background:#f5f5f5;border-top:2px solid #bbb }
+  .vend-header { background:#e8eaf6;font-weight:700;font-size:13px }
+  .kpi-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0 16px }
+  .kpi { background:#f8f8ff;border:1px solid #dde;border-radius:6px;padding:10px 12px }
+  .kpi-label { font-size:10px;color:#666;text-transform:uppercase;font-weight:700 }
+  .kpi-val { font-size:18px;font-weight:900;margin-top:3px }
+  .print-btn { margin-bottom:16px }
+  .print-btn button { background:#1a1a2e;color:#fff;border:none;padding:8px 22px;font-size:13px;font-weight:700;border-radius:6px;cursor:pointer }
+  @media print { .print-btn { display:none } }`;
+}
+
+function pdfComisionVendedor() {
+  const { rows, lista, labelPeriodo, vidFilt } = _getDatosReporte();
+  const ahora = new Date(new Date().toLocaleString('en-US',{timeZone:'America/Tegucigalpa'}));
+  const pad = n => String(n).padStart(2,'0');
+  const fmtHN = d => `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+  const fmtFull = () => `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}`;
+  const fmtL = n => 'L ' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+  const targetRows = vidFilt ? rows.filter(r => {
+    const u = usuarios.find(u => String(u.id) === String(vidFilt));
+    return u && r.nombre === (u.nombre||u.name||'');
+  }) : rows;
+
+  if (!targetRows.length) { showToast('⚠️ Sin datos para generar PDF','warn'); return; }
+
+  const seccionesVendedores = targetRows.map(r => {
+    const totalVentas = r.ventas.reduce((s,v)=>s+v.total,0);
+    const filas = r.ventas.map(v => {
+      const isParcial = v.metodoPago==='parcial' && (v.saldoPendiente||0)>0;
+      return `<tr>
+        <td style="font-family:monospace;font-size:10px">${(v.id||'').slice(-10)}</td>
+        <td>${fmtHN(new Date(v.fecha+'T12:00:00'))}</td>
+        <td>${v.clienteNombre||'—'}</td>
+        <td class="right">${fmtL(v.total)}</td>
+        <td class="right">${fmtL(v.utilidadBruta)}</td>
+        <td class="right ${isParcial?'gold':''}">${isParcial?'⏳ Pendiente':fmtL(v.comision)}</td>
+        <td class="right ${isParcial?'red':''}">${isParcial?fmtL(v.saldoPendiente):'—'}</td>
+      </tr>`;
+    }).join('');
+    const roi = r.costo > 0 ? (r.utilidad/r.costo*100).toFixed(1) : '—';
+    return `
+    <div style="margin-bottom:24px;page-break-inside:avoid">
+      <h2 style="background:#1a1a2e;color:#fff;padding:8px 12px;border-radius:4px 4px 0 0;margin:0">
+        👤 ${r.nombre} &nbsp;<span style="font-size:11px;font-weight:400;opacity:.8">— Comisión ${r.pct.toFixed(1)}%</span>
+      </h2>
+      <div class="kpi-grid" style="margin:0;background:#f8f9ff;padding:12px;border:1px solid #dde;border-bottom:none">
+        <div class="kpi"><div class="kpi-label"># Ventas</div><div class="kpi-val blue">${r.ventas.length}</div></div>
+        <div class="kpi"><div class="kpi-label">Total Vendido</div><div class="kpi-val green">${fmtL(totalVentas)}</div></div>
+        <div class="kpi"><div class="kpi-label">Comisión Acreditada</div><div class="kpi-val" style="color:#1a7a4a">${fmtL(r.comision)}</div></div>
+        <div class="kpi"><div class="kpi-label">Por Cobrar (crédito)</div><div class="kpi-val ${r.porCobrar>0?'gold':''}">${r.porCobrar>0?fmtL(r.porCobrar):'L 0.00'}</div></div>
+      </div>
+      <table style="border:1px solid #dde">
+        <thead><tr>
+          <th>Referencia</th><th>Fecha</th><th>Cliente</th>
+          <th class="right">Total Venta</th><th class="right">Utilidad</th>
+          <th class="right">Comisión</th><th class="right">Saldo Pend.</th>
+        </tr></thead>
+        <tbody>${filas}</tbody>
+        <tfoot><tr class="total-row">
+          <td colspan="3">TOTAL</td>
+          <td class="right green">${fmtL(totalVentas)}</td>
+          <td class="right">${fmtL(r.utilidad)}</td>
+          <td class="right" style="color:#1a7a4a">${fmtL(r.comision)}</td>
+          <td class="right red">${r.porCobrar>0?fmtL(r.porCobrar):'—'}</td>
+        </tr></tfoot>
+      </table>
+    </div>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Reporte Comisiones — Focus Store</title>
+<style>${_estilosPDF()}</style></head><body>
+<div class="print-btn"><button onclick="window.print()">🖨️ Imprimir / Guardar PDF</button></div>
+<div class="header">
+  <div><h1>FOCUS STORE</h1><p style="font-size:12px;margin-top:2px"><strong>Reporte de Comisiones por Vendedor</strong></p>
+  <p style="font-size:11px;color:#555">Período: ${labelPeriodo}</p></div>
+  <div class="header-right"><p><strong>Generado por:</strong> ${currentUser?.nombre||'—'}</p><p><strong>Fecha:</strong> ${fmtFull()}</p></div>
+</div>
+<hr>
+${seccionesVendedores}
+</body></html>`;
+  const win = window.open('','_blank','width=900,height=700');
+  win.document.write(html); win.document.close();
+}
+
+function pdfReporteEquipo() {
+  const { rows, lista, todasParaComision, labelPeriodo } = _getDatosReporte();
+  if (!rows.length) { showToast('⚠️ Sin datos para generar PDF','warn'); return; }
+
+  const ahora = new Date(new Date().toLocaleString('en-US',{timeZone:'America/Tegucigalpa'}));
+  const pad = n => String(n).padStart(2,'0');
+  const fmtFull = () => `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}`;
+  const fmtL = n => 'L ' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+  const totVentas   = lista.reduce((s,v)=>s+v.total,0);
+  const totUtilidad = lista.reduce((s,v)=>s+(v.utilidadBruta||0),0);
+  const totComision = todasParaComision.reduce((s,v)=>s+(v.comision||0),0);
+  const totCosto    = lista.reduce((s,v)=>s+(v.subtotalSinISV-(v.utilidadBruta||0)-(v.descuento||0)),0);
+  const totPorCobrar= lista.filter(v=>v.metodoPago==='parcial'&&(v.saldoPendiente||0)>0).reduce((s,v)=>s+(v.saldoPendiente||0),0);
+  const roi         = totCosto > 0 ? (totUtilidad/totCosto*100).toFixed(1) : '—';
+
+  const filasEquipo = rows.map(r => {
+    const tv  = r.ventas.reduce((s,v)=>s+v.total,0);
+    const roi2= r.costo > 0 ? (r.utilidad/r.costo*100).toFixed(1)+'%' : '—';
+    return `<tr>
+      <td style="font-weight:700">${r.nombre}</td>
+      <td class="center">${r.ventas.length}</td>
+      <td class="right green">${fmtL(tv)}</td>
+      <td class="right">${fmtL(r.utilidad)}</td>
+      <td class="right">${roi2}</td>
+      <td class="right">${r.pct.toFixed(1)}%</td>
+      <td class="right" style="color:#1a7a4a;font-weight:700">${fmtL(r.comision)}</td>
+      <td class="right ${r.porCobrar>0?'gold':''}">${r.porCobrar>0?fmtL(r.porCobrar):'—'}</td>
+      <td class="right">${fmtL(r.ventas.length ? tv/r.ventas.length : 0)}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Reporte Equipo — Focus Store</title>
+<style>${_estilosPDF()}</style></head><body>
+<div class="print-btn"><button onclick="window.print()">🖨️ Imprimir / Guardar PDF</button></div>
+<div class="header">
+  <div><h1>FOCUS STORE</h1><p style="font-size:12px;margin-top:2px"><strong>Reporte de Desempeño — Equipo Completo</strong></p>
+  <p style="font-size:11px;color:#555">Período: ${labelPeriodo} &nbsp;·&nbsp; ${rows.length} vendedor(es)</p></div>
+  <div class="header-right"><p><strong>Generado por:</strong> ${currentUser?.nombre||'—'}</p><p><strong>Fecha:</strong> ${fmtFull()}</p></div>
+</div>
+<hr>
+<div class="kpi-grid">
+  <div class="kpi"><div class="kpi-label">Total Vendido</div><div class="kpi-val green">${fmtL(totVentas)}</div></div>
+  <div class="kpi"><div class="kpi-label">Utilidad Bruta</div><div class="kpi-val blue">${fmtL(totUtilidad)}</div></div>
+  <div class="kpi"><div class="kpi-label">ROI Promedio</div><div class="kpi-val">${roi}%</div></div>
+  <div class="kpi"><div class="kpi-label">Total Comisiones</div><div class="kpi-val" style="color:#1a7a4a">${fmtL(totComision)}</div></div>
+  <div class="kpi"><div class="kpi-label">Por Cobrar</div><div class="kpi-val ${totPorCobrar>0?'gold':''}">${fmtL(totPorCobrar)}</div></div>
+  <div class="kpi"><div class="kpi-label">Transacciones</div><div class="kpi-val">${lista.length}</div></div>
+  <div class="kpi"><div class="kpi-label">Vendedores</div><div class="kpi-val">${rows.length}</div></div>
+</div>
+<hr class="thin">
+<h2>📊 Desempeño por Vendedor</h2>
+<table>
+  <thead><tr>
+    <th>Vendedor</th><th class="center"># Ventas</th><th class="right">Total Vendido</th>
+    <th class="right">Utilidad</th><th class="right">ROI</th><th class="right">% Com.</th>
+    <th class="right">Comisión</th><th class="right">Por Cobrar</th><th class="right">Ticket Prom.</th>
+  </tr></thead>
+  <tbody>${filasEquipo}</tbody>
+  <tfoot><tr class="total-row">
+    <td><strong>TOTAL EQUIPO</strong></td>
+    <td class="center">${lista.length}</td>
+    <td class="right green">${fmtL(totVentas)}</td>
+    <td class="right">${fmtL(totUtilidad)}</td>
+    <td class="right">${roi}%</td>
+    <td class="right">—</td>
+    <td class="right" style="color:#1a7a4a">${fmtL(totComision)}</td>
+    <td class="right ${totPorCobrar>0?'gold':''}">${totPorCobrar>0?fmtL(totPorCobrar):'—'}</td>
+    <td class="right">—</td>
+  </tr></tfoot>
+</table>
+</body></html>`;
+  const win = window.open('','_blank','width=1000,height=750');
+  win.document.write(html); win.document.close();
 }
 
 // ===== MÓDULO COMBOS / KITS =====
