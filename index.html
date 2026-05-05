@@ -7146,9 +7146,17 @@ function renderReporteVendedores() {
     return;
   }
 
-  tablaEl.innerHTML = `<div class="card"><div class="card-header"><div class="card-title">📊 Desempeño por Vendedor</div></div>
+  tablaEl.innerHTML = `<div class="card">
+    <div class="card-header">
+      <div class="card-title">📊 Desempeño por Vendedor</div>
+      <div style="font-size:12px;color:var(--text3)">☑️ Marca/desmarca vendedores para incluirlos en los PDFs</div>
+    </div>
     <div class="table-wrap"><table>
       <thead><tr>
+        <th style="width:36px;text-align:center" title="Marcar/desmarcar todos">
+          <input type="checkbox" id="chkVendTodos" checked onchange="toggleTodosVendedores(this.checked)"
+            style="accent-color:var(--accent3);width:15px;height:15px;cursor:pointer">
+        </th>
         <th>Vendedor</th><th style="text-align:center"># Ventas</th>
         <th style="text-align:right">Total Vendido</th>
         <th style="text-align:right">Utilidad Bruta</th>
@@ -7159,13 +7167,19 @@ function renderReporteVendedores() {
         <th style="text-align:right">Ticket Prom.</th>
       </tr></thead>
       <tbody>
-        ${rows.map(r => {
-          const pct          = r.ventas[0]?.pctComision || (parametros.comisionVentas||10);
-          const ticket       = r.ventas.length ? r.totalVentas / r.ventas.length : 0;
-          const roi          = r.totalCosto > 0 ? r.totalUtilidad / r.totalCosto : 0;
-          const roiCls       = roi >= 0.3 ? 'var(--green)' : roi >= 0.2 ? 'var(--gold)' : 'var(--red)';
-          const porCobrar    = r.totalPorCobrar || 0;
-          return `<tr>
+        ${rows.map((r, idx) => {
+          const pct       = r.ventas[0]?.pctComision || (parametros.comisionVentas||10);
+          const ticket    = r.ventas.length ? r.totalVentas / r.ventas.length : 0;
+          const roi       = r.totalCosto > 0 ? r.totalUtilidad / r.totalCosto : 0;
+          const roiCls    = roi >= 0.3 ? 'var(--green)' : roi >= 0.2 ? 'var(--gold)' : 'var(--red)';
+          const porCobrar = r.totalPorCobrar || 0;
+          const safeKey   = encodeURIComponent(r.nombre);
+          return `<tr id="rowVend_${idx}" style="transition:opacity .2s">
+            <td style="text-align:center">
+              <input type="checkbox" class="chkVend" data-nombre="${safeKey}" checked
+                onchange="toggleVendedorFila(this, ${idx})"
+                style="accent-color:var(--accent3);width:15px;height:15px;cursor:pointer">
+            </td>
             <td style="font-weight:700">${r.nombre}</td>
             <td style="text-align:center">${r.ventas.length}</td>
             <td style="text-align:right;color:var(--green);font-weight:700">${fmtLPS(r.totalVentas)}</td>
@@ -7180,6 +7194,27 @@ function renderReporteVendedores() {
       </tbody>
     </table></div>
   </div>`;
+}
+
+function toggleVendedorFila(chk, idx) {
+  const row = document.getElementById('rowVend_' + idx);
+  if (row) row.style.opacity = chk.checked ? '1' : '0.35';
+  // Actualizar "marcar todos" según estado de los individuales
+  const todos = [...document.querySelectorAll('.chkVend')];
+  const master = document.getElementById('chkVendTodos');
+  if (master) master.checked = todos.every(c => c.checked);
+}
+function toggleTodosVendedores(checked) {
+  document.querySelectorAll('.chkVend').forEach((chk, idx) => {
+    chk.checked = checked;
+    const row = document.getElementById('rowVend_' + idx);
+    if (row) row.style.opacity = checked ? '1' : '0.35';
+  });
+}
+function _getNombresSeleccionados() {
+  const chks = [...document.querySelectorAll('.chkVend')];
+  if (!chks.length) return null; // tabla no renderizada → incluir todos
+  return chks.filter(c => c.checked).map(c => decodeURIComponent(c.dataset.nombre));
 }
 
 // ===== PDF REPORTE VENDEDORES =====
@@ -7218,7 +7253,15 @@ function _getDatosReporte() {
     if (porVendedor[key]) porVendedor[key].porCobrar += v.saldoPendiente||0;
   });
 
-  return { rows: Object.values(porVendedor).sort((a,b)=>b.ventas.reduce((s,v)=>s+v.total,0)-a.ventas.reduce((s,v)=>s+v.total,0)), lista, todasParaComision, labelPeriodo, vidFilt };
+  let rows = Object.values(porVendedor).sort((a,b)=>b.ventas.reduce((s,v)=>s+v.total,0)-a.ventas.reduce((s,v)=>s+v.total,0));
+
+  // Filtrar solo los vendedores marcados con checkbox en la tabla
+  const seleccionados = _getNombresSeleccionados();
+  if (seleccionados && seleccionados.length) {
+    rows = rows.filter(r => seleccionados.includes(r.nombre));
+  }
+
+  return { rows, lista, todasParaComision, labelPeriodo, vidFilt };
 }
 
 function _estilosPDF() {
