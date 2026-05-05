@@ -1852,7 +1852,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
           <button id="btnVistaTarjetas" onclick="setCobrosVista('tarjetas')" style="padding:8px 14px;font-size:12px;font-weight:600;background:transparent;color:var(--text2);border:none;cursor:pointer">🗂️ Tarjetas</button>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="renderCobros()">🔄 Actualizar</button>
-        <button class="btn btn-ghost btn-sm" onclick="imprimirReporteCobros()" style="background:rgba(61,106,255,.12);border:1px solid var(--accent);color:var(--accent)">🖨️ Imprimir Reporte</button>
+        <button onclick="imprimirReporteCobros()" style="padding:10px 22px;background:var(--green);border:none;border-radius:var(--radius2);color:#000;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 2px 10px rgba(0,200,100,.35);transition:opacity .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">🖨️ Imprimir Reporte</button>
       </div>
 
       <!-- Lista -->
@@ -7753,7 +7753,7 @@ function _renderCobrosReporte(filtrados, hoy) {
         <td style="${tdStyle};text-align:right">
           <div style="display:flex;gap:4px;justify-content:flex-end">
             <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')" style="padding:4px 8px;font-size:11px">👁️</button>
-            <button class="btn btn-primary btn-sm" onclick="editarVenta('${v.id}')" style="padding:4px 10px;font-size:11px">✏️ Ingresar Abono</button>
+            <button onclick="editarVenta('${v.id}')" style="padding:6px 13px;font-size:13px;font-weight:700;background:var(--gold);border:none;border-radius:6px;color:#000;cursor:pointer">✏️ Ingresar Abono</button>
           </div>
         </td>
       </tr>`;
@@ -7875,7 +7875,7 @@ function _renderCobrosTarjetas(filtrados) {
           <div style="font-size:11px;color:var(--text3)">Ref: ${(v.id||'').slice(-8)}</div>
           <div style="display:flex;gap:6px;margin-top:4px">
             <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')">👁️ Ver</button>
-            <button class="btn btn-primary btn-sm" onclick="editarVenta('${v.id}')">✏️ Ingresar Abono</button>
+            <button onclick="editarVenta('${v.id}')" style="padding:6px 13px;font-size:13px;font-weight:700;background:var(--gold);border:none;border-radius:6px;color:#000;cursor:pointer">✏️ Ingresar Abono</button>
           </div>
         </div>
       </div>
@@ -8803,9 +8803,8 @@ function imprimirReporteCobros() {
 <div class="header-block">
   <div class="header-left">
     <h1>FOCUS STORE</h1>
-    <p><strong>Reporte de Documentos Pendientes de Pago</strong></p>
-    <p>Tipo de Documento: Todos &nbsp;·&nbsp; Filtro: ${filtroDesc}</p>
-    ${q ? `<p>Búsqueda: "${q}"</p>` : ''}
+    <p><strong>${q ? `Reporte de Cobros — Cliente: "${q.toUpperCase()}"` : 'Reporte de Documentos Pendientes de Pago'}</strong></p>
+    <p>Filtro de estado: ${filtroDesc}${q ? '' : ' &nbsp;·&nbsp; Todos los clientes'}</p>
   </div>
   <div class="header-right">
     <p><strong>Emisor:</strong> ${emisor}</p>
