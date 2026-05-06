@@ -11013,13 +11013,14 @@ function buscarProdRapido(q) {
   const fmtP = n => ((n||0)*100).toFixed(1)+'%';
 
   res.innerHTML = matches.map(p => {
-    const c      = typeof calcProd === 'function' ? calcProd(p) : null;
-    const precio = c ? c.precioFinalDesc : (p.precioVenta || 0);
-    const costo  = p.costoLPS || 0;
-    const roi    = costo > 0 ? (precio - costo) / costo : 0;
-    const roiClr = roi >= 0.3 ? '#00c8a0' : roi >= 0.2 ? '#f5c842' : '#ff4757';
-    const stock  = p.inventario != null ? p.inventario : '—';
-    const stockClr = p.inventario > 5 ? '#00c8a0' : p.inventario > 0 ? '#f5c842' : '#ff4757';
+    const c        = typeof calcProd === 'function' ? calcProd(p) : null;
+    const precio   = c ? c.precioFinalDesc : (p.precioVenta || 0);
+    const costo    = p.costoLPS || 0;
+    const roi      = costo > 0 ? (precio - costo) / costo : 0;
+    const roiClr   = roi >= 0.3 ? '#00c8a0' : roi >= 0.2 ? '#f5c842' : '#ff4757';
+    const stock    = p.cantidad != null ? p.cantidad : 0;
+    const minStock = p.minStock || 0;
+    const stockClr = stock > minStock ? '#00c8a0' : stock > 0 ? '#f5c842' : '#ff4757';
     return `<div style="display:flex;gap:10px;padding:10px 8px;border-bottom:1px solid var(--border2);align-items:flex-start">
       <div style="flex-shrink:0;width:52px;height:52px;border-radius:6px;overflow:hidden;background:var(--bg3);display:flex;align-items:center;justify-content:center">
         ${p.imagen
@@ -11029,16 +11030,52 @@ function buscarProdRapido(q) {
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;font-weight:700;color:var(--text);line-height:1.3;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${p.producto||''}">${p.producto||'—'}</div>
         <div style="font-size:10px;color:var(--text3);font-family:monospace;margin-bottom:5px">${p.sku||'—'} · ${p.categoria||'—'}</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
           <span style="font-size:13px;font-weight:800;color:var(--accent3)">${fmtL(precio)}</span>
           <span style="font-size:10px;color:var(--text3)">Costo: ${fmtL(costo)}</span>
           <span style="font-size:11px;font-weight:700;color:${roiClr}">ROI ${fmtP(roi)}</span>
-          <span style="font-size:10px;color:${stockClr};margin-left:auto">📦 ${stock}</span>
+          <span style="font-size:10px;color:var(--text3)">${p.estado||''}</span>
         </div>
-        <div style="font-size:10px;color:var(--text3);margin-top:3px">${p.estado||''}</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:10px;color:var(--text3);white-space:nowrap">📦 Stock:</span>
+          <input type="number" min="0" value="${stock}"
+            id="stockInput_${p.id}"
+            style="width:62px;padding:3px 6px;background:var(--bg3);border:1px solid ${stockClr};
+              border-radius:6px;color:${stockClr};font-weight:700;font-size:13px;
+              text-align:center;outline:none"
+            onchange="actualizarStockRapido('${p.id}', this.value)"
+            onfocus="this.select()"
+            title="Editar stock — presiona Enter o haz clic afuera para guardar">
+          <span style="font-size:10px;color:var(--text3)">Min: ${minStock}</span>
+          <span id="stockSaving_${p.id}" style="font-size:10px;color:var(--accent3);display:none">💾...</span>
+        </div>
       </div>
     </div>`;
   }).join('');
+}
+
+async function actualizarStockRapido(prodId, nuevoValor) {
+  const p = (typeof productos !== 'undefined' ? productos : []).find(x => x.id === prodId);
+  if (!p) return;
+  const val = parseInt(nuevoValor);
+  if (isNaN(val) || val < 0) return;
+  const saving = document.getElementById('stockSaving_' + prodId);
+  const input  = document.getElementById('stockInput_'  + prodId);
+  if (saving) saving.style.display = 'inline';
+  p.cantidad = val;
+  try {
+    await sbSaveProducto(p);
+    if (saving) saving.style.display = 'none';
+    if (input) {
+      const minStock = p.minStock || 0;
+      input.style.borderColor = val > minStock ? '#00c8a0' : val > 0 ? '#f5c842' : '#ff4757';
+      input.style.color       = val > minStock ? '#00c8a0' : val > 0 ? '#f5c842' : '#ff4757';
+    }
+    if (typeof showToast === 'function') showToast(`✅ Stock actualizado: ${val}`, 'success');
+  } catch(e) {
+    if (saving) saving.style.display = 'none';
+    if (typeof showToast === 'function') showToast('❌ ' + e.message, 'error');
+  }
 }
 </script>
 </body>
