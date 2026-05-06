@@ -905,7 +905,13 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 <div style="margin-top:8px">
                   <img id="pLogoPreview" src="" alt="Preview logo" style="display:none;max-height:64px;max-width:180px;object-fit:contain;border:1px solid var(--border);border-radius:6px;background:#fff;padding:4px">
                 </div>
-                <div style="font-size:11px;color:var(--text3);margin-top:4px">💡 Puedes usar la URL del logo de tu sitio web o subir la imagen a <a href="https://imgur.com" target="_blank" style="color:var(--accent)">imgur.com</a> y pegar el link directo.</div>
+                <div style="font-size:11px;color:var(--text3);margin-top:6px">
+                  💡 <strong>Cómo obtener la URL del logo:</strong><br>
+                  1. Abre <a href="https://www.focusstore.net" target="_blank" style="color:var(--accent)">focusstore.net</a> en una pestaña nueva<br>
+                  2. Clic derecho sobre el logo → <strong>"Copiar dirección de imagen"</strong><br>
+                  3. Pega esa URL aquí y haz clic en 💾 Guardar Logo<br>
+                  <span style="color:var(--text3)">— O sube tu logo a <a href="https://imgur.com/upload" target="_blank" style="color:var(--accent)">imgur.com</a> y pega el link directo (.png/.jpg)</span>
+                </div>
               </td>
             </tr>
             <tr><td>Nombre Empresa</td><td><input type="text" id="pEmpresaNombre" placeholder="FOCUS STORE"></td></tr>
@@ -5276,7 +5282,7 @@ function imprimirEtiquetaCliente(id) {
     position:relative;
   }
   .header { display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #111;padding-bottom:8px }
-  .logo { height:44px;object-fit:contain }
+  .logo { height:52px;max-width:140px;object-fit:contain;background:#fff;border-radius:6px;padding:4px }
   .logo-text { font-size:20px;font-weight:900;letter-spacing:1px;color:#1a1a2e }
   .tagline { font-size:10px;color:#666;letter-spacing:2px;text-align:center;margin-top:2px }
   .section-label { font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:3px }
@@ -9199,7 +9205,7 @@ function imprimirCotizacion(id) {
   const tieneImagenes = (c.items||[]).some(it => it.imagen);
   const itemsHtml=(c.items||[]).map((it,i)=>`<tr style="${i%2===1?'background:#f8f8f8':''}">
     <td style="text-align:center;font-weight:700;color:#666">${i+1}</td>
-    ${tieneImagenes?`<td style="text-align:center;padding:4px 6px">${it.imagen?`<img src="${it.imagen}" style="width:52px;height:52px;object-fit:contain;border-radius:4px;border:1px solid #ddd" onerror="this.style.display='none'">`:'<span style="color:#ccc;font-size:20px">📦</span>'}</td>`:''}
+    ${tieneImagenes?`<td style="text-align:center;padding:4px 6px">${it.imagen?`<img src="${it.imagen}" style="width:80px;height:80px;object-fit:contain;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;padding:3px" onerror="this.style.display='none'">`:'<span style="color:#ccc;font-size:24px">📦</span>'}</td>`:''}
     <td style="font-family:monospace;font-size:10px;color:#555">${it.sku||'—'}</td>
     <td><strong style="font-size:12px">${it.descripcion||it.nombre||'—'}</strong></td>
     <td style="text-align:center">${it.cantidad||1}</td>
