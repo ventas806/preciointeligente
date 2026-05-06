@@ -2299,7 +2299,8 @@ async function sbSaveCotizacion(c) {
       precio_final:it.precioFinal || 0,
       lleva_isv:   it.llevaISV   || false,
       isv_pct:     it.isvPct     || 0,
-      producto_id: it.productoId || null
+      producto_id: it.productoId || null,
+      imagen:      it.imagen     || null
     })),
     observaciones:    c.observaciones   || '',
     subtotal_sin_isv: c.subtotalSinISV  || 0,
@@ -2340,6 +2341,8 @@ async function sbGetCotizaciones() {
       precioFinal: it.precio_final || 0,
       llevaISV:    it.lleva_isv   || false,
       isvPct:      it.isv_pct     || 0,
+      imagen:      it.imagen      || (it.producto_id ? (productos.find(p=>p.id===it.producto_id)||{}).imagen||null : null),
+      productoId:  it.producto_id || null,
       _id:         'vi_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)
     })),
     observaciones:    c.observaciones     || '',
