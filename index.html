@@ -2153,8 +2153,10 @@ async function sbSaveHistorial(entry) {
 // Guardar parámetro individual
 async function sbSaveParametro(clave, valor) {
   const u = currentUser?.user || '';
+  // JSON.stringify(undefined) devuelve undefined (no string) → causa error en RPC
+  const valorStr = valor === undefined || valor === null ? 'null' : JSON.stringify(valor);
   const { error } = await sbExec(() =>
-    sb.rpc('save_parametro', { p_user: u, p_clave: clave, p_valor: JSON.stringify(valor) })
+    sb.rpc('save_parametro', { p_user: u, p_clave: clave, p_valor: valorStr })
   );
   if (error) throw new Error(error.message);
   return { ok: true };
