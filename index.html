@@ -890,6 +890,31 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             <button class="btn btn-success" onclick="guardarParametros()">💾 Guardar Cambios</button>
           </div>
         </div>
+        <!-- ── Identidad de Empresa ── -->
+        <div class="param-section">
+          <h3>🏢 Identidad de Empresa</h3>
+          <table class="param-table"><thead><tr><th>Parámetro</th><th>Valor</th></tr></thead><tbody>
+            <tr>
+              <td>Logo (URL de imagen)</td>
+              <td>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <input type="text" id="pLogoUrl" placeholder="https://... (URL de la imagen del logo)" style="flex:1;min-width:200px;font-size:12px"
+                    oninput="document.getElementById('pLogoPreview').src=this.value; document.getElementById('pLogoPreview').style.display=this.value?'block':'none'">
+                  <button class="btn btn-ghost btn-sm" onclick="guardarLogoUrl()" style="white-space:nowrap">💾 Guardar Logo</button>
+                </div>
+                <div style="margin-top:8px">
+                  <img id="pLogoPreview" src="" alt="Preview logo" style="display:none;max-height:64px;max-width:180px;object-fit:contain;border:1px solid var(--border);border-radius:6px;background:#fff;padding:4px">
+                </div>
+                <div style="font-size:11px;color:var(--text3);margin-top:4px">💡 Puedes usar la URL del logo de tu sitio web o subir la imagen a <a href="https://imgur.com" target="_blank" style="color:var(--accent)">imgur.com</a> y pegar el link directo.</div>
+              </td>
+            </tr>
+            <tr><td>Nombre Empresa</td><td><input type="text" id="pEmpresaNombre" placeholder="FOCUS STORE"></td></tr>
+            <tr><td>Slogan</td><td><input type="text" id="pEmpresaSlogan" placeholder="Fotografía · Audio · Video"></td></tr>
+            <tr><td>Dirección</td><td><input type="text" id="pEmpresaDireccion" placeholder="Plaza Premier, 2do nivel · Col. Humuya · CEUTEC"></td></tr>
+            <tr><td>Teléfono</td><td><input type="text" id="pEmpresaTel" placeholder="+504 9916-9059"></td></tr>
+            <tr><td>Correo</td><td><input type="text" id="pEmpresaEmail" placeholder="ventas@focusstore.net"></td></tr>
+          </tbody></table>
+        </div>
         <div class="param-section">
           <h3>💱 Parámetros Generales</h3>
           <table class="param-table"><thead><tr><th>Parámetro</th><th>Valor</th></tr></thead><tbody>
@@ -4135,6 +4160,18 @@ function initParametrosForm() {
   document.getElementById('pEmailAlert').value=parametros.emailAlert||'';
   const pCom=document.getElementById('pComisionVentas'); if(pCom) pCom.value=parametros.comisionVentas||10;
   const pEnv=document.getElementById('pEnvioDefecto'); if(pEnv) pEnv.value=parametros.envioDefecto!=null?parametros.envioDefecto:120;
+  // Identidad empresa
+  const pLogo=document.getElementById('pLogoUrl');
+  if(pLogo){
+    pLogo.value=parametros.logoUrl||'';
+    const prev=document.getElementById('pLogoPreview');
+    if(prev && parametros.logoUrl){ prev.src=parametros.logoUrl; prev.style.display='block'; }
+  }
+  const pEmpNom=document.getElementById('pEmpresaNombre'); if(pEmpNom) pEmpNom.value=parametros.empresa||'';
+  const pEmpSlo=document.getElementById('pEmpresaSlogan'); if(pEmpSlo) pEmpSlo.value=parametros.slogan||'';
+  const pEmpDir=document.getElementById('pEmpresaDireccion'); if(pEmpDir) pEmpDir.value=parametros.direccion||'';
+  const pEmpTel=document.getElementById('pEmpresaTel'); if(pEmpTel) pEmpTel.value=parametros.tel||'';
+  const pEmpMail=document.getElementById('pEmpresaEmail'); if(pEmpMail) pEmpMail.value=parametros.email||'';
   // Wix key: mostrar placeholder indicando si hay key guardada
   const wixInp = document.getElementById('pWixApiKey');
   if (wixInp) {
@@ -4143,6 +4180,13 @@ function initParametrosForm() {
       ? '✅ API Key guardada — dejá vacío para no cambiarla'
       : 'Pegá tu Wix API Key aquí';
   }
+}
+
+async function guardarLogoUrl() {
+  const url = (document.getElementById('pLogoUrl')?.value||'').trim();
+  parametros.logoUrl = url;
+  await sbSaveParametro('logoUrl', url);
+  showToast('✅ Logo guardado','success');
 }
 
 function toggleWixKeyVisibility() {
@@ -4372,9 +4416,16 @@ async function guardarParametros() {
     anthKeyInput.placeholder = '✅ API Key guardada (no se muestra por seguridad)';
   }
 
+  // Identidad empresa
+  const pEmpNom=document.getElementById('pEmpresaNombre'); if(pEmpNom && pEmpNom.value.trim()) parametros.empresa=pEmpNom.value.trim();
+  const pEmpSlo=document.getElementById('pEmpresaSlogan'); if(pEmpSlo) parametros.slogan=pEmpSlo.value.trim();
+  const pEmpDir=document.getElementById('pEmpresaDireccion'); if(pEmpDir) parametros.direccion=pEmpDir.value.trim();
+  const pEmpTel=document.getElementById('pEmpresaTel'); if(pEmpTel) parametros.tel=pEmpTel.value.trim();
+  const pEmpMail=document.getElementById('pEmpresaEmail'); if(pEmpMail) parametros.email=pEmpMail.value.trim();
+
   mostrarCargando('💾 Guardando parámetros...');
   try {
-    const claves = ['tipoCambio','isvNuevo','isvUsado','emailAlert','bandas','roiRef','descMax','categorias','subcategorias','comisionVentas','envioDefecto','metodosPago','metodosEnvio'];
+    const claves = ['tipoCambio','isvNuevo','isvUsado','emailAlert','bandas','roiRef','descMax','categorias','subcategorias','comisionVentas','envioDefecto','metodosPago','metodosEnvio','empresa','slogan','direccion','tel','email'];
     for(const clave of claves) {
       await sbSaveParametro(clave, parametros[clave]);
     }
