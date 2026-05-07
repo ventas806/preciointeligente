@@ -8730,7 +8730,14 @@ function renderItemsCotizacion() {
           ${esManual
             ? `<input type="text" value="${item.descripcion.replace(/"/g,'&quot;')}" placeholder="Descripción del producto *"
                 onchange="cActualizarItem('${item._id}','descripcion',this.value)"
-                style="padding:6px 10px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:13px;font-weight:600;outline:none;width:100%">`
+                style="padding:6px 10px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:13px;font-weight:600;outline:none;width:100%">
+              <div style="display:flex;gap:6px;align-items:center">
+                ${imgSrc ? `<img src="${imgSrc}" style="width:32px;height:32px;object-fit:contain;border-radius:5px;border:1px solid var(--border2);background:var(--bg4);flex-shrink:0" onerror="this.style.display='none'">` : ''}
+                <input type="url" value="${(item.imagen||'').replace(/"/g,'&quot;')}" placeholder="🔗 Pega el link de la imagen..."
+                  onchange="cActualizarItem('${item._id}','imagen',this.value.trim());renderItemsCotizacion()"
+                  onkeydown="if(event.key==='Enter')this.blur()"
+                  style="flex:1;padding:4px 9px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text3);font-size:11px;outline:none">
+              </div>`
             : `<div style="font-size:13px;font-weight:600">${item.descripcion}</div>`}
           ${(() => {
             const prod = item.productoId ? productos.find(p=>p.id===item.productoId) : null;
