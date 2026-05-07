@@ -1548,16 +1548,6 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
         </div>
       </div>
 
-      <!-- Modal detalle venta -->
-      <div class="modal-overlay" id="modalDetalleCotizacion">
-        <div class="modal" style="max-width:700px">
-          <div class="modal-header">
-            <div class="modal-title">📋 Detalle de Cotización</div>
-            <button class="modal-close" onclick="cerrarModal('modalDetalleCotizacion')">✕</button>
-          </div>
-          <div class="modal-body" id="modalDetalleCotizacionBody"></div>
-        </div>
-      </div>
 
     </div>
 
@@ -1910,6 +1900,17 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
         </div>
 
   </div><!-- /main-content -->
+</div>
+
+<!-- MODAL DETALLE COTIZACION -->
+<div class="modal-overlay" id="modalDetalleCotizacion">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header">
+      <div class="modal-title">📋 Detalle de Cotización</div>
+      <button class="modal-close" onclick="cerrarModal('modalDetalleCotizacion')">✕</button>
+    </div>
+    <div class="modal-body" id="modalDetalleCotizacionBody"></div>
+  </div>
 </div>
 
 <!-- MODAL DETALLE -->
