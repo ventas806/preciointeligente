@@ -2300,7 +2300,8 @@ async function sbSaveCotizacion(c) {
       lleva_isv:   it.llevaISV   || false,
       isv_pct:     it.isvPct     || 0,
       producto_id: it.productoId || null,
-      imagen:      it.imagen     || null
+      imagen:      it.imagen     || null,
+      nota_item:   it.notaItem   || ''
     })),
     observaciones:    c.observaciones   || '',
     subtotal_sin_isv: c.subtotalSinISV  || 0,
@@ -2342,6 +2343,7 @@ async function sbGetCotizaciones() {
       llevaISV:    it.lleva_isv   || false,
       isvPct:      it.isv_pct     || 0,
       imagen:      it.imagen      || (it.producto_id ? (productos.find(p=>p.id===it.producto_id)||{}).imagen||null : null),
+      notaItem:    it.nota_item   || '',
       productoId:  it.producto_id || null,
       _id:         'vi_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)
     })),
@@ -8755,6 +8757,9 @@ function renderItemsCotizacion() {
               ${lista !== item.precioFinal ? `<span style="font-size:10px;color:var(--text3);text-decoration:line-through">${fmtLPS(lista)}</span>` : ''}
             </div>`;
           })()}
+          <input type="text" value="${(item.notaItem||'').replace(/"/g,'&quot;')}" placeholder="📝 Nota / descripción adicional del ítem (opcional)..."
+            onchange="cActualizarItem('${item._id}','notaItem',this.value)"
+            style="margin-top:5px;padding:5px 10px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-size:12px;outline:none;width:100%;font-style:italic">
         </div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
@@ -8801,6 +8806,7 @@ function cAgregarManual() {
     precioFinal: 0,
     costoLPS: 0,
     cantidad: 1,
+    notaItem: '',
     _id: 'cm_' + Date.now() + '_' + Math.random().toString(36).slice(2,6)
   });
   const empty = document.getElementById('cItemsEmpty');
@@ -8871,8 +8877,25 @@ function buscarProductoCot(q) {
 function cAgregarProducto(prodId) {
   const p = productos.find(x=>x.id===prodId);
   if (!p) return;
+  const stockDisp = parseInt(p.cantidad) || 0;
   const ya = cItemsActuales.find(x=>x.productoId===prodId);
-  if (ya) { ya.cantidad++; renderItemsCotizacion(); document.getElementById('cProdBuscar').value=''; document.getElementById('cProdResultados').style.display='none'; return; }
+  if (ya) {
+    ya.cantidad++;
+    if (stockDisp === 0) {
+      showToast(`⚠️ ${p.producto} — Sin stock disponible en inventario`, 'warn', 5000);
+    } else if (ya.cantidad > stockDisp) {
+      showToast(`⚠️ ${p.producto} — Cantidad supera el stock disponible (${stockDisp} uds.)`, 'warn', 5000);
+    }
+    renderItemsCotizacion();
+    document.getElementById('cProdBuscar').value='';
+    document.getElementById('cProdResultados').style.display='none';
+    return;
+  }
+  if (stockDisp === 0) {
+    showToast(`⚠️ Sin stock: ${p.producto} — No hay unidades disponibles en inventario`, 'warn', 5000);
+  } else if (stockDisp <= 3) {
+    showToast(`⚠️ Stock bajo: ${p.producto} — Solo ${stockDisp} unidad(es) disponibles`, 'warn', 4000);
+  }
   const c=calcProd(p);
   const isv = p.estado==='Nuevo';
   const isvPct = isv ? parametros.isvNuevo : 0;
@@ -8883,6 +8906,7 @@ function cAgregarProducto(prodId) {
     precioFinal: c.precioFinalDesc,
     descuentoItemTipo: '%',
     cantidad:1,
+    notaItem: '',
     _id:'vi_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)
   });
   document.getElementById('cProdBuscar').value='';
@@ -9216,7 +9240,7 @@ function imprimirCotizacion(id) {
     <td style="text-align:center;font-weight:700;color:#666">${i+1}</td>
     ${tieneImagenes?`<td style="text-align:center;padding:4px 6px">${it.imagen?`<img src="${it.imagen}" style="width:80px;height:80px;object-fit:contain;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;padding:3px" onerror="this.style.display='none'">`:'<span style="color:#ccc;font-size:24px">📦</span>'}</td>`:''}
     <td style="font-family:monospace;font-size:10px;color:#555">${it.sku||'—'}</td>
-    <td><strong style="font-size:12px">${it.descripcion||it.nombre||'—'}</strong></td>
+    <td><strong style="font-size:12px">${it.descripcion||it.nombre||'—'}</strong>${it.notaItem?`<br><span style="font-size:10px;color:#555;font-style:italic">${it.notaItem}</span>`:''}</td>
     <td style="text-align:center">${it.cantidad||1}</td>
     <td style="text-align:right">${fmtL(it.precioFinal||0)}</td>
     <td style="text-align:right;font-weight:700;color:#1a237e">${fmtL((it.precioFinal||0)*(it.cantidad||1))}</td>
