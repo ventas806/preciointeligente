@@ -8730,14 +8730,23 @@ function renderItemsCotizacion() {
                 onchange="cActualizarItem('${item._id}','descripcion',this.value)"
                 style="padding:6px 10px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:13px;font-weight:600;outline:none;width:100%">`
             : `<div style="font-size:13px;font-weight:600">${item.descripcion}</div>`}
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            ${item.sku?`<span style="font-size:11px;color:var(--text3);font-family:monospace">SKU: ${item.sku}</span>`:''}
-            <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);cursor:pointer">
-              <input type="checkbox" ${item.llevaISV?'checked':''} onchange="cActualizarItem('${item._id}','llevaISV',this.checked);renderItemsCotizacion()" style="accent-color:var(--accent3)">
-              ISV (${(parametros.isvNuevo*100).toFixed(0)}%)
-            </label>
-            <span style="font-size:11px;color:${item.llevaISV?'var(--gold)':'var(--text3)'}">${isvLabel}</span>
-          </div>
+          ${(() => {
+            const prod = item.productoId ? productos.find(p=>p.id===item.productoId) : null;
+            const stock = prod ? (parseInt(prod.cantidad)||0) : null;
+            const sobreStock = stock !== null && item.cantidad > stock;
+            const stockBg = stock === null ? '' : stock === 0 ? 'background:rgba(255,71,87,.15);color:#ff4757' : stock <= 3 ? 'background:rgba(255,165,0,.15);color:#ffa500' : 'background:rgba(0,200,160,.1);color:var(--accent3)';
+            const stockHtml = stock !== null ? `<span style="font-size:11px;font-weight:700;padding:1px 7px;border-radius:4px;${stockBg}">📦 ${stock}</span>` : '';
+            const alertaHtml = sobreStock ? `<span style="font-size:11px;font-weight:700;color:#ff4757;background:rgba(255,71,87,.12);border:1px solid rgba(255,71,87,.3);padding:1px 8px;border-radius:4px">⚠️ Supera stock (${stock} disp.)</span>` : '';
+            return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              ${item.sku?`<span style="font-size:11px;color:var(--text3);font-family:monospace">SKU: ${item.sku}</span>`:''}
+              ${stockHtml}${alertaHtml}
+              <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);cursor:pointer">
+                <input type="checkbox" ${item.llevaISV?'checked':''} onchange="cActualizarItem('${item._id}','llevaISV',this.checked);renderItemsCotizacion()" style="accent-color:var(--accent3)">
+                ISV (${(parametros.isvNuevo*100).toFixed(0)}%)
+              </label>
+              <span style="font-size:11px;color:${item.llevaISV?'var(--gold)':'var(--text3)'}">${isvLabel}</span>
+            </div>`;
+          })()}
           ${(() => {
             const lista = item.precioLista && item.precioLista > 0 ? item.precioLista : 0;
             if (!lista) return '';
