@@ -1105,6 +1105,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 <th>Costo Total LPS (N)</th>
                 <th>Precio Neto (W)</th>
                 <th>ISV</th>
+                <th style="text-align:center">INVELEC</th>
               </tr>
             </thead>
             <tbody id="tbodyExportar"></tbody>
@@ -2019,6 +2020,7 @@ function rowToProducto(r) {
     imagen:        r.imagen        || null,
     notaRapida:    r.nota_rapida   || '',
     webPublicado:  r.web_publicado || false,
+    invelec:       r.invelec       || false,
     fechaIngreso:  r.fecha_ingreso || '',
     ultimaModif:   r.ultima_modif  || ''
   };
@@ -2057,6 +2059,7 @@ function productoToRow(p) {
     imagen:         p.imagen         || null,
     nota_rapida:    sanitizarTexto(p.notaRapida).substring(0,12),
     web_publicado:  p.webPublicado   || false,
+    invelec:        p.invelec        || false,
     fecha_ingreso:  p.fechaIngreso   || new Date().toISOString(),
     ultima_modif:   p.ultimaModif    || new Date().toISOString(),
     ingresado_por:  p.ingresadoPor   || (currentUser ? currentUser.user : '')
@@ -4889,6 +4892,17 @@ async function toggleWebPublicado(id, valor) {
   showToast(valor ? '✅ Marcado como publicado en web' : '⬜ Marcado como no publicado', valor ? 'success' : 'info');
 }
 
+// ===== INVELEC =====
+async function toggleInvelec(id, valor) {
+  const p = productos.find(x => x.id === id);
+  if(!p) return;
+  p.invelec = valor;
+  p.ultimaModif = new Date().toISOString().replace('Z','').replace('T',' ').substring(0,19);
+  try { await gsSave('Productos', p); } catch(e) {}
+  addHistorial(`Producto "${p.producto}" marcado como ${valor ? '✅ En Invelec' : '❌ No en Invelec'}`, 'Productos');
+  showToast(valor ? '✅ Marcado en Invelec' : '⬜ Desmarcado de Invelec', valor ? 'success' : 'info');
+}
+
 // ===== EXPORTAR BLOC DE NOTAS =====
 let exportSeleccionados = new Set();
 let exportProductosFiltrados = [];
@@ -4967,7 +4981,7 @@ function renderTablaExportar() {
   if(!tbody) return;
 
   if(!exportProductosFiltrados.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3)">No hay productos</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text3)">No hay productos</td></tr>`;
     actualizarContadorExp();
     return;
   }
@@ -4989,6 +5003,12 @@ function renderTablaExportar() {
       <td style="color:var(--text2);font-weight:600">${costo}</td>
       <td class="td-price">${precio}</td>
       <td style="color:${isv?'var(--accent3)':'var(--text3)'};font-weight:700">${isv}</td>
+      <td onclick="event.stopPropagation()" style="text-align:center">
+        <input type="checkbox" title="${p.invelec ? 'Subido a Invelec' : 'No subido a Invelec'}"
+          ${p.invelec ? 'checked' : ''}
+          onchange="toggleInvelec('${p.id}', this.checked)"
+          style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent3)">
+      </td>
     </tr>`;
   }).join('');
 
@@ -6029,6 +6049,7 @@ function renderItemsVenta() {
             Lleva ISV (${(parametros.isvNuevo*100).toFixed(0)}%)
           </label>
           <span style="font-size:11px;color:${item.llevaISV?'var(--gold)':'var(--text3)'}">${isvLabel}</span>
+          ${item.productoId ? (() => { const _p = productos.find(x=>x.id===item.productoId); return _p ? `<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);cursor:pointer" title="Subido a Invelec"><input type="checkbox" ${_p.invelec?'checked':''} onchange="toggleInvelec('${item.productoId}',this.checked)" style="accent-color:var(--accent3)">Invelec</label>` : ''; })() : ''}
           ${esManual ? `
           <div style="display:flex;align-items:center;gap:4px">
             <span style="font-size:11px;color:var(--text3)">Costo L</span>
