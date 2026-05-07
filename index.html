@@ -1441,9 +1441,9 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
       <div id="vPanelReporte" style="display:none">
         <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
           <select id="vRepPeriodo" style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none" onchange="onChangePeriodoRep()">
-            <option value="hoy">Hoy</option>
+            <option value="hoy" selected>Hoy</option>
             <option value="semana">Esta semana</option>
-            <option value="mes" selected>Este mes</option>
+            <option value="mes">Este mes</option>
             <option value="6meses">Últimos 6 meses</option>
             <option value="anio">Último año</option>
             <option value="todo">Todo el tiempo</option>
@@ -1465,6 +1465,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
           </div>
         </div>
         <div id="vReporteKPIs" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px"></div>
+        <div id="vReporteGraficos" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px"></div>
         <div id="vReporteTabla"></div>
       </div>
 
@@ -7471,6 +7472,7 @@ function renderReporteVendedores() {
 
   if (!rows.length) {
     tablaEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)">Sin datos para el período seleccionado</div>';
+    const gel = document.getElementById('vReporteGraficos'); if(gel) gel.style.display='none';
     return;
   }
 
@@ -7524,6 +7526,102 @@ function renderReporteVendedores() {
       </tbody>
     </table></div>
   </div>`;
+  _renderGraficosReporte(lista, rows);
+}
+
+function _renderGraficosReporte(lista, rows) {
+  const el = document.getElementById('vReporteGraficos');
+  if (!el) return;
+  const totalGeneral = lista.reduce((a,v)=>a+v.total,0);
+
+  // ── Pastel por vendedor ──────────────────────────────────────────────────
+  const COLORS = ['#00c8a0','#3d6aff','#f5a623','#ff4757','#a855f7','#06b6d4','#f97316','#84cc16','#ec4899','#14b8a6'];
+  const pieData = rows.slice(0,8).map((r,i) => ({ label:r.nombre, valor:r.totalVentas, color:COLORS[i%COLORS.length] }));
+  const pieTotal = pieData.reduce((a,d)=>a+d.valor,0);
+  window._vPieData = pieData;
+
+  const SIZE=200, cx=SIZE/2, cy=SIZE/2, R=SIZE/2-14;
+  let ang = -Math.PI/2;
+  const paths = pieTotal > 0 ? pieData.map((d,i) => {
+    const slice = (d.valor/pieTotal)*2*Math.PI;
+    const x1=(cx+R*Math.cos(ang)).toFixed(2), y1=(cy+R*Math.sin(ang)).toFixed(2);
+    ang += slice;
+    const x2=(cx+R*Math.cos(ang)).toFixed(2), y2=(cy+R*Math.sin(ang)).toFixed(2);
+    const large = slice>Math.PI?1:0;
+    return `<path d="M${cx},${cy} L${x1},${y1} A${R},${R} 0 ${large},1 ${x2},${y2} Z"
+      fill="${d.color}" stroke="var(--bg2)" stroke-width="2.5" style="cursor:pointer;transition:opacity .15s"
+      onmouseenter="this.style.opacity='.75';_vPieShow(${i})" onmouseleave="this.style.opacity='1';_vPieHide()">
+      <title>${d.label}: ${fmtLPS(d.valor)} (${((d.valor/pieTotal)*100).toFixed(1)}%)</title></path>`;
+  }).join('') : `<circle cx="${cx}" cy="${cy}" r="${R}" fill="var(--bg3)"/>`;
+
+  // ── Resumen métodos de pago ──────────────────────────────────────────────
+  const porMetodo = {};
+  lista.forEach(v => {
+    const lbl = v.metodoPagoLabel || v.metodoPago || 'Sin especificar';
+    if (!porMetodo[lbl]) porMetodo[lbl] = { count:0, total:0 };
+    porMetodo[lbl].count++;
+    porMetodo[lbl].total += v.total;
+  });
+  const metRows = Object.entries(porMetodo).sort((a,b)=>b[1].total-a[1].total);
+
+  el.style.display = (rows.length || metRows.length) ? 'grid' : 'none';
+
+  el.innerHTML = `
+    <div class="card" style="padding:16px">
+      <div style="font-weight:700;font-size:13px;margin-bottom:14px">🥧 Ventas por Vendedor</div>
+      <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+        <div style="position:relative;flex-shrink:0">
+          <svg width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">${paths}</svg>
+          <div id="vPieTooltip" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;font-size:11px;line-height:1.6;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;pointer-events:none;min-width:110px;z-index:10"></div>
+        </div>
+        <div style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:6px">
+          ${pieData.map((d,i)=>`<div style="display:flex;align-items:center;gap:7px;cursor:default"
+              onmouseenter="_vPieShow(${i})" onmouseleave="_vPieHide()">
+            <div style="width:11px;height:11px;border-radius:3px;background:${d.color};flex-shrink:0"></div>
+            <div style="flex:1;font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${d.label}">${d.label}</div>
+            <div style="font-size:12px;font-weight:700;color:var(--text);flex-shrink:0">${pieTotal>0?((d.valor/pieTotal)*100).toFixed(1)+'%':'—'}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="card" style="padding:16px">
+      <div style="font-weight:700;font-size:13px;margin-bottom:14px">💳 Resumen por Método de Pago</div>
+      ${metRows.length ? `
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr>
+          <th style="text-align:left;padding:5px 8px;color:var(--text3);font-size:11px;border-bottom:1px solid var(--border);font-weight:600">MÉTODO</th>
+          <th style="text-align:center;padding:5px 8px;color:var(--text3);font-size:11px;border-bottom:1px solid var(--border);font-weight:600">#</th>
+          <th style="text-align:right;padding:5px 8px;color:var(--text3);font-size:11px;border-bottom:1px solid var(--border);font-weight:600">TOTAL</th>
+          <th style="text-align:right;padding:5px 8px;color:var(--text3);font-size:11px;border-bottom:1px solid var(--border);font-weight:600">%</th>
+        </tr></thead>
+        <tbody>
+          ${metRows.map(([lbl,d],i)=>{
+            const pct = totalGeneral>0?((d.total/totalGeneral)*100).toFixed(1):0;
+            const barW = totalGeneral>0?Math.round((d.total/totalGeneral)*100):0;
+            return `<tr style="${i%2===0?'':'background:var(--bg3)'}">
+              <td style="padding:7px 8px;font-weight:600;border-bottom:1px solid var(--border2)">
+                <div>${lbl}</div>
+                <div style="height:3px;border-radius:2px;background:var(--border2);margin-top:4px"><div style="height:3px;border-radius:2px;background:var(--accent3);width:${barW}%"></div></div>
+              </td>
+              <td style="padding:7px 8px;text-align:center;color:var(--text2);border-bottom:1px solid var(--border2)">${d.count}</td>
+              <td style="padding:7px 8px;text-align:right;font-weight:700;color:var(--accent3);border-bottom:1px solid var(--border2)">${fmtLPS(d.total)}</td>
+              <td style="padding:7px 8px;text-align:right;color:var(--text2);border-bottom:1px solid var(--border2)">${pct}%</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>` : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">Sin ventas en este período</div>'}
+    </div>`;
+}
+
+function _vPieShow(i) {
+  const d = (window._vPieData||[])[i]; if (!d) return;
+  const total = (window._vPieData||[]).reduce((a,x)=>a+x.valor,0);
+  const tip = document.getElementById('vPieTooltip'); if (!tip) return;
+  tip.innerHTML = `<strong style="color:${d.color}">${d.label}</strong><br>${fmtLPS(d.valor)}<br><span style="color:var(--text3)">${total>0?((d.valor/total)*100).toFixed(1)+'%':''}</span>`;
+  tip.style.display = 'block';
+}
+function _vPieHide() {
+  const tip = document.getElementById('vPieTooltip'); if (tip) tip.style.display='none';
 }
 
 function toggleVendedorFila(chk, idx) {
