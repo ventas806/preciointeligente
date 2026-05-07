@@ -1102,10 +1102,10 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 <th>Nombre del Producto</th>
                 <th>Categoría</th>
                 <th>Estado</th>
+                <th style="text-align:center">INVELEC</th>
                 <th>Costo Total LPS (N)</th>
                 <th>Precio Neto (W)</th>
                 <th>ISV</th>
-                <th style="text-align:center">INVELEC</th>
               </tr>
             </thead>
             <tbody id="tbodyExportar"></tbody>
@@ -3079,7 +3079,7 @@ function renderDashboard() {
 // ===== TABLA PRODUCTOS =====
 function getHeadersPorRol() {
   const perms = PERMS[currentUser.rol];
-  const base = [{k:'img',l:'IMG'},{k:'sku',l:'SKU'},{k:'producto',l:'Producto'},{k:'estado',l:'Estado'},{k:'cantidad',l:'Cant.'},{k:'notaRapida',l:'Nota'},{k:'webPublicado',l:'🌐 Web'},{k:'link',l:'🔗'},{k:'wix',l:'🛒'},{k:'descVend',l:'💰'}];
+  const base = [{k:'img',l:'IMG'},{k:'sku',l:'SKU'},{k:'producto',l:'Producto'},{k:'estado',l:'Estado'},{k:'cantidad',l:'Cant.'},{k:'notaRapida',l:'Nota'},{k:'webPublicado',l:'🌐 Web'},{k:'invelec',l:'INVELEC'},{k:'link',l:'🔗'},{k:'wix',l:'🛒'},{k:'descVend',l:'💰'}];
   const costFields  = [{k:'costoTotalLPS',l:'Costo LPS'}];
   const priceFields = [{k:'descMax',l:'Desc.MAX'},{k:'precioConDesc',l:'Precio c/Desc'}];
   const utilFields  = [{k:'utilBrutaLPS',l:'Utilidad LPS'},{k:'roi',l:'ROI %'}];
@@ -3236,6 +3236,12 @@ function renderTablaProductos() {
           <input type="checkbox" title="${p.webPublicado ? 'Publicado en web' : 'No publicado'}"
             ${p.webPublicado ? 'checked' : ''}
             onchange="toggleWebPublicado('${p.id}', this.checked)"
+            style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent3)">
+        </td>`;
+        case 'invelec': return `<td onclick="event.stopPropagation()" style="text-align:center">
+          <input type="checkbox" title="${p.invelec ? 'Subido a Invelec' : 'No subido a Invelec'}"
+            ${p.invelec ? 'checked' : ''}
+            onchange="toggleInvelec('${p.id}', this.checked)"
             style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent3)">
         </td>`;
         case 'descVend': return `<td onclick="event.stopPropagation()" style="text-align:center"><button class="btn-desc-vendedor" onclick="abrirModalDescVendedor('${p.id}')" title="Ver tabla de descuentos">💰</button></td>`;
@@ -5000,15 +5006,15 @@ function renderTablaExportar() {
       <td class="td-name" style="max-width:280px">${nombre60}${nombreWarn}</td>
       <td>${p.categoria||'—'}</td>
       <td><span class="badge badge-${(p.estado||'nuevo').toLowerCase().replace(' ','-')}">${p.estado}</span></td>
-      <td style="color:var(--text2);font-weight:600">${costo}</td>
-      <td class="td-price">${precio}</td>
-      <td style="color:${isv?'var(--accent3)':'var(--text3)'};font-weight:700">${isv}</td>
       <td onclick="event.stopPropagation()" style="text-align:center">
         <input type="checkbox" title="${p.invelec ? 'Subido a Invelec' : 'No subido a Invelec'}"
           ${p.invelec ? 'checked' : ''}
           onchange="toggleInvelec('${p.id}', this.checked)"
           style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent3)">
       </td>
+      <td style="color:var(--text2);font-weight:600">${costo}</td>
+      <td class="td-price">${precio}</td>
+      <td style="color:${isv?'var(--accent3)':'var(--text3)'};font-weight:700">${isv}</td>
     </tr>`;
   }).join('');
 
