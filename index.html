@@ -8781,6 +8781,7 @@ function renderItemsCotizacion() {
         <div style="display:flex;align-items:center;gap:4px">
           <span style="font-size:11px;color:var(--text3)">L</span>
           <input type="number" value="${item.precioFinal.toFixed(2)}" step="0.01" min="0"
+            onkeydown="if(event.key==='Enter')this.blur()"
             onchange="cActualizarItem('${item._id}','precioFinal',this.value)"
             style="width:96px;padding:5px 8px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--accent3);font-size:13px;font-weight:700;outline:none;text-align:right">
         </div>
@@ -8804,7 +8805,7 @@ function cQuitarItem(id) {
 
 function cAgregarManual() {
   const isvPct = parametros.isvNuevo || 0.15;
-  cItemsActuales.push({
+  cItemsActuales.unshift({
     tipo: 'manual',
     productoId: null,
     sku: '',
@@ -8813,6 +8814,8 @@ function cAgregarManual() {
     llevaISV: true,
     isvPct,
     precioFinal: 0,
+    precioLista: 0,
+    descuentoItemTipo: '%',
     costoLPS: 0,
     cantidad: 1,
     notaItem: '',
@@ -8850,16 +8853,28 @@ function cToggleDescItemTipo(id) {
 function cActualizarItem(id, campo, valor) {
   const it = cItemsActuales.find(x=>x._id===id);
   if (!it) return;
-  if (campo === 'precioFinal' || campo === 'costoLPS') {
+  if (campo === 'precioFinal') {
+    const v = +(parseFloat(valor) || 0).toFixed(2);
+    // Para items manuales sin precio lista, el primer precio ingresado se convierte en precio lista
+    if (it.tipo === 'manual' && (!it.precioLista || it.precioLista === 0)) {
+      it.precioLista = v;
+      if (!it.descuentoItemTipo) it.descuentoItemTipo = '%';
+    }
+    it.precioFinal = v;
+    renderItemsCotizacion();
+  } else if (campo === 'costoLPS') {
     it[campo] = parseFloat(valor) || 0;
+    calcResumenCotizacion();
   } else if (campo === 'cantidad') {
     it[campo] = Math.max(1, parseInt(valor)||1);
+    calcResumenCotizacion();
   } else if (campo === 'llevaISV') {
     it[campo] = !!valor;
+    calcResumenCotizacion();
   } else {
     it[campo] = valor;
+    calcResumenCotizacion();
   }
-  calcResumenCotizacion();
 }
 
 function buscarProductoCot(q) {
@@ -8908,11 +8923,11 @@ function cAgregarProducto(prodId) {
   const c=calcProd(p);
   const isv = p.estado==='Nuevo';
   const isvPct = isv ? parametros.isvNuevo : 0;
-  cItemsActuales.push({
+  cItemsActuales.unshift({
     tipo:'catalogo', productoId:prodId, sku:p.sku, descripcion:p.producto,
     imagen:p.imagen||null, llevaISV:isv, isvPct,
     precioLista: +c.precioConISV.toFixed(2),
-    precioFinal: c.precioFinalDesc,
+    precioFinal: +c.precioFinalDesc.toFixed(2),
     descuentoItemTipo: '%',
     cantidad:1,
     notaItem: '',
