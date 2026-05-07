@@ -11355,9 +11355,53 @@ function buscarProdRapido(q) {
           <span style="font-size:10px;color:var(--text3)">Min: ${minStock}</span>
           <span id="stockSaving_${p.id}" style="font-size:10px;color:var(--accent3);display:none">💾...</span>
         </div>
+        <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px">
+          <button id="wixBtn_${p.id}" onclick="actualizarStockEnWixRapido('${p.id}','${p.sku}')"
+            style="padding:4px 10px;background:linear-gradient(135deg,#00c8a0,#00a080);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;width:fit-content">
+            🔄 Actualizar stock en Wix
+          </button>
+          <div id="wixMsg_${p.id}" style="font-size:11px;display:none"></div>
+        </div>
       </div>
     </div>`;
   }).join('');
+}
+
+async function actualizarStockEnWixRapido(prodId, sku) {
+  const btn = document.getElementById('wixBtn_' + prodId);
+  const msg = document.getElementById('wixMsg_' + prodId);
+  if (!btn || !msg) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Actualizando...';
+  msg.style.display = 'none';
+
+  try {
+    const { data, error } = await sb.functions.invoke('wix-sync', {
+      body: { action: 'test', sku_test: sku.trim() }
+    });
+
+    if (error) throw new Error(error.message || JSON.stringify(error));
+    if (data?.error) throw new Error(data.error);
+
+    const detalle = data?.detalles?.[0];
+    if (detalle) {
+      msg.style.display = 'block';
+      msg.style.color = '#00c8a0';
+      msg.innerHTML = `✅ Actualizado en Wix — Stock enviado: <strong>${detalle.cantidad}</strong>`;
+    } else {
+      msg.style.display = 'block';
+      msg.style.color = '#f5c842';
+      msg.innerHTML = '⚠️ Sin coincidencia de SKU en Wix';
+    }
+  } catch(e) {
+    msg.style.display = 'block';
+    msg.style.color = '#ff4757';
+    msg.innerHTML = '❌ ' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🔄 Actualizar stock en Wix';
+  }
 }
 
 async function actualizarStockRapido(prodId, nuevoValor) {
