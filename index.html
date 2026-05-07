@@ -11388,7 +11388,12 @@ async function actualizarStockEnWixRapido(prodId, sku) {
     if (detalle) {
       msg.style.display = 'block';
       msg.style.color = '#00c8a0';
-      msg.innerHTML = `✅ Actualizado en Wix — Stock enviado: <strong>${detalle.cantidad}</strong>`;
+      const extras = [];
+      if (detalle.ribbonOk && detalle.ribbon) extras.push(`🏷️ Cinta: <strong>${detalle.ribbon}</strong>`);
+      else if (detalle.ribbonOk && detalle.ribbon === '') extras.push(`🏷️ Cinta eliminada`);
+      if (detalle.preOrderAccion === 'agregado' && detalle.preOrderOk) extras.push(`📋 Agregado a Pre-Order`);
+      else if (detalle.preOrderAccion === 'removido' && detalle.preOrderOk) extras.push(`📋 Removido de Pre-Order`);
+      msg.innerHTML = `✅ Stock enviado: <strong>${detalle.cantidad}</strong>${extras.length ? '<br><span style="color:var(--text2)">' + extras.join(' · ') + '</span>' : ''}`;
     } else {
       msg.style.display = 'block';
       msg.style.color = '#f5c842';
