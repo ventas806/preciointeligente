@@ -1055,7 +1055,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
 
         <!-- Selector vendedor + periodo -->
         <div class="card" style="margin-bottom:20px">
-          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:flex-end;flex-wrap:wrap">
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:12px;align-items:flex-end;flex-wrap:wrap">
             <div>
               <div style="font-size:12px;color:var(--text3);margin-bottom:6px">Vendedor</div>
               <select id="liqVendedor" style="width:100%;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
@@ -1063,10 +1063,23 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
               </select>
             </div>
             <div>
-              <div style="font-size:12px;color:var(--text3);margin-bottom:6px">Período (Mes / Año)</div>
-              <input type="month" id="liqPeriodo" style="width:100%;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+              <div style="font-size:12px;color:var(--text3);margin-bottom:6px">Fecha Inicio</div>
+              <input type="date" id="liqFechaInicio" style="width:100%;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+            </div>
+            <div>
+              <div style="font-size:12px;color:var(--text3);margin-bottom:6px">Fecha Fin</div>
+              <input type="date" id="liqFechaFin" style="width:100%;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
             </div>
             <button class="btn btn-primary" onclick="calcularYRenderLiquidacion()">📊 Calcular</button>
+          </div>
+          <!-- Atajos rápidos -->
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--text3);align-self:center">Atajos:</span>
+            <button class="btn btn-ghost btn-sm" onclick="liqAtajoMes(0)">Este mes</button>
+            <button class="btn btn-ghost btn-sm" onclick="liqAtajoMes(-1)">Mes anterior</button>
+            <button class="btn btn-ghost btn-sm" onclick="liqAtajoMes(-2)">Hace 2 meses</button>
+            <button class="btn btn-ghost btn-sm" onclick="liqAtajoQuincena()">Esta quincena</button>
+            <button class="btn btn-ghost btn-sm" onclick="liqAtajoSemana()">Esta semana</button>
           </div>
         </div>
 
@@ -12249,12 +12262,50 @@ function poblarSelectoresLiq() {
   selV.innerHTML = '<option value="">— Seleccionar vendedor —</option>' +
     vendedoresActivos.map(u => `<option value="${u.id}"${String(u.id)===String(cur)?' selected':''}>${u.nombre}</option>`).join('');
 
-  // Default periodo = mes actual
-  const periodoInput = document.getElementById('liqPeriodo');
-  if (periodoInput && !periodoInput.value) {
-    const now = new Date();
-    periodoInput.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  // Default = mes actual
+  const fi = document.getElementById('liqFechaInicio');
+  const ff = document.getElementById('liqFechaFin');
+  if (fi && !fi.value) liqAtajoMes(0);
+}
+
+// ── Atajos de fecha ───────────────────────────────────────────────────────────
+function liqSetRango(inicio, fin) {
+  const fi = document.getElementById('liqFechaInicio');
+  const ff = document.getElementById('liqFechaFin');
+  if (fi) fi.value = inicio;
+  if (ff) ff.value = fin;
+}
+
+function liqAtajoMes(offset) {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1 + offset;
+  const fecha = new Date(y, m - 1, 1);
+  const primerDia = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}-01`;
+  const ultimoDia = new Date(fecha.getFullYear(), fecha.getMonth()+1, 0);
+  const ultimoStr = `${ultimoDia.getFullYear()}-${String(ultimoDia.getMonth()+1).padStart(2,'0')}-${String(ultimoDia.getDate()).padStart(2,'0')}`;
+  liqSetRango(primerDia, ultimoStr);
+}
+
+function liqAtajoQuincena() {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth()+1, d = now.getDate();
+  const pad = n => String(n).padStart(2,'0');
+  if (d <= 15) {
+    liqSetRango(`${y}-${pad(m)}-01`, `${y}-${pad(m)}-15`);
+  } else {
+    const ultimo = new Date(y, m, 0);
+    liqSetRango(`${y}-${pad(m)}-16`, `${y}-${pad(m)}-${ultimo.getDate()}`);
   }
+}
+
+function liqAtajoSemana() {
+  const now = new Date();
+  const dow = now.getDay() === 0 ? 6 : now.getDay() - 1; // lunes=0
+  const lunes = new Date(now); lunes.setDate(now.getDate() - dow);
+  const domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  liqSetRango(fmt(lunes), fmt(domingo));
 }
 
 // ── CARGAR DEVOLUCIONES ───────────────────────────────────────────────────────
@@ -12480,36 +12531,42 @@ async function guardarDevolucion() {
 let _liqCalculo = null; // resultado actual del cálculo
 
 function calcularYRenderLiquidacion() {
-  const vendedorId = document.getElementById('liqVendedor')?.value;
-  const periodo    = document.getElementById('liqPeriodo')?.value;
-  if (!vendedorId) { showToast('Selecciona un vendedor', 'error'); return; }
-  if (!periodo)    { showToast('Selecciona el período', 'error'); return; }
+  const vendedorId  = document.getElementById('liqVendedor')?.value;
+  const fechaInicio = document.getElementById('liqFechaInicio')?.value;
+  const fechaFin    = document.getElementById('liqFechaFin')?.value;
+  if (!vendedorId)  { showToast('Selecciona un vendedor', 'error'); return; }
+  if (!fechaInicio) { showToast('Selecciona la fecha de inicio', 'error'); return; }
+  if (!fechaFin)    { showToast('Selecciona la fecha de fin', 'error'); return; }
+  if (fechaInicio > fechaFin) { showToast('La fecha de inicio debe ser antes de la fecha fin', 'error'); return; }
 
-  const [year, month] = periodo.split('-').map(Number);
+  const dInicio = new Date(fechaInicio + 'T00:00:00');
+  const dFin    = new Date(fechaFin    + 'T23:59:59');
 
   const ventasPeriodo = ventas.filter(v => {
     if (String(v.vendedor) !== String(vendedorId)) return false;
     const d = new Date(v.fecha + 'T12:00:00');
-    return d.getFullYear() === year && d.getMonth()+1 === month;
+    return d >= dInicio && d <= dFin;
   });
 
   const devolucionesPeriodo = devoluciones.filter(d => {
     if (String(d.vendedor) !== String(vendedorId)) return false;
     const fd = new Date(d.fechaDevolucion + 'T12:00:00');
-    return fd.getFullYear() === year && fd.getMonth()+1 === month;
+    return fd >= dInicio && fd <= dFin;
   });
 
-  const vendedor      = usuarios.find(u => String(u.id) === String(vendedorId));
-  const pctComision   = (vendedor?.comision != null ? vendedor.comision : (parametros.comisionVentas||10)) / 100;
+  const vendedor    = usuarios.find(u => String(u.id) === String(vendedorId));
+  const pctComision = (vendedor?.comision != null ? vendedor.comision : (parametros.comisionVentas||10)) / 100;
 
-  const totalVentas        = ventasPeriodo.reduce((s,v) => s + (v.total||0), 0);
-  const utilidadBruta      = ventasPeriodo.reduce((s,v) => s + (v.utilidadBruta||0), 0);
-  const comisionBruta      = utilidadBruta * pctComision;
-  const utilidadDev        = devolucionesPeriodo.reduce((s,d) => s + (d.utilidadDevuelta||0), 0);
-  const comisionDev        = devolucionesPeriodo.reduce((s,d) => s + (d.comisionADescontar||0), 0);
-  const comisionNeta       = Math.max(0, comisionBruta - comisionDev);
+  const totalVentas   = ventasPeriodo.reduce((s,v) => s + (v.total||0), 0);
+  const utilidadBruta = ventasPeriodo.reduce((s,v) => s + (v.utilidadBruta||0), 0);
+  const comisionBruta = utilidadBruta * pctComision;
+  const utilidadDev   = devolucionesPeriodo.reduce((s,d) => s + (d.utilidadDevuelta||0), 0);
+  const comisionDev   = devolucionesPeriodo.reduce((s,d) => s + (d.comisionADescontar||0), 0);
+  const comisionNeta  = Math.max(0, comisionBruta - comisionDev);
+  const periodo       = `${fechaInicio} al ${fechaFin}`;
 
-  _liqCalculo = { vendedorId, vendedorNombre: vendedor?.nombre||vendedorId, periodo, pctComision,
+  _liqCalculo = { vendedorId, vendedorNombre: vendedor?.nombre||vendedorId, periodo,
+    fechaInicio, fechaFin, pctComision,
     ventasPeriodo, devolucionesPeriodo, totalVentas, utilidadBruta, comisionBruta,
     utilidadDev, comisionDev, comisionNeta };
 
