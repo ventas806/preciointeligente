@@ -610,6 +610,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
       <button class="nav-tab" onclick="showTab('ventas')" id="tabVentas">🛒 Ventas</button>
       <button class="nav-tab" onclick="showTab('cotizaciones')" id="tabCotizaciones" data-role="admin gerencia ventas">📋 Cotizaciones</button>
       <button class="nav-tab" onclick="showTab('cobros')" id="tabCobros" data-role="admin gerencia ventas">💰 Cobros <span id="badgeCobros" style="display:none;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
+      <button class="nav-tab" onclick="showTab('inventario')" id="tabInventario" data-role="admin gerencia">📊 Inventario</button>
       <button class="nav-tab" onclick="showTab('parametros')" id="tabParametros" data-role="admin gerencia">⚙️ Parámetros</button>
       <button class="nav-tab" onclick="showTab('historial')" id="tabHistorial" data-role="admin gerencia">🕓 Historial</button>
       <button class="nav-tab" onclick="showTab('aprobacion')" id="tabAprobacion" data-role="admin">🔔 Aprobaciones <span id="badgePendientes" style="display:none;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
@@ -877,6 +878,186 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
         <div class="table-wrap"><table><thead><tr>
           <th>Producto</th><th>SKU</th><th>Categ.</th><th>ROI %</th><th>Utilidad×Cant.</th><th>Precio Venta</th>
         </tr></thead><tbody id="topProdTbody"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- INVENTARIO INTELIGENTE -->
+    <div class="tab-content" id="tab-inventario">
+
+      <!-- Sub-nav -->
+      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="invSubStock"   onclick="invShowSub('stock')">📦 Estado de Stock</button>
+        <button class="btn btn-ghost"   id="invSubOrdenes" onclick="invShowSub('ordenes')">🚢 Órdenes de Compra</button>
+      </div>
+
+      <!-- ===== PANEL ESTADO DE STOCK ===== -->
+      <div id="invPanelStock">
+
+        <!-- Tarjetas resumen -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px" id="invCards">
+          <div class="card" style="cursor:pointer;border-left:4px solid #00c8a0" onclick="invFiltrarEstado('en_stock')">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px">EN STOCK</div>
+            <div id="invCntEnStock" style="font-size:28px;font-weight:800;color:#00c8a0">—</div>
+          </div>
+          <div class="card" style="cursor:pointer;border-left:4px solid #f5a623" onclick="invFiltrarEstado('bajo')">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px">BAJO EN STOCK</div>
+            <div id="invCntBajo" style="font-size:28px;font-weight:800;color:#f5a623">—</div>
+          </div>
+          <div class="card" style="cursor:pointer;border-left:4px solid #ff4757" onclick="invFiltrarEstado('agotado')">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px">AGOTADO · SIN PEDIDO</div>
+            <div id="invCntAgotado" style="font-size:28px;font-weight:800;color:#ff4757">—</div>
+          </div>
+          <div class="card" style="cursor:pointer;border-left:4px solid #a29bfe" onclick="invFiltrarEstado('en_camino')">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px">AGOTADO · EN CAMINO</div>
+            <div id="invCntEnCamino" style="font-size:28px;font-weight:800;color:#a29bfe">—</div>
+          </div>
+        </div>
+
+        <!-- Filtros -->
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+          <input type="text" id="invBuscar" placeholder="🔍 Buscar SKU, nombre..." oninput="renderTablaInventario()"
+            style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none;min-width:200px">
+          <select id="invFiltEstado" onchange="renderTablaInventario()"
+            style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+            <option value="">Todos los estados</option>
+            <option value="en_stock">En Stock</option>
+            <option value="bajo">Bajo en Stock</option>
+            <option value="agotado">Agotado · Sin Pedido</option>
+            <option value="en_camino">Agotado · En Camino</option>
+          </select>
+          <select id="invFiltCat" onchange="renderTablaInventario()"
+            style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+            <option value="">Todas las categorías</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="invFiltrarEstado('')">✕ Limpiar filtro</button>
+        </div>
+
+        <!-- Tabla -->
+        <div class="card" style="padding:0;overflow:hidden">
+          <div class="table-wrap">
+            <table id="tablaInventario">
+              <thead><tr id="invThead">
+                <th>Producto</th>
+                <th>SKU</th>
+                <th>Categoría</th>
+                <th style="text-align:center">Estado Stock</th>
+                <th style="text-align:center">Cant.</th>
+                <th style="text-align:center">Mín.</th>
+                <th style="text-align:center">Acciones</th>
+              </tr></thead>
+              <tbody id="tbodyInventario"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PANEL ÓRDENES DE COMPRA ===== -->
+      <div id="invPanelOrdenes" style="display:none">
+
+        <!-- Botón nueva orden -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="font-size:13px;color:var(--text2)" id="invOrdenesSubtitle"></div>
+          <button class="btn btn-primary btn-sm" onclick="abrirModalOrden()">+ Nueva Orden</button>
+        </div>
+
+        <!-- Filtro estado -->
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+          <select id="invOrdFiltEstado" onchange="renderOrdenesCompra()"
+            style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+            <option value="">Todas las órdenes</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="en_transito">En Tránsito</option>
+            <option value="recibida">Recibida</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+          <input type="text" id="invOrdBuscar" placeholder="🔍 Buscar producto, SKU..." oninput="renderOrdenesCompra()"
+            style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none;min-width:200px">
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden">
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Producto</th>
+                <th>SKU</th>
+                <th>Proveedor</th>
+                <th style="text-align:center">Cant. Ordenada</th>
+                <th style="text-align:center">Cant. Recibida</th>
+                <th>Fecha Orden</th>
+                <th>Llega Estimado</th>
+                <th style="text-align:center">Estado</th>
+                <th>Notas</th>
+                <th style="text-align:center">Acciones</th>
+              </tr></thead>
+              <tbody id="tbodyOrdenes"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /tab-inventario -->
+
+    <!-- Modal Nueva/Editar Orden de Compra -->
+    <div id="modalOrden" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);align-items:center;justify-content:center">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:28px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+          <div style="font-size:16px;font-weight:700" id="modalOrdenTitulo">🚢 Nueva Orden de Compra</div>
+          <button onclick="cerrarModalOrden()" style="background:transparent;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>
+        </div>
+        <div class="form-grid fg2" style="gap:14px">
+          <input type="hidden" id="ordenId">
+          <div class="form-field field-full">
+            <label>Producto *</label>
+            <input type="text" id="ordenProdBuscar" placeholder="🔍 Buscar SKU o nombre..." oninput="buscarProdOrden(this.value)"
+              style="width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+            <div id="ordenProdResultados" style="display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);max-height:150px;overflow-y:auto;margin-top:4px"></div>
+            <div id="ordenProdSeleccionado" style="display:none;margin-top:6px;padding:8px 12px;background:rgba(0,200,160,.1);border:1px solid rgba(0,200,160,.3);border-radius:8px;font-size:13px;color:var(--accent3)"></div>
+            <input type="hidden" id="ordenProductoId">
+            <input type="hidden" id="ordenSku">
+            <input type="hidden" id="ordenProductoNombre">
+          </div>
+          <div class="form-field">
+            <label>Proveedor</label>
+            <input type="text" id="ordenProveedor" placeholder="Nombre del proveedor">
+          </div>
+          <div class="form-field">
+            <label>Cantidad Ordenada *</label>
+            <input type="number" id="ordenCantidad" min="1" placeholder="0">
+          </div>
+          <div class="form-field">
+            <label>Costo Unitario (USD)</label>
+            <input type="number" id="ordenCosto" min="0" step="0.01" placeholder="0.00">
+          </div>
+          <div class="form-field">
+            <label>Fecha de Orden</label>
+            <input type="date" id="ordenFecha">
+          </div>
+          <div class="form-field">
+            <label>Fecha Estimada de Llegada</label>
+            <input type="date" id="ordenFechaEstimada">
+          </div>
+          <div class="form-field">
+            <label>Estado</label>
+            <select id="ordenEstado" style="width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+              <option value="pendiente">Pendiente</option>
+              <option value="en_transito">En Tránsito 🚢</option>
+              <option value="recibida">Recibida ✅</option>
+              <option value="cancelada">Cancelada ✕</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Cant. Recibida</label>
+            <input type="number" id="ordenCantRecibida" min="0" placeholder="0">
+          </div>
+          <div class="form-field field-full">
+            <label>Notas</label>
+            <textarea id="ordenNotas" placeholder="Observaciones, número de tracking, etc." style="min-height:60px"></textarea>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+          <button class="btn btn-ghost" onclick="cerrarModalOrden()">Cancelar</button>
+          <button class="btn btn-primary" onclick="guardarOrden()">💾 Guardar Orden</button>
+        </div>
       </div>
     </div>
 
@@ -2602,8 +2783,8 @@ function fmtFecha(v) {
 
 // ===== LOGIN =====
 const PERMS = {
-  admin:    {verCostos:true, verUtilidad:true, editarPrecios:true, aprobarDescuentos:true, cambiarFormulas:true, adminUsuarios:true, verHistorial:true, borrarHistorial:true, puedePendiente:false, puedeAprobar:true, tabs:['dashboard','productos','ingresar','aprobacion','resumen','exportar','etiquetas','combos','ventas','cotizaciones','cobros','parametros','historial','usuarios']},
-  gerencia: {verCostos:true, verUtilidad:true, editarPrecios:true, aprobarDescuentos:true, cambiarFormulas:false, adminUsuarios:false, verHistorial:true, borrarHistorial:false, puedePendiente:true, puedeAprobar:true, tabs:['dashboard','productos','ingresar','aprobacion','resumen','exportar','etiquetas','combos','ventas','cotizaciones','cobros','parametros','historial']},
+  admin:    {verCostos:true, verUtilidad:true, editarPrecios:true, aprobarDescuentos:true, cambiarFormulas:true, adminUsuarios:true, verHistorial:true, borrarHistorial:true, puedePendiente:false, puedeAprobar:true, tabs:['dashboard','productos','ingresar','aprobacion','resumen','exportar','etiquetas','combos','ventas','cotizaciones','cobros','parametros','historial','usuarios','inventario']},
+  gerencia: {verCostos:true, verUtilidad:true, editarPrecios:true, aprobarDescuentos:true, cambiarFormulas:false, adminUsuarios:false, verHistorial:true, borrarHistorial:false, puedePendiente:true, puedeAprobar:true, tabs:['dashboard','productos','ingresar','aprobacion','resumen','exportar','etiquetas','combos','ventas','cotizaciones','cobros','parametros','historial','inventario']},
   ventas:   {verCostos:false, verUtilidad:false, editarPrecios:false, aprobarDescuentos:false, cambiarFormulas:false, adminUsuarios:false, verHistorial:false, borrarHistorial:false, puedePendiente:false, puedeAprobar:false, tabs:['dashboard','productos','resumen','exportar','etiquetas','combos','ventas','cotizaciones','cobros']},
   bodega:   {verCostos:false, verUtilidad:false, editarPrecios:false, aprobarDescuentos:false, cambiarFormulas:false, adminUsuarios:false, verHistorial:false, borrarHistorial:false, puedePendiente:false, puedeAprobar:false, tabs:['dashboard','productos','etiquetas']},
   externo:  {verCostos:false, verUtilidad:false, editarPrecios:false, aprobarDescuentos:false, cambiarFormulas:false, adminUsuarios:false, verHistorial:false, borrarHistorial:false, puedePendiente:false, puedeAprobar:false, tabs:['productos']}
@@ -3023,6 +3204,7 @@ function showTab(name) {
   if(name==='ventas') { initVentas(); }
   if(name==='cobros') { renderCobros(); }
   if(name==='cotizaciones') { initCotizaciones(); }
+  if(name==='inventario') { initInventario(); }
 }
 
 // ===== DASHBOARD =====
@@ -3079,7 +3261,7 @@ function renderDashboard() {
 // ===== TABLA PRODUCTOS =====
 function getHeadersPorRol() {
   const perms = PERMS[currentUser.rol];
-  const base = [{k:'img',l:'IMG'},{k:'sku',l:'SKU'},{k:'producto',l:'Producto'},{k:'estado',l:'Estado'},{k:'cantidad',l:'Cant.'},{k:'notaRapida',l:'Nota'},{k:'webPublicado',l:'🌐 Web'},{k:'link',l:'🔗'},{k:'wix',l:'🛒'},{k:'descVend',l:'💰'}];
+  const base = [{k:'img',l:'IMG'},{k:'sku',l:'SKU'},{k:'producto',l:'Producto'},{k:'estado',l:'Estado'},{k:'cantidad',l:'Cant.'},{k:'notaRapida',l:'Nota'},{k:'webPublicado',l:'🌐 Web'},{k:'invelec',l:'INVELEC'},{k:'link',l:'🔗'},{k:'wix',l:'🛒'},{k:'descVend',l:'💰'}];
   const costFields  = [{k:'costoTotalLPS',l:'Costo LPS'}];
   const priceFields = [{k:'descMax',l:'Desc.MAX'},{k:'precioConDesc',l:'Precio c/Desc'}];
   const utilFields  = [{k:'utilBrutaLPS',l:'Utilidad LPS'},{k:'roi',l:'ROI %'}];
@@ -3145,9 +3327,7 @@ function renderTablaProductos() {
   // Alertas banner
   const lowStock = productos.filter(p=>(parseInt(p.minStock)||0) > 0 && (parseInt(p.cantidad)||0) <= parseInt(p.minStock));
   const alertaEl = document.getElementById('alertasBanner');
-  if(lowStock.length > 0) {
-    alertaEl.innerHTML = `<div class="alert-banner"><div class="alert-icon">⚠️</div><div class="alert-text"><strong>${lowStock.length} producto(s) con stock bajo o igual al mínimo:</strong> ${lowStock.map(p=>p.producto).join(', ')}</div></div>`;
-  } else { alertaEl.innerHTML=''; }
+  if (alertaEl) alertaEl.innerHTML = '';
 
   const tbody = document.getElementById('tbodyProductos');
   if(prods.length===0) {
@@ -11431,6 +11611,330 @@ async function actualizarStockRapido(prodId, nuevoValor) {
     if (saving) saving.style.display = 'none';
     if (typeof showToast === 'function') showToast('❌ ' + e.message, 'error');
   }
+}
+</script>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!--  MÓDULO INVENTARIO INTELIGENTE                    -->
+<!-- ══════════════════════════════════════════════════ -->
+<script>
+let ordenesCompra = [];
+let _invSubActivo = 'stock';
+
+const INV_ESTADOS = {
+  en_stock:  { label: 'En Stock',             color: '#00c8a0', bg: 'rgba(0,200,160,.15)',   icon: '✅' },
+  bajo:      { label: 'Bajo en Stock',         color: '#f5a623', bg: 'rgba(245,166,35,.15)',  icon: '⚠️' },
+  agotado:   { label: 'Agotado · Sin Pedido',  color: '#ff4757', bg: 'rgba(255,71,87,.15)',   icon: '❌' },
+  en_camino: { label: 'Agotado · En Camino',   color: '#a29bfe', bg: 'rgba(108,92,231,.15)',  icon: '🚢' },
+};
+
+function calcEstadoStock(p) {
+  const cant = parseInt(p.cantidad) || 0;
+  const min  = parseInt(p.minStock) || 0;
+  if (cant <= 0) {
+    const tieneOrden = ordenesCompra.some(o =>
+      o.productoId === p.id && ['pendiente','en_transito'].includes(o.estado)
+    );
+    return tieneOrden ? 'en_camino' : 'agotado';
+  }
+  if (min > 0 && cant <= min) return 'bajo';
+  return 'en_stock';
+}
+
+function badgeEstadoStock(estado) {
+  const e = INV_ESTADOS[estado] || INV_ESTADOS.en_stock;
+  return `<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;color:${e.color};background:${e.bg};white-space:nowrap">${e.icon} ${e.label}</span>`;
+}
+
+async function initInventario() {
+  await cargarOrdenesCompra();
+  invShowSub(_invSubActivo);
+  poblarFiltrosCatInv();
+}
+
+function invShowSub(sub) {
+  _invSubActivo = sub;
+  document.getElementById('invPanelStock').style.display   = sub === 'stock'   ? '' : 'none';
+  document.getElementById('invPanelOrdenes').style.display = sub === 'ordenes' ? '' : 'none';
+  document.getElementById('invSubStock').className   = sub === 'stock'   ? 'btn btn-primary' : 'btn btn-ghost';
+  document.getElementById('invSubOrdenes').className = sub === 'ordenes' ? 'btn btn-primary' : 'btn btn-ghost';
+  if (sub === 'stock')   renderTablaInventario();
+  if (sub === 'ordenes') renderOrdenesCompra();
+}
+
+function poblarFiltrosCatInv() {
+  const sel = document.getElementById('invFiltCat');
+  if (!sel) return;
+  const cats = [...new Set(productos.map(p => p.categoria).filter(Boolean))].sort();
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todas las categorías</option>' +
+    cats.map(c => `<option value="${c}"${c===cur?' selected':''}>${c}</option>`).join('');
+}
+
+function invFiltrarEstado(estado) {
+  const sel = document.getElementById('invFiltEstado');
+  if (sel) sel.value = estado;
+  renderTablaInventario();
+}
+
+function renderTablaInventario() {
+  const q      = (document.getElementById('invBuscar')?.value || '').toLowerCase().trim();
+  const filtEst = document.getElementById('invFiltEstado')?.value || '';
+  const filtCat = document.getElementById('invFiltCat')?.value || '';
+
+  let lista = productos.filter(p => {
+    if (q && !p.producto.toLowerCase().includes(q) && !p.sku.toLowerCase().includes(q)) return false;
+    if (filtCat && p.categoria !== filtCat) return false;
+    const est = calcEstadoStock(p);
+    if (filtEst && est !== filtEst) return false;
+    return true;
+  });
+
+  // Orden: agotado sin pedido → en camino → bajo → en stock
+  const orden = { agotado: 0, en_camino: 1, bajo: 2, en_stock: 3 };
+  lista.sort((a, b) => orden[calcEstadoStock(a)] - orden[calcEstadoStock(b)]);
+
+  // Actualizar tarjetas resumen (siempre con todos los productos)
+  const todos = productos.map(p => calcEstadoStock(p));
+  document.getElementById('invCntEnStock').textContent  = todos.filter(e => e === 'en_stock').length;
+  document.getElementById('invCntBajo').textContent     = todos.filter(e => e === 'bajo').length;
+  document.getElementById('invCntAgotado').textContent  = todos.filter(e => e === 'agotado').length;
+  document.getElementById('invCntEnCamino').textContent = todos.filter(e => e === 'en_camino').length;
+
+  const tbody = document.getElementById('tbodyInventario');
+  if (!tbody) return;
+
+  if (!lista.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3)">Sin resultados</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = lista.map(p => {
+    const est   = calcEstadoStock(p);
+    const cant  = parseInt(p.cantidad) || 0;
+    const min   = parseInt(p.minStock) || 0;
+    const ordActivas = ordenesCompra.filter(o => o.productoId === p.id && ['pendiente','en_transito'].includes(o.estado));
+    const enCamino = ordActivas.reduce((s, o) => s + (parseInt(o.cantidadOrdenada) || 0), 0);
+    return `<tr>
+      <td style="font-weight:600;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.producto}">${p.producto}</td>
+      <td class="td-sku">${p.sku}</td>
+      <td style="color:var(--text2)">${p.categoria || '—'}</td>
+      <td style="text-align:center">${badgeEstadoStock(est)}</td>
+      <td style="text-align:center;font-weight:700;color:${cant===0?'var(--red)':cant<=min?'var(--gold)':'var(--green)'}">${cant}</td>
+      <td style="text-align:center;color:var(--text3)">${min || '—'}</td>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="abrirModalOrden('${p.id}')" title="Crear orden de compra">🚢 Ordenar</button>
+        ${enCamino > 0 ? `<span style="font-size:10px;color:#a29bfe;margin-left:4px">+${enCamino} en camino</span>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── ÓRDENES DE COMPRA ────────────────────────────────────────────────────────
+
+async function cargarOrdenesCompra() {
+  try {
+    const { data, error } = await sb.from('ordenes_compra')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    ordenesCompra = (data || []).map(r => ({
+      id:               r.id,
+      productoId:       r.producto_id,
+      sku:              r.sku,
+      producto:         r.producto,
+      proveedor:        r.proveedor || '',
+      cantidadOrdenada: r.cantidad_ordenada || 0,
+      cantidadRecibida: r.cantidad_recibida || 0,
+      costoUnitario:    r.costo_unitario || 0,
+      fechaOrden:       r.fecha_orden || '',
+      fechaEstimada:    r.fecha_estimada || '',
+      estado:           r.estado || 'pendiente',
+      notas:            r.notas || '',
+      creadoPor:        r.creado_por || '',
+    }));
+  } catch(e) {
+    console.error('Error cargando órdenes:', e);
+  }
+}
+
+const ORD_EST_LABELS = {
+  pendiente:    { label: 'Pendiente',    color: '#f5a623', bg: 'rgba(245,166,35,.15)'  },
+  en_transito:  { label: 'En Tránsito 🚢', color: '#a29bfe', bg: 'rgba(108,92,231,.15)' },
+  recibida:     { label: 'Recibida ✅',  color: '#00c8a0', bg: 'rgba(0,200,160,.15)'   },
+  cancelada:    { label: 'Cancelada',    color: '#636e72', bg: 'rgba(99,110,114,.15)'   },
+};
+
+function renderOrdenesCompra() {
+  const q       = (document.getElementById('invOrdBuscar')?.value || '').toLowerCase();
+  const filtEst = document.getElementById('invOrdFiltEstado')?.value || '';
+  const tbody   = document.getElementById('tbodyOrdenes');
+  if (!tbody) return;
+
+  let lista = ordenesCompra.filter(o => {
+    if (filtEst && o.estado !== filtEst) return false;
+    if (q && !o.producto.toLowerCase().includes(q) && !o.sku.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  const sub = document.getElementById('invOrdenesSubtitle');
+  if (sub) sub.textContent = `${lista.length} orden(es)`;
+
+  if (!lista.length) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text3)">Sin órdenes registradas</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = lista.map(o => {
+    const est = ORD_EST_LABELS[o.estado] || ORD_EST_LABELS.pendiente;
+    const badge = `<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:${est.color};background:${est.bg}">${est.label}</span>`;
+    return `<tr>
+      <td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.producto}">${o.producto}</td>
+      <td class="td-sku">${o.sku}</td>
+      <td>${o.proveedor || '—'}</td>
+      <td style="text-align:center;font-weight:700">${o.cantidadOrdenada}</td>
+      <td style="text-align:center;color:${o.cantidadRecibida>0?'var(--green)':'var(--text3)'}">${o.cantidadRecibida}</td>
+      <td>${o.fechaOrden || '—'}</td>
+      <td style="color:${o.fechaEstimada?'var(--accent3)':'var(--text3)'}">${o.fechaEstimada || '—'}</td>
+      <td>${badge}</td>
+      <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)" title="${o.notas}">${o.notas || '—'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="editarOrden('${o.id}')">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="eliminarOrden('${o.id}')">🗑️</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function abrirModalOrden(productoId) {
+  // Limpiar formulario
+  document.getElementById('ordenId').value = '';
+  document.getElementById('modalOrdenTitulo').textContent = '🚢 Nueva Orden de Compra';
+  document.getElementById('ordenProdBuscar').value = '';
+  document.getElementById('ordenProdResultados').style.display = 'none';
+  document.getElementById('ordenProdSeleccionado').style.display = 'none';
+  document.getElementById('ordenProductoId').value = '';
+  document.getElementById('ordenSku').value = '';
+  document.getElementById('ordenProductoNombre').value = '';
+  document.getElementById('ordenProveedor').value = '';
+  document.getElementById('ordenCantidad').value = '';
+  document.getElementById('ordenCosto').value = '';
+  document.getElementById('ordenFecha').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('ordenFechaEstimada').value = '';
+  document.getElementById('ordenEstado').value = 'pendiente';
+  document.getElementById('ordenCantRecibida').value = '0';
+  document.getElementById('ordenNotas').value = '';
+
+  // Si viene con productoId preseleccionado
+  if (productoId) {
+    const p = productos.find(x => x.id === productoId);
+    if (p) seleccionarProdOrden(p.id, p.sku, p.producto);
+  }
+
+  const modal = document.getElementById('modalOrden');
+  modal.style.display = 'flex';
+}
+
+function cerrarModalOrden() {
+  document.getElementById('modalOrden').style.display = 'none';
+}
+
+function buscarProdOrden(q) {
+  const res = document.getElementById('ordenProdResultados');
+  if (!q.trim()) { res.style.display = 'none'; return; }
+  const matches = productos
+    .filter(p => p.producto.toLowerCase().includes(q.toLowerCase()) || p.sku.toLowerCase().includes(q.toLowerCase()))
+    .slice(0, 8);
+  if (!matches.length) { res.style.display = 'none'; return; }
+  res.innerHTML = matches.map(p =>
+    `<div onclick="seleccionarProdOrden('${p.id}','${p.sku}','${p.producto.replace(/'/g,"&apos;")}')"
+      style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px"
+      onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
+      <strong>${p.producto}</strong> <span style="color:var(--text3);font-size:11px">SKU: ${p.sku}</span>
+    </div>`
+  ).join('');
+  res.style.display = 'block';
+}
+
+function seleccionarProdOrden(id, sku, nombre) {
+  document.getElementById('ordenProductoId').value = id;
+  document.getElementById('ordenSku').value = sku;
+  document.getElementById('ordenProductoNombre').value = nombre;
+  document.getElementById('ordenProdBuscar').value = nombre;
+  document.getElementById('ordenProdResultados').style.display = 'none';
+  const sel = document.getElementById('ordenProdSeleccionado');
+  sel.textContent = `✅ ${nombre} (SKU: ${sku})`;
+  sel.style.display = 'block';
+}
+
+async function guardarOrden() {
+  const productoId = document.getElementById('ordenProductoId').value;
+  const sku        = document.getElementById('ordenSku').value;
+  const nombre     = document.getElementById('ordenProductoNombre').value;
+  const cant       = parseInt(document.getElementById('ordenCantidad').value) || 0;
+
+  if (!sku || !nombre)  { showToast('⚠️ Selecciona un producto', 'error'); return; }
+  if (cant <= 0)        { showToast('⚠️ Ingresa una cantidad válida', 'error'); return; }
+
+  const row = {
+    producto_id:       productoId || null,
+    sku,
+    producto:          nombre,
+    proveedor:         document.getElementById('ordenProveedor').value.trim(),
+    cantidad_ordenada: cant,
+    cantidad_recibida: parseInt(document.getElementById('ordenCantRecibida').value) || 0,
+    costo_unitario:    parseFloat(document.getElementById('ordenCosto').value) || 0,
+    fecha_orden:       document.getElementById('ordenFecha').value || new Date().toISOString().slice(0,10),
+    fecha_estimada:    document.getElementById('ordenFechaEstimada').value || null,
+    estado:            document.getElementById('ordenEstado').value,
+    notas:             document.getElementById('ordenNotas').value.trim(),
+    creado_por:        currentUser?.user || '',
+    updated_at:        new Date().toISOString(),
+  };
+
+  const ordenId = document.getElementById('ordenId').value;
+  let error;
+  if (ordenId) {
+    ({ error } = await sb.from('ordenes_compra').update(row).eq('id', ordenId));
+  } else {
+    ({ error } = await sb.from('ordenes_compra').insert(row));
+  }
+
+  if (error) { showToast('❌ Error: ' + error.message, 'error'); return; }
+
+  showToast(ordenId ? '✅ Orden actualizada' : '✅ Orden creada', 'success');
+  cerrarModalOrden();
+  await cargarOrdenesCompra();
+  renderOrdenesCompra();
+  renderTablaInventario();
+}
+
+function editarOrden(id) {
+  const o = ordenesCompra.find(x => x.id === id);
+  if (!o) return;
+  document.getElementById('ordenId').value = o.id;
+  document.getElementById('modalOrdenTitulo').textContent = '✏️ Editar Orden de Compra';
+  seleccionarProdOrden(o.productoId || '', o.sku, o.producto);
+  document.getElementById('ordenProveedor').value      = o.proveedor;
+  document.getElementById('ordenCantidad').value       = o.cantidadOrdenada;
+  document.getElementById('ordenCantRecibida').value   = o.cantidadRecibida;
+  document.getElementById('ordenCosto').value          = o.costoUnitario;
+  document.getElementById('ordenFecha').value          = o.fechaOrden;
+  document.getElementById('ordenFechaEstimada').value  = o.fechaEstimada;
+  document.getElementById('ordenEstado').value         = o.estado;
+  document.getElementById('ordenNotas').value          = o.notas;
+  const modal = document.getElementById('modalOrden');
+  modal.style.display = 'flex';
+}
+
+async function eliminarOrden(id) {
+  if (!confirm('¿Eliminar esta orden de compra?')) return;
+  const { error } = await sb.from('ordenes_compra').delete().eq('id', id);
+  if (error) { showToast('❌ Error: ' + error.message, 'error'); return; }
+  showToast('🗑️ Orden eliminada', 'info');
+  await cargarOrdenesCompra();
+  renderOrdenesCompra();
+  renderTablaInventario();
 }
 </script>
 </body>
