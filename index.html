@@ -894,7 +894,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
       <div id="invPanelStock">
 
         <!-- Tarjetas resumen -->
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px" id="invCards">
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px" id="invCards">
           <div class="card" style="cursor:pointer;border-left:4px solid #00c8a0" onclick="invFiltrarEstado('en_stock')">
             <div style="font-size:11px;color:var(--text3);margin-bottom:4px">EN STOCK</div>
             <div id="invCntEnStock" style="font-size:28px;font-weight:800;color:#00c8a0">—</div>
@@ -911,6 +911,10 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             <div style="font-size:11px;color:var(--text3);margin-bottom:4px">AGOTADO · EN CAMINO</div>
             <div id="invCntEnCamino" style="font-size:28px;font-weight:800;color:#a29bfe">—</div>
           </div>
+          <div class="card" style="cursor:pointer;border-left:4px solid #636e72" onclick="invFiltrarEstado('descontinuado')">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px">DESCONTINUADO 🚫</div>
+            <div id="invCntDescontinuado" style="font-size:28px;font-weight:800;color:#636e72">—</div>
+          </div>
         </div>
 
         <!-- Filtros -->
@@ -924,6 +928,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             <option value="bajo">Bajo en Stock</option>
             <option value="agotado">Agotado · Sin Pedido</option>
             <option value="en_camino">Agotado · En Camino</option>
+            <option value="descontinuado">🚫 Descontinuado</option>
           </select>
           <select id="invFiltCat" onchange="renderTablaInventario()"
             style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
@@ -937,6 +942,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
           <div class="table-wrap">
             <table id="tablaInventario">
               <thead><tr id="invThead">
+                <th style="text-align:center;width:48px">IMG</th>
                 <th>Producto</th>
                 <th>SKU</th>
                 <th>Categoría</th>
@@ -2203,7 +2209,8 @@ function rowToProducto(r) {
     imagen:        r.imagen        || null,
     notaRapida:    r.nota_rapida   || '',
     webPublicado:  r.web_publicado || false,
-    invelec:       r.invelec       || false,
+    invelec:        r.invelec        || false,
+    descontinuado:  r.descontinuado  || false,
     fechaIngreso:  r.fecha_ingreso || '',
     ultimaModif:   r.ultima_modif  || ''
   };
@@ -2243,6 +2250,7 @@ function productoToRow(p) {
     nota_rapida:    sanitizarTexto(p.notaRapida).substring(0,12),
     web_publicado:  p.webPublicado   || false,
     invelec:        p.invelec        || false,
+    descontinuado:  p.descontinuado  || false,
     fecha_ingreso:  p.fechaIngreso   || new Date().toISOString(),
     ultima_modif:   p.ultimaModif    || new Date().toISOString(),
     ingresado_por:  p.ingresadoPor   || (currentUser ? currentUser.user : '')
@@ -11624,13 +11632,15 @@ let ordenesCompra = [];
 let _invSubActivo = 'stock';
 
 const INV_ESTADOS = {
-  en_stock:  { label: 'En Stock',             color: '#00c8a0', bg: 'rgba(0,200,160,.15)',   icon: '✅' },
-  bajo:      { label: 'Bajo en Stock',         color: '#f5a623', bg: 'rgba(245,166,35,.15)',  icon: '⚠️' },
-  agotado:   { label: 'Agotado · Sin Pedido',  color: '#ff4757', bg: 'rgba(255,71,87,.15)',   icon: '❌' },
-  en_camino: { label: 'Agotado · En Camino',   color: '#a29bfe', bg: 'rgba(108,92,231,.15)',  icon: '🚢' },
+  en_stock:      { label: 'En Stock',             color: '#00c8a0', bg: 'rgba(0,200,160,.15)',   icon: '✅' },
+  bajo:          { label: 'Bajo en Stock',         color: '#f5a623', bg: 'rgba(245,166,35,.15)',  icon: '⚠️' },
+  agotado:       { label: 'Agotado · Sin Pedido',  color: '#ff4757', bg: 'rgba(255,71,87,.15)',   icon: '❌' },
+  en_camino:     { label: 'Agotado · En Camino',   color: '#a29bfe', bg: 'rgba(108,92,231,.15)',  icon: '🚢' },
+  descontinuado: { label: 'Descontinuado',          color: '#636e72', bg: 'rgba(99,110,114,.15)',  icon: '🚫' },
 };
 
 function calcEstadoStock(p) {
+  if (p.descontinuado) return 'descontinuado';
   const cant = parseInt(p.cantidad) || 0;
   const min  = parseInt(p.minStock) || 0;
   if (cant <= 0) {
@@ -11684,7 +11694,12 @@ function renderTablaInventario() {
   const filtEst = document.getElementById('invFiltEstado')?.value || '';
   const filtCat = document.getElementById('invFiltCat')?.value || '';
 
+  const mostrandoDesc = filtEst === 'descontinuado';
+
   let lista = productos.filter(p => {
+    // Descontinuados solo aparecen cuando el filtro los pide explícitamente
+    if (mostrandoDesc) return p.descontinuado === true;
+    if (p.descontinuado) return false;
     if (q && !p.producto.toLowerCase().includes(q) && !p.sku.toLowerCase().includes(q)) return false;
     if (filtCat && p.categoria !== filtCat) return false;
     const est = calcEstadoStock(p);
@@ -11696,18 +11711,20 @@ function renderTablaInventario() {
   const orden = { agotado: 0, en_camino: 1, bajo: 2, en_stock: 3 };
   lista.sort((a, b) => orden[calcEstadoStock(a)] - orden[calcEstadoStock(b)]);
 
-  // Actualizar tarjetas resumen (siempre con todos los productos)
-  const todos = productos.map(p => calcEstadoStock(p));
+  // Actualizar tarjetas resumen (solo productos activos para los 4 estados)
+  const activos = productos.filter(p => !p.descontinuado);
+  const todos = activos.map(p => calcEstadoStock(p));
   document.getElementById('invCntEnStock').textContent  = todos.filter(e => e === 'en_stock').length;
   document.getElementById('invCntBajo').textContent     = todos.filter(e => e === 'bajo').length;
   document.getElementById('invCntAgotado').textContent  = todos.filter(e => e === 'agotado').length;
   document.getElementById('invCntEnCamino').textContent = todos.filter(e => e === 'en_camino').length;
+  document.getElementById('invCntDescontinuado').textContent = productos.filter(p => p.descontinuado).length;
 
   const tbody = document.getElementById('tbodyInventario');
   if (!tbody) return;
 
   if (!lista.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3)">Sin resultados</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text3)">Sin resultados</td></tr>`;
     return;
   }
 
@@ -11717,8 +11734,13 @@ function renderTablaInventario() {
     const min   = parseInt(p.minStock) || 0;
     const ordActivas = ordenesCompra.filter(o => o.productoId === p.id && ['pendiente','en_transito'].includes(o.estado));
     const enCamino = ordActivas.reduce((s, o) => s + (parseInt(o.cantidadOrdenada) || 0), 0);
-    return `<tr>
-      <td style="font-weight:600;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.producto}">${p.producto}</td>
+    const imgCell = p.imagen
+      ? `<td style="text-align:center;padding:4px"><div class="prod-thumb" style="margin:0 auto" onmouseenter="mostrarImgPreview('${p.imagen}',event)" onmouseleave="ocultarImgPreview()"><img src="${p.imagen}" style="width:36px;height:36px;object-fit:cover;border-radius:6px"></div></td>`
+      : `<td style="text-align:center;color:var(--text3);font-size:18px">📦</td>`;
+    const rowOpacity = p.descontinuado ? 'opacity:.55;' : '';
+    return `<tr style="${rowOpacity}">
+      ${imgCell}
+      <td style="font-weight:600;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.producto}">${p.producto}</td>
       <td class="td-sku" onclick="copiarSKU('${p.sku}',this)" title="Clic para copiar SKU" style="cursor:pointer" onmouseover="this.style.color='var(--accent3)'" onmouseout="this.style.color=''">${p.sku}</td>
       <td style="color:var(--text2)">${p.categoria || '—'}</td>
       <td style="text-align:center">${badgeEstadoStock(est)}</td>
@@ -11726,12 +11748,27 @@ function renderTablaInventario() {
       <td style="text-align:center;color:var(--text3)">${min || '—'}</td>
       <td style="text-align:center">${p.url1 ? `<a href="${p.url1}" target="_blank" title="${p.url1}" style="color:var(--accent);font-size:16px;text-decoration:none">🔗</a>` : `<span style="color:var(--text3);font-size:13px">—</span>`}</td>
       <td style="text-align:center">${p.url2 ? `<a href="${p.url2}" target="_blank" title="Ver en Focus Store: ${p.url2}" style="font-size:16px;text-decoration:none;opacity:.85" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.85">🛒</a>` : `<span style="color:var(--text3);font-size:13px">—</span>`}</td>
-      <td style="text-align:center;white-space:nowrap">
-        <button class="btn btn-ghost btn-sm" onclick="abrirModalOrden('${p.id}')" title="Crear orden de compra">🚢 Ordenar</button>
-        ${enCamino > 0 ? `<span style="font-size:10px;color:#a29bfe;margin-left:4px">+${enCamino} en camino</span>` : ''}
+      <td style="text-align:center;white-space:nowrap;gap:4px">
+        ${!p.descontinuado
+          ? `<button class="btn btn-ghost btn-sm" onclick="abrirModalOrden('${p.id}')" title="Crear orden de compra">🚢 Ordenar</button>
+             ${enCamino > 0 ? `<span style="font-size:10px;color:#a29bfe;margin-left:4px">+${enCamino} en camino</span>` : ''}
+             <button class="btn btn-ghost btn-sm" onclick="toggleDescontinuado('${p.id}',true)" title="Marcar como descontinuado" style="margin-left:4px;color:#636e72">🚫</button>`
+          : `<button class="btn btn-ghost btn-sm" onclick="toggleDescontinuado('${p.id}',false)" title="Reactivar producto" style="color:var(--accent3)">♻️ Reactivar</button>`
+        }
       </td>
     </tr>`;
   }).join('');
+}
+
+async function toggleDescontinuado(id, valor) {
+  const p = productos.find(x => x.id === id);
+  if (!p) return;
+  p.descontinuado = valor;
+  p.ultimaModif = new Date().toISOString().replace('Z','').replace('T',' ').substring(0,19);
+  try { await gsSave('Productos', p); } catch(e) { console.error(e); }
+  addHistorial(`Producto "${p.producto}" marcado como ${valor ? '🚫 Descontinuado' : '♻️ Reactivado'}`, 'Inventario');
+  showToast(valor ? '🚫 Producto marcado como Descontinuado' : '♻️ Producto Reactivado', valor ? 'info' : 'success');
+  renderTablaInventario();
 }
 
 // ── ÓRDENES DE COMPRA ────────────────────────────────────────────────────────
