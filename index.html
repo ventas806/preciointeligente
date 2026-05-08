@@ -1103,6 +1103,22 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 </div>
               </td>
             </tr>
+            <tr>
+              <td>Firma (URL de imagen)</td>
+              <td>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <input type="text" id="pFirmaUrl" placeholder="https://... (URL de la imagen de firma)" style="flex:1;min-width:200px;font-size:12px"
+                    oninput="document.getElementById('pFirmaPreview').src=this.value; document.getElementById('pFirmaPreview').style.display=this.value?'block':'none'">
+                  <button class="btn btn-ghost btn-sm" onclick="guardarFirmaUrl()" style="white-space:nowrap">💾 Guardar Firma</button>
+                </div>
+                <div style="margin-top:8px">
+                  <img id="pFirmaPreview" src="" alt="Preview firma" style="display:none;max-height:64px;max-width:180px;object-fit:contain;border:1px solid var(--border);border-radius:6px;background:#fff;padding:4px">
+                </div>
+                <div style="font-size:11px;color:var(--text3);margin-top:6px">
+                  💡 Sube la imagen de la firma a <a href="https://imgur.com/upload" target="_blank" style="color:var(--accent)">imgur.com</a> y pega el link directo (.png con fondo transparente)
+                </div>
+              </td>
+            </tr>
             <tr><td>Nombre Empresa</td><td><input type="text" id="pEmpresaNombre" placeholder="FOCUS STORE"></td></tr>
             <tr><td>Slogan</td><td><input type="text" id="pEmpresaSlogan" placeholder="Fotografía · Audio · Video"></td></tr>
             <tr><td>Dirección</td><td><input type="text" id="pEmpresaDireccion" placeholder="Plaza Premier, 2do nivel · Col. Humuya · CEUTEC"></td></tr>
@@ -4377,6 +4393,12 @@ function initParametrosForm() {
   const pCom=document.getElementById('pComisionVentas'); if(pCom) pCom.value=parametros.comisionVentas||10;
   const pEnv=document.getElementById('pEnvioDefecto'); if(pEnv) pEnv.value=parametros.envioDefecto!=null?parametros.envioDefecto:120;
   // Identidad empresa
+  const pFirma=document.getElementById('pFirmaUrl');
+  if(pFirma){
+    pFirma.value=parametros.firmaUrl||'';
+    const prevF=document.getElementById('pFirmaPreview');
+    if(prevF && parametros.firmaUrl){ prevF.src=parametros.firmaUrl; prevF.style.display='block'; }
+  }
   const pLogo=document.getElementById('pLogoUrl');
   if(pLogo){
     pLogo.value=parametros.logoUrl||'';
@@ -4403,6 +4425,13 @@ async function guardarLogoUrl() {
   parametros.logoUrl = url;
   await sbSaveParametro('logoUrl', url);
   showToast('✅ Logo guardado','success');
+}
+
+async function guardarFirmaUrl() {
+  const url = (document.getElementById('pFirmaUrl')?.value||'').trim();
+  parametros.firmaUrl = url;
+  await sbSaveParametro('firmaUrl', url);
+  showToast('✅ Firma guardada','success');
 }
 
 function toggleWixKeyVisibility() {
@@ -9687,10 +9716,9 @@ function imprimirCotizacion(id) {
   const telEmp    = parametros.tel       || '+504 9916-9059';
   const emailEmp  = parametros.email     || 'ventas@focusstore.net';
 
-  // ── Nombre del vendedor para firma digital ────────────────────────────
+  // ── Vendedor / firma / sello ──────────────────────────────────────────
   const vendedorFirma = c.vendedorNombre || currentUser?.nombre || '—';
-  // Genera ID único de documento para la firma
-  const docId = (c.id||'').slice(-8).toUpperCase();
+  const firmaUrl  = parametros.firmaUrl  || '';
   const tsEmision = `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}`;
 
   // ── Productos con imagen ──────────────────────────────────────────────
@@ -9741,10 +9769,11 @@ td{padding:5px 8px;font-size:11.5px;border-bottom:1px solid #e8e8e8;vertical-ali
 .obs{background:#f5f5f5;border-radius:6px;padding:10px 14px;font-size:11.5px;color:#444;margin-top:10px}
 .footer{margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:40px}
 .firma-block{display:flex;flex-direction:column;align-items:center;gap:0}
-.firma-digital{font-family:'Dancing Script',cursive;font-size:26px;color:#1a237e;line-height:1;margin-bottom:2px}
-.firma-sello{background:#eef2ff;border:1px dashed #3d6aff;border-radius:6px;padding:4px 10px;font-size:9px;color:#3d6aff;margin-bottom:4px;text-align:center;line-height:1.4}
+.firma-imgs{display:flex;align-items:flex-end;justify-content:center;gap:12px;min-height:64px;margin-bottom:4px}
+.firma-imgs img.firma-sign{max-height:60px;max-width:110px;object-fit:contain}
+.firma-imgs img.firma-logo{max-height:52px;max-width:80px;object-fit:contain}
 .firma-linea{width:100%;border-top:1.5px solid #333;padding-top:5px;font-size:11px;color:#555;text-align:center;margin-top:2px}
-.firma-vacia{height:38px}
+.firma-vacia{height:64px}
 .print-btn{margin-bottom:14px}
 .print-btn button{background:#1a237e;color:#fff;border:none;padding:8px 20px;font-size:13px;font-weight:700;border-radius:6px;cursor:pointer}
 @media print{.print-btn{display:none}@page{size:letter portrait;margin:10mm}}
@@ -9813,9 +9842,11 @@ td{padding:5px 8px;font-size:11.5px;border-bottom:1px solid #e8e8e8;vertical-ali
 ${c.observaciones?`<div class="obs">📝 <strong>Condiciones y Observaciones:</strong><br>${c.observaciones}</div>`:''}
 <div class="footer">
   <div class="firma-block">
-    <div class="firma-digital">${vendedorFirma}</div>
-    <div class="firma-sello">✅ Firmado digitalmente<br>Doc: ${docId} · ${tsEmision}</div>
-    <div class="firma-linea">Elaborado / Autorizado por<br>${empresa}</div>
+    <div class="firma-imgs">
+      ${firmaUrl ? `<img src="${firmaUrl}" class="firma-sign" alt="Firma">` : '<div style="height:60px;width:110px"></div>'}
+      ${logoUrl  ? `<img src="${logoUrl}"  class="firma-logo" alt="Sello">` : ''}
+    </div>
+    <div class="firma-linea">Firma y Sello &nbsp;·&nbsp; ${empresa}</div>
   </div>
   <div class="firma-block">
     <div class="firma-vacia"></div>
