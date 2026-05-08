@@ -11717,7 +11717,7 @@ function renderTablaInventario() {
     const enCamino = ordActivas.reduce((s, o) => s + (parseInt(o.cantidadOrdenada) || 0), 0);
     return `<tr>
       <td style="font-weight:600;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.producto}">${p.producto}</td>
-      <td class="td-sku">${p.sku}</td>
+      <td class="td-sku" onclick="copiarSKU('${p.sku}',this)" title="Clic para copiar SKU" style="cursor:pointer" onmouseover="this.style.color='var(--accent3)'" onmouseout="this.style.color=''">${p.sku}</td>
       <td style="color:var(--text2)">${p.categoria || '—'}</td>
       <td style="text-align:center">${badgeEstadoStock(est)}</td>
       <td style="text-align:center;font-weight:700;color:${cant===0?'var(--red)':cant<=min?'var(--gold)':'var(--green)'}">${cant}</td>
@@ -11925,6 +11925,15 @@ function editarOrden(id) {
   document.getElementById('ordenNotas').value          = o.notas;
   const modal = document.getElementById('modalOrden');
   modal.style.display = 'flex';
+}
+
+function copiarSKU(sku, el) {
+  navigator.clipboard.writeText(sku).then(() => {
+    const orig = el.textContent;
+    el.textContent = '✅ Copiado';
+    el.style.color = 'var(--accent3)';
+    setTimeout(() => { el.textContent = orig; el.style.color = ''; }, 1200);
+  });
 }
 
 async function eliminarOrden(id) {
