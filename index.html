@@ -12230,7 +12230,11 @@ const DESTINO_LABELS   = { inventario:'Regresa a inventario', desechado:'Desecha
 // ── INIT ─────────────────────────────────────────────────────────────────────
 
 async function initLiquidacion() {
-  await Promise.all([cargarDevoluciones(), cargarLiquidaciones()]);
+  await Promise.all([
+    cargarDevoluciones(),
+    cargarLiquidaciones(),
+    cargarVentasYClientes()   // garantiza que ventas[] esté cargado aunque no se haya visitado el módulo Ventas
+  ]);
   liqShowSub(_liqSubActivo);
   poblarFiltrosLiq();
 }
