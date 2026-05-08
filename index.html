@@ -11973,7 +11973,7 @@ function renderTablaInventario() {
       <td style="text-align:center">${badgeEstadoStock(est)}</td>
       <td style="text-align:center;font-weight:700;color:${cant===0?'var(--red)':cant<=min?'var(--gold)':'var(--green)'}">${cant}</td>
       <td style="text-align:center;color:var(--text3)">${min || '—'}</td>
-      <td style="text-align:right;font-weight:600;color:var(--gold)">${p.costoUsd ? `$ ${(+p.costoUsd).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '<span style="color:var(--text3)">—</span>'}</td>
+      <td style="text-align:right;font-weight:600;color:var(--gold)">${p.costoUSD ? `$ ${(+p.costoUSD).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '<span style="color:var(--text3)">—</span>'}</td>
       <td style="text-align:center">${p.url1 ? `<a href="${p.url1}" target="_blank" title="${p.url1}" style="color:var(--accent);font-size:16px;text-decoration:none">🔗</a>` : `<span style="color:var(--text3);font-size:13px">—</span>`}</td>
       <td style="text-align:center">${p.url2 ? `<a href="${p.url2}" target="_blank" title="Ver en Focus Store: ${p.url2}" style="font-size:16px;text-decoration:none;opacity:.85" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.85">🛒</a>` : `<span style="color:var(--text3);font-size:13px">—</span>`}</td>
       <td style="text-align:center;white-space:nowrap;gap:4px">
