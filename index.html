@@ -943,7 +943,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
           <div class="table-wrap">
             <table id="tablaInventario">
               <thead><tr id="invThead">
-                <th style="text-align:center;width:72px">IMG</th>
+                <th style="text-align:center;width:96px">IMG</th>
                 <th>Producto</th>
                 <th>SKU</th>
                 <th>Categoría</th>
@@ -11962,8 +11962,8 @@ function renderTablaInventario() {
     const ordActivas = ordenesCompra.filter(o => o.productoId === p.id && ['pendiente','en_transito'].includes(o.estado));
     const enCamino = ordActivas.reduce((s, o) => s + (parseInt(o.cantidadOrdenada) || 0), 0);
     const imgCell = p.imagen
-      ? `<td style="text-align:center;padding:4px"><div class="prod-thumb" style="margin:0 auto" onmouseenter="mostrarImgPreview('${p.imagen}',event)" onmouseleave="ocultarImgPreview()"><img src="${p.imagen}" style="width:56px;height:56px;object-fit:cover;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.4)"></div></td>`
-      : `<td style="text-align:center;color:var(--text3);font-size:22px">📦</td>`;
+      ? `<td style="text-align:center;padding:4px"><div class="prod-thumb" style="margin:0 auto" onmouseenter="mostrarImgPreview('${p.imagen}',event)" onmouseleave="ocultarImgPreview()"><img src="${p.imagen}" style="width:80px;height:80px;object-fit:cover;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.4)"></div></td>`
+      : `<td style="text-align:center;color:var(--text3);font-size:26px">📦</td>`;
     const rowOpacity = p.descontinuado ? 'opacity:.55;' : '';
     return `<tr style="${rowOpacity}">
       ${imgCell}
