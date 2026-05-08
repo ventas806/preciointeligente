@@ -611,6 +611,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
       <button class="nav-tab" onclick="showTab('cotizaciones')" id="tabCotizaciones" data-role="admin gerencia ventas">📋 Cotizaciones</button>
       <button class="nav-tab" onclick="showTab('cobros')" id="tabCobros" data-role="admin gerencia ventas">💰 Cobros <span id="badgeCobros" style="display:none;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
       <button class="nav-tab" onclick="showTab('inventario')" id="tabInventario" data-role="admin gerencia">📊 Inventario</button>
+      <button class="nav-tab" onclick="showTab('liquidacion')" id="tabLiquidacion" data-role="admin gerencia">💳 Liquidación</button>
       <button class="nav-tab" onclick="showTab('parametros')" id="tabParametros" data-role="admin gerencia">⚙️ Parámetros</button>
       <button class="nav-tab" onclick="showTab('historial')" id="tabHistorial" data-role="admin gerencia">🕓 Historial</button>
       <button class="nav-tab" onclick="showTab('aprobacion')" id="tabAprobacion" data-role="admin">🔔 Aprobaciones <span id="badgePendientes" style="display:none;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
@@ -1004,6 +1005,187 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
       </div>
 
     </div><!-- /tab-inventario -->
+
+    <!-- ══════════════════════════════════════════════════ -->
+    <!--  MÓDULO LIQUIDACIÓN DE COMISIONES                  -->
+    <!-- ══════════════════════════════════════════════════ -->
+    <div class="tab-content" id="tab-liquidacion">
+
+      <!-- Sub-nav -->
+      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="liqSubDev" onclick="liqShowSub('devoluciones')">🔄 Devoluciones</button>
+        <button class="btn btn-ghost"   id="liqSubLiq" onclick="liqShowSub('liquidar')">💵 Liquidar Comisiones</button>
+      </div>
+
+      <!-- ── PANEL DEVOLUCIONES ── -->
+      <div id="liqPanelDev">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div style="font-size:13px;color:var(--text2)" id="devSubtitle">0 devoluciones</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input type="text" id="devBuscar" placeholder="🔍 Buscar venta, vendedor..." oninput="renderTablaDevoluciones()"
+              style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none;min-width:200px">
+            <select id="devFiltVendedor" onchange="renderTablaDevoluciones()"
+              style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+              <option value="">Todos los vendedores</option>
+            </select>
+          </div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Fecha</th>
+                <th>Venta</th>
+                <th>Vendedor</th>
+                <th>Productos devueltos</th>
+                <th>Motivo</th>
+                <th>Reembolso</th>
+                <th style="text-align:right">Utilidad Dev.</th>
+                <th style="text-align:right">Comisión Desc.</th>
+                <th>Acciones</th>
+              </tr></thead>
+              <tbody id="tbodyDevoluciones"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PANEL LIQUIDAR ── -->
+      <div id="liqPanelLiq" style="display:none">
+
+        <!-- Selector vendedor + periodo -->
+        <div class="card" style="margin-bottom:20px">
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <div>
+              <div style="font-size:12px;color:var(--text3);margin-bottom:6px">Vendedor</div>
+              <select id="liqVendedor" style="width:100%;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+                <option value="">— Seleccionar vendedor —</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:12px;color:var(--text3);margin-bottom:6px">Período (Mes / Año)</div>
+              <input type="month" id="liqPeriodo" style="width:100%;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+            </div>
+            <button class="btn btn-primary" onclick="calcularYRenderLiquidacion()">📊 Calcular</button>
+          </div>
+        </div>
+
+        <!-- Resultado liquidación -->
+        <div id="liqResultado" style="display:none">
+          <div id="liqResumenCards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px"></div>
+          <div class="card" style="margin-bottom:16px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text2)">📋 Ventas del período</div>
+            <div class="table-wrap">
+              <table id="liqTablaVentas">
+                <thead><tr>
+                  <th>Fecha</th><th>Nº</th><th>Cliente</th>
+                  <th style="text-align:right">Total</th>
+                  <th style="text-align:right">Utilidad</th>
+                  <th style="text-align:right">Comisión</th>
+                </tr></thead>
+                <tbody id="tbodyLiqVentas"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:16px" id="liqDevolucionesCard">
+            <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--gold)">🔄 Devoluciones del período (descuentos)</div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Fecha</th><th>Venta</th><th>Producto(s)</th><th>Motivo</th>
+                  <th style="text-align:right">Utilidad Dev.</th>
+                  <th style="text-align:right">Comisión Desc.</th>
+                </tr></thead>
+                <tbody id="tbodyLiqDev"></tbody>
+              </table>
+            </div>
+          </div>
+          <!-- Totales -->
+          <div class="card" style="background:var(--bg3)">
+            <div id="liqTotalesHtml"></div>
+            <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+              <button class="btn btn-ghost" onclick="imprimirLiquidacion()">🖨️ Imprimir</button>
+              <button class="btn btn-primary" id="btnMarcarPagada" onclick="marcarLiquidacionPagada()">✅ Marcar como Pagada</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Historial de liquidaciones -->
+        <div class="card" style="margin-top:20px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text2)">🕓 Historial de Liquidaciones</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Período</th><th>Vendedor</th>
+                <th style="text-align:right">Comisión Bruta</th>
+                <th style="text-align:right">Descuentos</th>
+                <th style="text-align:right">Neto Pagado</th>
+                <th>Estado</th><th>Fecha Pago</th><th>Acciones</th>
+              </tr></thead>
+              <tbody id="tbodyLiqHistorial"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /liqPanelLiq -->
+
+    </div><!-- /tab-liquidacion -->
+
+    <!-- ══ MODAL DEVOLUCIÓN ══ -->
+    <div id="modalDevolucion" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.65);align-items:center;justify-content:center">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:28px;width:660px;max-width:96vw;max-height:92vh;overflow-y:auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+          <div style="font-size:16px;font-weight:700">🔄 Registrar Devolución</div>
+          <button onclick="cerrarModal('modalDevolucion')" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;line-height:1">✕</button>
+        </div>
+        <!-- Info venta -->
+        <div id="devVentaInfo" style="background:var(--bg3);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;color:var(--text2)"></div>
+        <!-- Items -->
+        <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Selecciona los productos a devolver</div>
+        <div id="devItemsLista" style="margin-bottom:16px;display:flex;flex-direction:column;gap:8px"></div>
+        <!-- Campos -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:5px">Motivo</div>
+            <select id="devMotivo" style="width:100%;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none">
+              <option value="garantia">Garantía cliente</option>
+              <option value="defecto">Defecto / Daño</option>
+              <option value="cambio">Cambio de producto</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:5px">Reembolso al Cliente</div>
+            <select id="devReembolso" style="width:100%;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none">
+              <option value="efectivo">Efectivo</option>
+              <option value="credito">Crédito en cuenta</option>
+              <option value="garantia_proveedor">Cambio por garantía</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:5px">Destino del Producto</div>
+            <select id="devDestino" style="width:100%;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none">
+              <option value="inventario">Regresa a inventario</option>
+              <option value="desechado">Desechado</option>
+              <option value="garantia_proveedor">Garantía con proveedor</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:5px">Fecha Devolución</div>
+            <input type="date" id="devFecha" style="width:100%;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none">
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <div style="font-size:12px;color:var(--text3);margin-bottom:5px">Notas</div>
+          <textarea id="devNotas" rows="2" placeholder="Descripción del problema, número de serie, etc." style="width:100%;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;resize:vertical"></textarea>
+        </div>
+        <!-- Resumen comisión -->
+        <div id="devResumen" style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn btn-ghost" onclick="cerrarModal('modalDevolucion')">Cancelar</button>
+          <button class="btn btn-primary" onclick="guardarDevolucion()" id="btnGuardarDev">💾 Registrar Devolución</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Modal Nueva/Editar Orden de Compra -->
     <div id="modalOrden" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);align-items:center;justify-content:center">
@@ -2809,8 +2991,8 @@ function fmtFecha(v) {
 
 // ===== LOGIN =====
 const PERMS = {
-  admin:    {verCostos:true, verUtilidad:true, editarPrecios:true, aprobarDescuentos:true, cambiarFormulas:true, adminUsuarios:true, verHistorial:true, borrarHistorial:true, puedePendiente:false, puedeAprobar:true, tabs:['dashboard','productos','ingresar','aprobacion','resumen','exportar','etiquetas','combos','ventas','cotizaciones','cobros','parametros','historial','usuarios','inventario']},
-  gerencia: {verCostos:true, verUtilidad:true, editarPrecios:true, aprobarDescuentos:true, cambiarFormulas:false, adminUsuarios:false, verHistorial:true, borrarHistorial:false, puedePendiente:true, puedeAprobar:true, tabs:['dashboard','productos','ingresar','aprobacion','resumen','exportar','etiquetas','combos','ventas','cotizaciones','cobros','parametros','historial','inventario']},
+  admin:    {verCostos:true, verUtilidad:true, editarPrecios:true, aprobarDescuentos:true, cambiarFormulas:true, adminUsuarios:true, verHistorial:true, borrarHistorial:true, puedePendiente:false, puedeAprobar:true, tabs:['dashboard','productos','ingresar','aprobacion','resumen','exportar','etiquetas','combos','ventas','cotizaciones','cobros','parametros','historial','usuarios','inventario','liquidacion']},
+  gerencia: {verCostos:true, verUtilidad:true, editarPrecios:true, aprobarDescuentos:true, cambiarFormulas:false, adminUsuarios:false, verHistorial:true, borrarHistorial:false, puedePendiente:true, puedeAprobar:true, tabs:['dashboard','productos','ingresar','aprobacion','resumen','exportar','etiquetas','combos','ventas','cotizaciones','cobros','parametros','historial','inventario','liquidacion']},
   ventas:   {verCostos:false, verUtilidad:false, editarPrecios:false, aprobarDescuentos:false, cambiarFormulas:false, adminUsuarios:false, verHistorial:false, borrarHistorial:false, puedePendiente:false, puedeAprobar:false, tabs:['dashboard','productos','resumen','exportar','etiquetas','combos','ventas','cotizaciones','cobros']},
   bodega:   {verCostos:false, verUtilidad:false, editarPrecios:false, aprobarDescuentos:false, cambiarFormulas:false, adminUsuarios:false, verHistorial:false, borrarHistorial:false, puedePendiente:false, puedeAprobar:false, tabs:['dashboard','productos','etiquetas']},
   externo:  {verCostos:false, verUtilidad:false, editarPrecios:false, aprobarDescuentos:false, cambiarFormulas:false, adminUsuarios:false, verHistorial:false, borrarHistorial:false, puedePendiente:false, puedeAprobar:false, tabs:['productos']}
@@ -3230,7 +3412,8 @@ function showTab(name) {
   if(name==='ventas') { initVentas(); }
   if(name==='cobros') { renderCobros(); }
   if(name==='cotizaciones') { initCotizaciones(); }
-  if(name==='inventario') { initInventario(); }
+  if(name==='inventario')  { initInventario(); }
+  if(name==='liquidacion') { initLiquidacion(); }
 }
 
 // ===== DASHBOARD =====
@@ -6913,6 +7096,7 @@ function renderHistorialVentas() {
             <button class="btn btn-ghost btn-sm" onclick="imprimirEtiquetaEnvio('${v.id}')" title="Imprimir etiqueta">🖨️</button>
             <button class="btn btn-sm" onclick="imprimirReciboTermico('${v.id}')" title="Imprimir recibo en impresora térmica" style="background:#555;color:#fff;border:none">🧾</button>
             <button class="btn btn-sm" onclick="compartirWhatsApp('${v.id}')" title="WhatsApp" style="background:#25D366;color:#fff;border:none">📲</button>
+            ${verRoi ? `<button class="btn btn-sm" onclick="abrirModalDevolucion('${v.id}')" title="Registrar devolución" style="background:rgba(245,166,35,.15);color:var(--gold);border:1px solid rgba(245,166,35,.3)">🔄 Dev.</button>` : ''}
           </td>
           <td style="white-space:nowrap">
             ${fmtFecha(v.fecha)}
@@ -12014,6 +12198,578 @@ async function eliminarOrden(id) {
   await cargarOrdenesCompra();
   renderOrdenesCompra();
   renderTablaInventario();
+}
+</script>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!--  MÓDULO LIQUIDACIÓN DE COMISIONES                  -->
+<!-- ══════════════════════════════════════════════════ -->
+<script>
+let devoluciones     = [];
+let liquidaciones    = [];
+let _liqSubActivo    = 'devoluciones';
+let _liqVentaActual  = null; // venta cargada en modal devolución
+
+const MOTIVO_LABELS    = { garantia:'Garantía cliente', defecto:'Defecto / Daño', cambio:'Cambio de producto' };
+const REEMBOLSO_LABELS = { efectivo:'Efectivo', credito:'Crédito en cuenta', garantia_proveedor:'Cambio garantía' };
+const DESTINO_LABELS   = { inventario:'Regresa a inventario', desechado:'Desechado', garantia_proveedor:'Garantía proveedor' };
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+
+async function initLiquidacion() {
+  await Promise.all([cargarDevoluciones(), cargarLiquidaciones()]);
+  liqShowSub(_liqSubActivo);
+  poblarFiltrosLiq();
+}
+
+function liqShowSub(sub) {
+  _liqSubActivo = sub;
+  document.getElementById('liqPanelDev').style.display  = sub === 'devoluciones' ? '' : 'none';
+  document.getElementById('liqPanelLiq').style.display  = sub === 'liquidar'     ? '' : 'none';
+  document.getElementById('liqSubDev').className = sub === 'devoluciones' ? 'btn btn-primary' : 'btn btn-ghost';
+  document.getElementById('liqSubLiq').className = sub === 'liquidar'     ? 'btn btn-primary' : 'btn btn-ghost';
+  if (sub === 'devoluciones') renderTablaDevoluciones();
+  if (sub === 'liquidar')     { poblarSelectoresLiq(); renderHistorialLiquidaciones(); }
+}
+
+function poblarFiltrosLiq() {
+  const sel = document.getElementById('devFiltVendedor');
+  if (!sel) return;
+  const vendedores = [...new Set(devoluciones.map(d => d.vendedorNombre).filter(Boolean))].sort();
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todos los vendedores</option>' +
+    vendedores.map(v => `<option value="${v}"${v===cur?' selected':''}>${v}</option>`).join('');
+}
+
+function poblarSelectoresLiq() {
+  const selV = document.getElementById('liqVendedor');
+  if (!selV) return;
+  const vendedoresActivos = usuarios.filter(u => ['admin','gerencia','ventas'].includes(u.rol) && u.activo !== false);
+  const cur = selV.value;
+  selV.innerHTML = '<option value="">— Seleccionar vendedor —</option>' +
+    vendedoresActivos.map(u => `<option value="${u.id}"${String(u.id)===String(cur)?' selected':''}>${u.nombre}</option>`).join('');
+
+  // Default periodo = mes actual
+  const periodoInput = document.getElementById('liqPeriodo');
+  if (periodoInput && !periodoInput.value) {
+    const now = new Date();
+    periodoInput.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  }
+}
+
+// ── CARGAR DEVOLUCIONES ───────────────────────────────────────────────────────
+
+async function cargarDevoluciones() {
+  try {
+    const { data, error } = await sb.from('devoluciones')
+      .select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    devoluciones = (data || []).map(rowToDevolucion);
+  } catch(e) { console.error('Error cargando devoluciones:', e); }
+}
+
+function rowToDevolucion(r) {
+  return {
+    id:                  r.id,
+    ventaId:             r.venta_id,
+    ventaNumero:         r.venta_numero         || '',
+    vendedor:            r.vendedor              || '',
+    vendedorNombre:      r.vendedor_nombre       || '',
+    fechaDevolucion:     r.fecha_devolucion      || '',
+    motivo:              r.motivo                || 'garantia',
+    tipoReembolso:       r.tipo_reembolso        || 'efectivo',
+    destinoProducto:     r.destino_producto      || 'inventario',
+    items:               r.items                 || [],
+    totalDevuelto:       r.total_devuelto        || 0,
+    utilidadDevuelta:    r.utilidad_devuelta      || 0,
+    comisionADescontar:  r.comision_a_descontar   || 0,
+    pctComision:         r.pct_comision           || 0,
+    estado:              r.estado                 || 'aprobada',
+    notas:               r.notas                  || '',
+    creadoPor:           r.creado_por             || '',
+    createdAt:           r.created_at             || '',
+  };
+}
+
+// ── TABLA DEVOLUCIONES ────────────────────────────────────────────────────────
+
+function renderTablaDevoluciones() {
+  const q    = (document.getElementById('devBuscar')?.value || '').toLowerCase().trim();
+  const filtV = document.getElementById('devFiltVendedor')?.value || '';
+  const tbody = document.getElementById('tbodyDevoluciones');
+  if (!tbody) return;
+
+  let lista = devoluciones.filter(d => {
+    if (filtV && d.vendedorNombre !== filtV) return false;
+    if (q && !d.ventaNumero.toLowerCase().includes(q) &&
+             !d.vendedorNombre.toLowerCase().includes(q) &&
+             !(d.items||[]).some(i=>(i.descripcion||i.nombre||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+
+  const sub = document.getElementById('devSubtitle');
+  if (sub) sub.textContent = `${lista.length} devolución(es)`;
+
+  if (!lista.length) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text3)">Sin devoluciones registradas</td></tr>`;
+    return;
+  }
+
+  const fmtL = n => 'L ' + (+n||0).toLocaleString('es-HN', {minimumFractionDigits:2, maximumFractionDigits:2});
+  tbody.innerHTML = lista.map(d => {
+    const nombresItems = (d.items||[]).map(i=>`${i.descripcion||i.nombre||'—'} ×${i.cantDevuelta||i.cantidad||1}`).join(', ');
+    return `<tr>
+      <td style="white-space:nowrap">${d.fechaDevolucion||'—'}</td>
+      <td style="font-weight:600">${d.ventaNumero||'—'}</td>
+      <td>${d.vendedorNombre||'—'}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${nombresItems}">${nombresItems||'—'}</td>
+      <td><span style="font-size:11px;padding:3px 8px;border-radius:12px;background:var(--bg3);color:var(--text2)">${MOTIVO_LABELS[d.motivo]||d.motivo}</span></td>
+      <td><span style="font-size:11px;padding:3px 8px;border-radius:12px;background:var(--bg3);color:var(--text2)">${REEMBOLSO_LABELS[d.tipoReembolso]||d.tipoReembolso}</span></td>
+      <td style="text-align:right;color:var(--gold)">${fmtL(d.utilidadDevuelta)}</td>
+      <td style="text-align:right;color:var(--red)">${fmtL(d.comisionADescontar)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="eliminarDevolucion('${d.id}')">🗑️</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function eliminarDevolucion(id) {
+  if (!confirm('¿Eliminar esta devolución? Esta acción no se puede deshacer.')) return;
+  try {
+    const { error } = await sb.from('devoluciones').delete().eq('id', id);
+    if (error) throw error;
+    devoluciones = devoluciones.filter(d => d.id !== id);
+    renderTablaDevoluciones();
+    showToast('🗑️ Devolución eliminada', 'info');
+  } catch(e) { showToast('Error al eliminar: ' + e.message, 'error'); }
+}
+
+// ── MODAL DEVOLUCIÓN ──────────────────────────────────────────────────────────
+
+function abrirModalDevolucion(ventaId) {
+  const v = ventas.find(x => x.id === ventaId);
+  if (!v) { showToast('Venta no encontrada', 'error'); return; }
+  _liqVentaActual = v;
+
+  // Info de la venta
+  const fmtL = n => 'L ' + (+n||0).toLocaleString('es-HN', {minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById('devVentaInfo').innerHTML =
+    `<strong>Venta:</strong> ${v.numero||v.id} &nbsp;·&nbsp;
+     <strong>Fecha:</strong> ${v.fecha||'—'} &nbsp;·&nbsp;
+     <strong>Cliente:</strong> ${v.clienteNombre||'—'} &nbsp;·&nbsp;
+     <strong>Vendedor:</strong> ${v.vendedorNombre||'—'} &nbsp;·&nbsp;
+     <strong>Total:</strong> ${fmtL(v.total)}`;
+
+  // Items
+  const lista = document.getElementById('devItemsLista');
+  lista.innerHTML = (v.items || []).map((it, i) => {
+    const sinISV = it.llevaISV ? (it.precioFinal / (1 + (it.isvPct||0))) : it.precioFinal;
+    const utilUnit = sinISV - (it.costoLPS||0);
+    return `<div style="background:var(--bg3);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:12px">
+      <input type="checkbox" id="devChk_${i}" onchange="recalcDevolucion()"
+        style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent3)">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px">${it.descripcion||it.nombre||'—'}</div>
+        <div style="font-size:11px;color:var(--text3)">SKU: ${it.sku||'—'} · Precio: ${fmtL(it.precioFinal)} · Utilidad/u: ${fmtL(utilUnit)}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:11px;color:var(--text3)">Cant:</span>
+        <input type="number" id="devCant_${i}" value="1" min="1" max="${it.cantidad||1}"
+          onchange="recalcDevolucion()"
+          style="width:56px;padding:4px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;text-align:center">
+        <span style="font-size:11px;color:var(--text3)">/ ${it.cantidad||1}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Fecha default hoy
+  document.getElementById('devFecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('devNotas').value = '';
+  document.getElementById('devMotivo').value = 'garantia';
+  document.getElementById('devReembolso').value = 'efectivo';
+  document.getElementById('devDestino').value = 'inventario';
+  recalcDevolucion();
+
+  document.getElementById('modalDevolucion').style.display = 'flex';
+}
+
+function recalcDevolucion() {
+  const v = _liqVentaActual;
+  if (!v) return;
+
+  const pctComision = (v.pctComision || 0) / 100;
+  const fmtL = n => 'L ' + (+n||0).toLocaleString('es-HN', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+  let totalDev = 0, utilidadDev = 0;
+  (v.items || []).forEach((it, i) => {
+    const chk  = document.getElementById(`devChk_${i}`);
+    const cant = parseInt(document.getElementById(`devCant_${i}`)?.value) || 1;
+    if (!chk?.checked) return;
+    const sinISV   = it.llevaISV ? (it.precioFinal / (1 + (it.isvPct||0))) : it.precioFinal;
+    totalDev      += it.precioFinal * cant;
+    utilidadDev   += (sinISV - (it.costoLPS||0)) * cant;
+  });
+  const comisionDesc = Math.max(0, utilidadDev * pctComision);
+
+  document.getElementById('devResumen').innerHTML = totalDev === 0
+    ? `<span style="color:var(--text3)">Selecciona al menos un producto para ver el resumen.</span>`
+    : `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+        <div><div style="font-size:11px;color:var(--text3)">Total devuelto al cliente</div><div style="font-size:16px;font-weight:700;color:var(--text)">${fmtL(totalDev)}</div></div>
+        <div><div style="font-size:11px;color:var(--text3)">Utilidad devuelta</div><div style="font-size:16px;font-weight:700;color:var(--gold)">${fmtL(utilidadDev)}</div></div>
+        <div><div style="font-size:11px;color:var(--text3)">Comisión a descontar (${(pctComision*100).toFixed(1)}%)</div><div style="font-size:16px;font-weight:700;color:var(--red)">${fmtL(comisionDesc)}</div></div>
+      </div>`;
+}
+
+async function guardarDevolucion() {
+  const v = _liqVentaActual;
+  if (!v) return;
+
+  const itemsSeleccionados = [];
+  let totalDev = 0, utilidadDev = 0;
+  (v.items || []).forEach((it, i) => {
+    const chk  = document.getElementById(`devChk_${i}`);
+    const cant = parseInt(document.getElementById(`devCant_${i}`)?.value) || 1;
+    if (!chk?.checked) return;
+    const sinISV = it.llevaISV ? (it.precioFinal / (1 + (it.isvPct||0))) : it.precioFinal;
+    totalDev    += it.precioFinal * cant;
+    utilidadDev += (sinISV - (it.costoLPS||0)) * cant;
+    itemsSeleccionados.push({ sku: it.sku, descripcion: it.descripcion||it.nombre, cantidad: it.cantidad, cantDevuelta: cant, precioFinal: it.precioFinal, costoLPS: it.costoLPS||0 });
+  });
+
+  if (!itemsSeleccionados.length) { showToast('Selecciona al menos un producto', 'error'); return; }
+
+  const pctComision  = (v.pctComision || 0) / 100;
+  const comisionDesc = Math.max(0, utilidadDev * pctComision);
+
+  const row = {
+    venta_id:             v.id,
+    venta_numero:         v.numero || v.id,
+    vendedor:             v.vendedor,
+    vendedor_nombre:      v.vendedorNombre,
+    fecha_devolucion:     document.getElementById('devFecha').value,
+    motivo:               document.getElementById('devMotivo').value,
+    tipo_reembolso:       document.getElementById('devReembolso').value,
+    destino_producto:     document.getElementById('devDestino').value,
+    items:                itemsSeleccionados,
+    total_devuelto:       +totalDev.toFixed(2),
+    utilidad_devuelta:    +utilidadDev.toFixed(2),
+    comision_a_descontar: +comisionDesc.toFixed(2),
+    pct_comision:         v.pctComision || 0,
+    estado:               'aprobada',
+    notas:                document.getElementById('devNotas').value.trim(),
+    creado_por:           currentUser?.user || ''
+  };
+
+  const btn = document.getElementById('btnGuardarDev');
+  btn.disabled = true; btn.textContent = '⏳ Guardando...';
+  try {
+    const { data, error } = await sb.from('devoluciones').insert(row).select().single();
+    if (error) throw error;
+    devoluciones.unshift(rowToDevolucion(data));
+    addHistorial(`Devolución registrada — Venta ${row.venta_numero} · ${itemsSeleccionados.map(i=>i.descripcion).join(', ')}`, 'Liquidación');
+    cerrarModal('modalDevolucion');
+    showToast('✅ Devolución registrada', 'success');
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 Registrar Devolución';
+  }
+}
+
+// ── LIQUIDACIÓN ───────────────────────────────────────────────────────────────
+
+let _liqCalculo = null; // resultado actual del cálculo
+
+function calcularYRenderLiquidacion() {
+  const vendedorId = document.getElementById('liqVendedor')?.value;
+  const periodo    = document.getElementById('liqPeriodo')?.value;
+  if (!vendedorId) { showToast('Selecciona un vendedor', 'error'); return; }
+  if (!periodo)    { showToast('Selecciona el período', 'error'); return; }
+
+  const [year, month] = periodo.split('-').map(Number);
+
+  const ventasPeriodo = ventas.filter(v => {
+    if (String(v.vendedor) !== String(vendedorId)) return false;
+    const d = new Date(v.fecha + 'T12:00:00');
+    return d.getFullYear() === year && d.getMonth()+1 === month;
+  });
+
+  const devolucionesPeriodo = devoluciones.filter(d => {
+    if (String(d.vendedor) !== String(vendedorId)) return false;
+    const fd = new Date(d.fechaDevolucion + 'T12:00:00');
+    return fd.getFullYear() === year && fd.getMonth()+1 === month;
+  });
+
+  const vendedor      = usuarios.find(u => String(u.id) === String(vendedorId));
+  const pctComision   = (vendedor?.comision != null ? vendedor.comision : (parametros.comisionVentas||10)) / 100;
+
+  const totalVentas        = ventasPeriodo.reduce((s,v) => s + (v.total||0), 0);
+  const utilidadBruta      = ventasPeriodo.reduce((s,v) => s + (v.utilidadBruta||0), 0);
+  const comisionBruta      = utilidadBruta * pctComision;
+  const utilidadDev        = devolucionesPeriodo.reduce((s,d) => s + (d.utilidadDevuelta||0), 0);
+  const comisionDev        = devolucionesPeriodo.reduce((s,d) => s + (d.comisionADescontar||0), 0);
+  const comisionNeta       = Math.max(0, comisionBruta - comisionDev);
+
+  _liqCalculo = { vendedorId, vendedorNombre: vendedor?.nombre||vendedorId, periodo, pctComision,
+    ventasPeriodo, devolucionesPeriodo, totalVentas, utilidadBruta, comisionBruta,
+    utilidadDev, comisionDev, comisionNeta };
+
+  renderResultadoLiquidacion();
+  document.getElementById('liqResultado').style.display = '';
+}
+
+function renderResultadoLiquidacion() {
+  if (!_liqCalculo) return;
+  const c   = _liqCalculo;
+  const fmtL = n => 'L ' + (+n||0).toLocaleString('es-HN', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const pct  = (c.pctComision*100).toFixed(1);
+
+  // Cards resumen
+  document.getElementById('liqResumenCards').innerHTML = `
+    <div class="card" style="border-left:4px solid var(--accent3)">
+      <div style="font-size:11px;color:var(--text3)">VENTAS DEL PERÍODO</div>
+      <div style="font-size:22px;font-weight:800;color:var(--accent3)">${c.ventasPeriodo.length}</div>
+      <div style="font-size:12px;color:var(--text2)">${fmtL(c.totalVentas)}</div>
+    </div>
+    <div class="card" style="border-left:4px solid var(--gold)">
+      <div style="font-size:11px;color:var(--text3)">UTILIDAD BRUTA</div>
+      <div style="font-size:22px;font-weight:800;color:var(--gold)">${fmtL(c.utilidadBruta)}</div>
+      <div style="font-size:12px;color:var(--text2)">Comisión (${pct}%): ${fmtL(c.comisionBruta)}</div>
+    </div>
+    <div class="card" style="border-left:4px solid var(--red)">
+      <div style="font-size:11px;color:var(--text3)">DESCUENTOS DEVOLUCIONES</div>
+      <div style="font-size:22px;font-weight:800;color:var(--red)">${fmtL(c.comisionDev)}</div>
+      <div style="font-size:12px;color:var(--text2)">${c.devolucionesPeriodo.length} devolución(es)</div>
+    </div>
+    <div class="card" style="border-left:4px solid var(--accent)">
+      <div style="font-size:11px;color:var(--text3)">COMISIÓN NETA A PAGAR</div>
+      <div style="font-size:26px;font-weight:900;color:var(--accent)">${fmtL(c.comisionNeta)}</div>
+    </div>`;
+
+  // Tabla ventas
+  const tbV = document.getElementById('tbodyLiqVentas');
+  tbV.innerHTML = !c.ventasPeriodo.length
+    ? `<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">Sin ventas en este período</td></tr>`
+    : c.ventasPeriodo.map(v => `<tr>
+        <td>${v.fecha||'—'}</td>
+        <td>${v.numero||'—'}</td>
+        <td>${v.clienteNombre||'—'}</td>
+        <td style="text-align:right">${fmtL(v.total)}</td>
+        <td style="text-align:right;color:var(--gold)">${fmtL(v.utilidadBruta)}</td>
+        <td style="text-align:right;color:var(--accent3)">${fmtL((v.utilidadBruta||0)*c.pctComision)}</td>
+      </tr>`).join('');
+
+  // Tabla devoluciones
+  const tbD = document.getElementById('tbodyLiqDev');
+  document.getElementById('liqDevolucionesCard').style.display = c.devolucionesPeriodo.length ? '' : 'none';
+  tbD.innerHTML = c.devolucionesPeriodo.map(d => {
+    const nombres = (d.items||[]).map(i=>`${i.descripcion||i.nombre||'—'} ×${i.cantDevuelta||1}`).join(', ');
+    return `<tr>
+      <td>${d.fechaDevolucion||'—'}</td>
+      <td>${d.ventaNumero||'—'}</td>
+      <td style="color:var(--text2)">${nombres}</td>
+      <td>${MOTIVO_LABELS[d.motivo]||d.motivo}</td>
+      <td style="text-align:right;color:var(--gold)">${fmtL(d.utilidadDevuelta)}</td>
+      <td style="text-align:right;color:var(--red)">-${fmtL(d.comisionADescontar)}</td>
+    </tr>`;
+  }).join('');
+
+  // Totales
+  document.getElementById('liqTotalesHtml').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr auto;gap:4px 20px;max-width:380px;margin:0 auto;font-size:13px">
+      <span style="color:var(--text2)">Utilidad bruta generada:</span>      <span style="font-weight:600;text-align:right">${fmtL(c.utilidadBruta)}</span>
+      <span style="color:var(--text2)">Comisión bruta (${pct}%):</span>     <span style="font-weight:600;text-align:right">${fmtL(c.comisionBruta)}</span>
+      <span style="color:var(--red)">Descuentos por devoluciones:</span>    <span style="font-weight:700;color:var(--red);text-align:right">-${fmtL(c.comisionDev)}</span>
+      <hr style="grid-column:1/-1;border:none;border-top:1px solid var(--border);margin:6px 0">
+      <span style="font-weight:800;font-size:15px">COMISIÓN NETA A PAGAR:</span>
+      <span style="font-weight:900;font-size:18px;color:var(--accent);text-align:right">${fmtL(c.comisionNeta)}</span>
+    </div>`;
+
+  // Check si ya fue pagada
+  const yaPagada = liquidaciones.some(l =>
+    String(l.vendedor) === String(c.vendedorId) && l.periodo === c.periodo && l.estado === 'pagada'
+  );
+  const btn = document.getElementById('btnMarcarPagada');
+  if (yaPagada) {
+    btn.textContent = '✅ Ya fue pagada';
+    btn.disabled = true;
+    btn.className = 'btn btn-ghost';
+  } else {
+    btn.textContent = '✅ Marcar como Pagada';
+    btn.disabled = false;
+    btn.className = 'btn btn-primary';
+  }
+}
+
+async function marcarLiquidacionPagada() {
+  if (!_liqCalculo) return;
+  const c = _liqCalculo;
+  if (!confirm(`¿Confirmar pago de comisión a ${c.vendedorNombre} por el período ${c.periodo}?\n\nMonto: L ${c.comisionNeta.toLocaleString('es-HN',{minimumFractionDigits:2})}`)) return;
+
+  const row = {
+    vendedor:              String(c.vendedorId),
+    vendedor_nombre:       c.vendedorNombre,
+    periodo:               c.periodo,
+    total_ventas:          +c.totalVentas.toFixed(2),
+    utilidad_bruta:        +c.utilidadBruta.toFixed(2),
+    pct_comision:          +(c.pctComision*100).toFixed(2),
+    comision_bruta:        +c.comisionBruta.toFixed(2),
+    utilidad_devoluciones: +c.utilidadDev.toFixed(2),
+    comision_devoluciones: +c.comisionDev.toFixed(2),
+    comision_neta:         +c.comisionNeta.toFixed(2),
+    estado:                'pagada',
+    fecha_pago:            new Date().toISOString().split('T')[0],
+    ventas_count:          c.ventasPeriodo.length,
+    devoluciones_count:    c.devolucionesPeriodo.length,
+    creado_por:            currentUser?.user || ''
+  };
+
+  try {
+    const { data, error } = await sb.from('liquidaciones_comision').insert(row).select().single();
+    if (error) throw error;
+    liquidaciones.unshift(data);
+    addHistorial(`Comisión pagada — ${c.vendedorNombre} · ${c.periodo} · L ${c.comisionNeta.toFixed(2)}`, 'Liquidación');
+    renderResultadoLiquidacion();
+    renderHistorialLiquidaciones();
+    showToast(`✅ Comisión marcada como pagada`, 'success');
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function cargarLiquidaciones() {
+  try {
+    const { data, error } = await sb.from('liquidaciones_comision')
+      .select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    liquidaciones = data || [];
+  } catch(e) { console.error('Error cargando liquidaciones:', e); }
+}
+
+function renderHistorialLiquidaciones() {
+  const tbody = document.getElementById('tbodyLiqHistorial');
+  if (!tbody) return;
+  if (!liquidaciones.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3)">Sin liquidaciones registradas</td></tr>`;
+    return;
+  }
+  const fmtL = n => 'L ' + (+n||0).toLocaleString('es-HN', {minimumFractionDigits:2, maximumFractionDigits:2});
+  tbody.innerHTML = liquidaciones.map(l => `<tr>
+    <td>${l.periodo||'—'}</td>
+    <td style="font-weight:600">${l.vendedor_nombre||l.vendedor||'—'}</td>
+    <td style="text-align:right;color:var(--gold)">${fmtL(l.comision_bruta)}</td>
+    <td style="text-align:right;color:var(--red)">-${fmtL(l.comision_devoluciones)}</td>
+    <td style="text-align:right;font-weight:700;color:var(--accent)">${fmtL(l.comision_neta)}</td>
+    <td><span style="padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:rgba(0,200,160,.15);color:#00c8a0">✅ Pagada</span></td>
+    <td>${l.fecha_pago||'—'}</td>
+    <td><button class="btn btn-ghost btn-sm" onclick="imprimirLiquidacionHistorial('${l.id}')">🖨️</button></td>
+  </tr>`).join('');
+}
+
+// ── IMPRIMIR LIQUIDACIÓN ──────────────────────────────────────────────────────
+
+function imprimirLiquidacion() {
+  if (!_liqCalculo) return;
+  generarHTMLLiquidacion(_liqCalculo);
+}
+
+async function imprimirLiquidacionHistorial(id) {
+  const l = liquidaciones.find(x => x.id === id);
+  if (!l) return;
+  // Reconstruir el cálculo desde los datos guardados
+  const fake = {
+    vendedorId: l.vendedor, vendedorNombre: l.vendedor_nombre, periodo: l.periodo,
+    pctComision: (l.pct_comision||0)/100,
+    totalVentas: l.total_ventas, utilidadBruta: l.utilidad_bruta,
+    comisionBruta: l.comision_bruta, utilidadDev: l.utilidad_devoluciones,
+    comisionDev: l.comision_devoluciones, comisionNeta: l.comision_neta,
+    ventasPeriodo: [], devolucionesPeriodo: [], yaPagada: true, fechaPago: l.fecha_pago
+  };
+  generarHTMLLiquidacion(fake);
+}
+
+function generarHTMLLiquidacion(c) {
+  const fmtL = n => 'L ' + (+n||0).toLocaleString('es-HN', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const pct  = (c.pctComision*100).toFixed(1);
+  const [year,mon] = (c.periodo||'').split('-');
+  const meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const periodoLabel = `${meses[parseInt(mon)]||mon} ${year}`;
+  const empresa = parametros.empresa || 'FOCUS STORE';
+
+  const filasVentas = (c.ventasPeriodo||[]).map(v => `
+    <tr><td>${v.fecha||'—'}</td><td>${v.numero||'—'}</td><td>${v.clienteNombre||'—'}</td>
+    <td style="text-align:right">${fmtL(v.total)}</td>
+    <td style="text-align:right">${fmtL(v.utilidadBruta)}</td>
+    <td style="text-align:right">${fmtL((v.utilidadBruta||0)*c.pctComision)}</td></tr>`).join('');
+
+  const filasDev = (c.devolucionesPeriodo||[]).map(d => {
+    const nombres = (d.items||[]).map(i=>`${i.descripcion||i.nombre} ×${i.cantDevuelta||1}`).join(', ');
+    return `<tr style="background:#fff8f0"><td>${d.fechaDevolucion||'—'}</td><td>${d.ventaNumero||'—'}</td>
+    <td>${nombres}</td><td>${MOTIVO_LABELS[d.motivo]||d.motivo}</td>
+    <td style="text-align:right">${fmtL(d.utilidadDevuelta)}</td>
+    <td style="text-align:right;color:#c62828">-${fmtL(d.comisionADescontar)}</td></tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Liquidación ${c.vendedorNombre} - ${periodoLabel}</title>
+<style>
+  body{font-family:'Segoe UI',sans-serif;padding:24px;color:#222;font-size:13px}
+  h1{font-size:20px;margin:0}h2{font-size:15px;color:#444;margin:0 0 4px}
+  table{width:100%;border-collapse:collapse;margin-bottom:20px}
+  th{background:#1a237e;color:#fff;padding:7px 10px;text-align:left;font-size:12px}
+  td{padding:6px 10px;border-bottom:1px solid #e0e0e0;font-size:12px}
+  tr:nth-child(even) td{background:#f8f8f8}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:2px solid #1a237e;padding-bottom:14px}
+  .total-box{background:#e8f5e9;border:2px solid #2e7d32;border-radius:8px;padding:16px;margin-top:16px;text-align:center}
+  .total-label{font-size:13px;color:#555;margin-bottom:4px}
+  .total-valor{font-size:28px;font-weight:900;color:#1a237e}
+  .badge-pagada{background:#e8f5e9;border:1px solid #a5d6a7;color:#2e7d32;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:700}
+  @media print{@page{size:letter;margin:12mm}}
+</style></head><body>
+<div class="header">
+  <div>
+    <h1>${empresa}</h1>
+    <h2>Liquidación de Comisiones</h2>
+    <div style="color:#666;font-size:12px">Generado el ${new Date().toLocaleDateString('es-HN')}</div>
+  </div>
+  <div style="text-align:right">
+    <div style="font-size:18px;font-weight:700">${c.vendedorNombre}</div>
+    <div style="font-size:14px;color:#555">Período: ${periodoLabel}</div>
+    <div style="font-size:12px;color:#777">Comisión: ${pct}% sobre utilidad</div>
+    ${c.yaPagada ? `<div class="badge-pagada" style="margin-top:6px">✅ PAGADA el ${c.fechaPago||''}</div>` : ''}
+  </div>
+</div>
+${(c.ventasPeriodo||[]).length ? `
+<h2 style="margin-bottom:8px">Ventas del período (${(c.ventasPeriodo||[]).length})</h2>
+<table>
+  <thead><tr><th>Fecha</th><th>Nº Venta</th><th>Cliente</th><th style="text-align:right">Total</th><th style="text-align:right">Utilidad</th><th style="text-align:right">Comisión</th></tr></thead>
+  <tbody>${filasVentas}</tbody>
+</table>` : '<p style="color:#999;font-style:italic">Sin ventas en este período.</p>'}
+${(c.devolucionesPeriodo||[]).length ? `
+<h2 style="margin-bottom:8px;color:#c62828">Devoluciones (descuentos)</h2>
+<table>
+  <thead><tr><th>Fecha</th><th>Venta</th><th>Productos</th><th>Motivo</th><th style="text-align:right">Utilidad Dev.</th><th style="text-align:right">Comisión Desc.</th></tr></thead>
+  <tbody>${filasDev}</tbody>
+</table>` : ''}
+<div class="total-box">
+  <table style="margin:0;border:none"><tr>
+    <td style="border:none;text-align:right;color:#555;font-size:13px">Utilidad bruta:</td><td style="border:none;font-weight:700">${fmtL(c.utilidadBruta)}</td>
+    <td style="border:none;width:30px"></td>
+    <td style="border:none;text-align:right;color:#555;font-size:13px">Comisión bruta (${pct}%):</td><td style="border:none;font-weight:700">${fmtL(c.comisionBruta)}</td>
+  </tr><tr>
+    <td style="border:none;text-align:right;color:#c62828;font-size:13px">Descuentos por devoluciones:</td><td style="border:none;font-weight:700;color:#c62828">-${fmtL(c.comisionDev)}</td>
+    <td style="border:none"></td><td colspan="2" style="border:none"></td>
+  </tr></table>
+  <div class="total-label" style="margin-top:10px">COMISIÓN NETA A PAGAR</div>
+  <div class="total-valor">${fmtL(c.comisionNeta)}</div>
+</div>
+<div style="margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:40px;text-align:center">
+  <div><div style="border-top:1.5px solid #333;padding-top:6px;font-size:12px;color:#555">Firma Autorizado · ${empresa}</div></div>
+  <div><div style="border-top:1.5px solid #333;padding-top:6px;font-size:12px;color:#555">Recibido por · ${c.vendedorNombre}</div></div>
+</div>
+<script>window.onload=()=>{window.print();}<\/script>
+</body></html>`;
+
+  const w = window.open('','_blank','width=900,height=700');
+  w.document.write(html);
+  w.document.close();
 }
 </script>
 </body>
