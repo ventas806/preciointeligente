@@ -12324,6 +12324,7 @@ function rowToDevolucion(r) {
     id:                  r.id,
     ventaId:             r.venta_id,
     ventaNumero:         r.venta_numero         || '',
+    vendedorId:          r.vendedor              || '',
     vendedor:            r.vendedor              || '',
     vendedorNombre:      r.vendedor_nombre       || '',
     fechaDevolucion:     r.fecha_devolucion      || '',
@@ -12494,8 +12495,8 @@ async function guardarDevolucion() {
   const row = {
     venta_id:             v.id,
     venta_numero:         v.numero || v.id,
-    vendedor:             v.vendedor,
-    vendedor_nombre:      v.vendedorNombre,
+    vendedor:             v.vendedorId || '',
+    vendedor_nombre:      v.vendedorNombre || '',
     fecha_devolucion:     document.getElementById('devFecha').value,
     motivo:               document.getElementById('devMotivo').value,
     tipo_reembolso:       document.getElementById('devReembolso').value,
@@ -12543,13 +12544,13 @@ function calcularYRenderLiquidacion() {
   const dFin    = new Date(fechaFin    + 'T23:59:59');
 
   const ventasPeriodo = ventas.filter(v => {
-    if (String(v.vendedor) !== String(vendedorId)) return false;
+    if (String(v.vendedorId) !== String(vendedorId)) return false;
     const d = new Date(v.fecha + 'T12:00:00');
     return d >= dInicio && d <= dFin;
   });
 
   const devolucionesPeriodo = devoluciones.filter(d => {
-    if (String(d.vendedor) !== String(vendedorId)) return false;
+    if (String(d.vendedorId) !== String(vendedorId)) return false;
     const fd = new Date(d.fechaDevolucion + 'T12:00:00');
     return fd >= dInicio && fd <= dFin;
   });
