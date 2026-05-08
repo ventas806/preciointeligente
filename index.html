@@ -943,6 +943,8 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 <th style="text-align:center">Estado Stock</th>
                 <th style="text-align:center">Cant.</th>
                 <th style="text-align:center">Mín.</th>
+                <th style="text-align:center">🔗</th>
+                <th style="text-align:center">🛒</th>
                 <th style="text-align:center">Acciones</th>
               </tr></thead>
               <tbody id="tbodyInventario"></tbody>
@@ -11722,6 +11724,8 @@ function renderTablaInventario() {
       <td style="text-align:center">${badgeEstadoStock(est)}</td>
       <td style="text-align:center;font-weight:700;color:${cant===0?'var(--red)':cant<=min?'var(--gold)':'var(--green)'}">${cant}</td>
       <td style="text-align:center;color:var(--text3)">${min || '—'}</td>
+      <td style="text-align:center">${p.url1 ? `<a href="${p.url1}" target="_blank" title="${p.url1}" style="color:var(--accent);font-size:16px;text-decoration:none">🔗</a>` : `<span style="color:var(--text3);font-size:13px">—</span>`}</td>
+      <td style="text-align:center">${p.url2 ? `<a href="${p.url2}" target="_blank" title="Ver en Focus Store: ${p.url2}" style="font-size:16px;text-decoration:none;opacity:.85" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.85">🛒</a>` : `<span style="color:var(--text3);font-size:13px">—</span>`}</td>
       <td style="text-align:center;white-space:nowrap">
         <button class="btn btn-ghost btn-sm" onclick="abrirModalOrden('${p.id}')" title="Crear orden de compra">🚢 Ordenar</button>
         ${enCamino > 0 ? `<span style="font-size:10px;color:#a29bfe;margin-left:4px">+${enCamino} en camino</span>` : ''}
