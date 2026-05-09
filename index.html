@@ -6404,6 +6404,14 @@ function buscarProductoVenta() {
 function agregarProductoCatalogo(prodId) {
   const p = productos.find(x => x.id === prodId);
   if (!p) return;
+  // ⚠️ Advertencia si el producto está agotado
+  const cantActual = parseInt(p.cantidad) || 0;
+  if (cantActual === 0) {
+    const ordsT = (ordenesCompra||[]).filter(o => o.productoId === p.id && o.estado === 'en_transito');
+    const udsEnCamino = ordsT.reduce((s,o) => s + (parseInt(o.cantidadOrdenada)||0), 0);
+    const msgCamino = udsEnCamino > 0 ? ` · 🚢 ${udsEnCamino} uds en camino` : '';
+    showToast(`⚠️ "${p.producto}" está AGOTADO (stock: 0${msgCamino})`, 'warning');
+  }
   const c     = calcProd(p);
   const isv   = p.estado === 'Nuevo';
   const isvPct = isv ? parametros.isvNuevo : 0;
@@ -6505,6 +6513,7 @@ function renderItemsVenta() {
         }
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           ${item.sku ? `<span style="font-size:11px;color:var(--text3);font-family:monospace">SKU: ${item.sku}</span>` : ''}
+          ${item.productoId ? (() => { const _p = productos.find(x=>x.id===item.productoId); if(!_p) return ''; const _c = parseInt(_p.cantidad)||0; const _col = _c===0?'var(--red)':_c<=(parseInt(_p.minStock)||0)?'var(--gold)':'#636e72'; const _icon = _c===0?'⛔':_c<=(parseInt(_p.minStock)||0)?'⚠️':''; return `<span style="font-size:11px;color:${_col};font-weight:600">${_icon} Disp: ${_c}</span>`; })() : ''}
           <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);cursor:pointer">
             <input type="checkbox" ${item.llevaISV?'checked':''} onchange="actualizarItemVenta('${item._id}','llevaISV',this.checked);renderItemsVenta()" style="accent-color:var(--accent3)">
             Lleva ISV (${(parametros.isvNuevo*100).toFixed(0)}%)
