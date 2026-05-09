@@ -6484,6 +6484,16 @@ function actualizarItemVenta(vid, campo, valor) {
     item.precioBase = item.llevaISV ? item.precioFinal / (1 + item.isvPct) : item.precioFinal;
   } else if (campo === 'cantidad') {
     item.cantidad = Math.max(1, parseInt(valor)||1);
+    // ⚠️ Advertencia si supera el stock disponible
+    if (item.productoId) {
+      const _p = productos.find(x => x.id === item.productoId);
+      if (_p) {
+        const stock = parseInt(_p.cantidad) || 0;
+        if (item.cantidad > stock) {
+          showToast(`⚠️ Estás vendiendo ${item.cantidad} uds pero solo hay ${stock} en inventario`, 'warning');
+        }
+      }
+    }
   } else if (campo === 'descripcion') {
     item.descripcion = valor;
   } else if (campo === 'costoLPS') {
