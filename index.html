@@ -3553,11 +3553,11 @@ function renderTablaProductos() {
   const lowStock = productos.filter(p=>(parseInt(p.minStock)||0) > 0 && (parseInt(p.cantidad)||0) <= parseInt(p.minStock));
   const alertaEl = document.getElementById('alertasBanner');
   if (alertaEl) {
-    // Banner: productos agotados con pedido en tránsito en la vista actual
-    const agotadosEnCamino = prods.filter(p => {
+    // Banner: solo cuando hay búsqueda activa y el producto está agotado con pedido en tránsito
+    const agotadosEnCamino = buscar ? prods.filter(p => {
       if ((parseInt(p.cantidad)||0) > 0) return false;
       return (ordenesCompra||[]).some(o => o.productoId === p.id && o.estado === 'en_transito');
-    });
+    }) : [];
     if (agotadosEnCamino.length > 0) {
       const items = agotadosEnCamino.map(p => {
         const ords  = (ordenesCompra||[]).filter(o => o.productoId === p.id && o.estado === 'en_transito');
