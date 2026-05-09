@@ -3368,6 +3368,8 @@ async function cargarDesdeSheetsYRenderizar() {
     }
 
     dbCargado = true;
+    // Cargar órdenes de compra en paralelo para que el badge "en camino" sea visible en Productos
+    cargarOrdenesCompra().then(() => renderTablaProductos()).catch(()=>{});
     showToast('✅ Datos cargados desde Supabase','success');
     if(document.getElementById('tab-etiquetas').classList.contains('active')) initTablaEtiquetas();
   } catch(err) {
