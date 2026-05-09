@@ -3488,15 +3488,13 @@ function getHeadersPorRol() {
   const perms = PERMS[currentUser.rol];
   const base = [{k:'img',l:'IMG'},{k:'sku',l:'SKU'},{k:'producto',l:'Producto'},{k:'estado',l:'Estado'},{k:'cantidad',l:'Cant.'},{k:'enCamino',l:'🚢 Camino'},{k:'webPublicado',l:'🌐 Web'},{k:'invelec',l:'INVELEC'},{k:'link',l:'🔗'},{k:'wix',l:'🛒'},{k:'descVend',l:'💰'}];
   const costFields  = [{k:'costoTotalLPS',l:'Costo LPS'}];
-  const priceFields = [{k:'descMax',l:'Desc.MAX'},{k:'precioConDesc',l:'Precio c/Desc'}];
-  const utilFields  = [{k:'utilBrutaLPS',l:'Utilidad LPS'},{k:'roi',l:'ROI %'}];
+  const priceFields = [{k:'descMax',l:'Desc.MAX'},{k:'descIngresado',l:'Desc %'},{k:'precioConDesc',l:'Precio c/Desc'},{k:'notaRapida',l:'Nota'}];
 
   let cols = [];
   if(currentUser.rol==='admin'||currentUser.rol==='gerencia') cols.push({k:'acciones',l:'⚙️'});
   cols = [...cols,...base];
   if(perms.verCostos) cols = [...cols,...costFields];
   cols = [...cols,...priceFields];
-  if(perms.verUtilidad) cols = [...cols,...utilFields];
   return cols;
 }
 
@@ -3630,7 +3628,7 @@ function renderTablaProductos() {
       switch(col.k) {
         case 'img': return p.imagen ? `<td style="text-align:center;padding:4px"><div class="prod-thumb" style="margin:0 auto;" onmouseenter="mostrarImgPreview('${p.imagen}',event)" onmouseleave="ocultarImgPreview()"><img src="${p.imagen}"></div></td>` : `<td style="text-align:center;color:var(--text3);font-size:18px">📦</td>`;
         case 'sku': return `<td class="td-sku" onclick="event.stopPropagation();copiarSKU('${p.sku}')" title="Click para copiar SKU" style="cursor:copy">${p.sku} <span style="font-size:10px;color:var(--text3)">📋</span></td>`;
-        case 'producto': return `<td class="td-name" style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${p.producto}</td>`;
+        case 'producto': return `<td class="td-name" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(p.producto||'').replace(/"/g,'&quot;')}">${p.producto}</td>`;
         case 'categoria': return `<td><span style="font-size:11px;display:block;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.categoria||''}">${p.categoria||'-'}</span></td>`;
         case 'subcategoria': return `<td><span style="font-size:11px;color:var(--text2);display:block;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.subcategoria||''}">${p.subcategoria||'-'}</span></td>`;
         case 'cantidad': { const stStyle = sinStock ? 'color:var(--red);font-weight:700' : stockWarn?'color:var(--red);font-weight:700':''; return `<td style="${stStyle}">` + cant + (sinStock?' ⛔': stockWarn?' ⚠️':'') + `</td>`; }
@@ -3650,6 +3648,7 @@ function renderTablaProductos() {
           return `<td style="color:${ajColor};font-weight:700;font-size:12px;text-align:center" title="Ajuste Manual Col U: ${ajLabel}">${ajLabel}</td>`;
         }
         case 'descMax': return `<td>${fmtPct(c.descMax)}</td>`;
+        case 'descIngresado': return `<td onclick="event.stopPropagation()"><input type="number" value="${p.descuento||0}" min="0" max="100" step="0.1" onclick="event.stopPropagation()" onchange="guardarDescuentoRapido('${p.id}',this.value)" style="width:58px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:${(p.descuento||0)>0?'var(--accent4)':'var(--text3)'};font-size:11px;font-weight:700;outline:none;text-align:right" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" title="Descuento % opcional — afecta Precio Final (Col AA)"></td>`;
         case 'precioConDesc': return `<td class="td-price" style="color:var(--accent3)">${fmtLPS(c.precioFinalDesc)}</td>`;
         case 'utilBrutaLPS': return `<td style="color:var(--green)">${fmtLPS(c.utilBrutaLPS)}</td>`;
         case 'roi': { const roiCls = c.roi < c.roiRef ? 'bad' : 'good'; return `<td class="td-roi ${roiCls}">${fmtPct(c.roi)}</td>`; }
@@ -5316,6 +5315,15 @@ async function guardarNotaRapida(id, valor) {
   p.ultimaModif = new Date().toISOString().replace('Z','').replace('T',' ').substring(0,19);
   try { await gsSave('Productos', p); } catch(e) {}
   showToast(`📝 Nota guardada`, 'success');
+}
+
+async function guardarDescuentoRapido(id, valor) {
+  const p = productos.find(x => x.id === id);
+  if(!p) return;
+  p.descuento = parseFloat(valor)||0;
+  p.ultimaModif = new Date().toISOString().replace('Z','').replace('T',' ').substring(0,19);
+  try { await gsSave('Productos', p); renderTablaProductos(); } catch(e) {}
+  showToast('💰 Descuento actualizado', 'success');
 }
 
 // ===== COPIAR SKU =====
