@@ -7851,8 +7851,17 @@ function editarVenta(id, _modoAbono) {
     if (selV) { selV.value = v.vendedorId || ''; selV.disabled = false; }
   }, 50);
 
-  // Cargar ítems
-  vItemsActuales = (v.items || []).map(item => ({...item, _id: item._id || 'vi_' + Date.now() + '_' + Math.random().toString(36).slice(2,6)}));
+  // Cargar ítems — enriquecer con datos actuales del producto (imagen, precioLista)
+  vItemsActuales = (v.items || []).map(item => {
+    const _p = item.productoId ? productos.find(x => x.id === item.productoId) : null;
+    const _c = (_p && item.tipo !== 'manual') ? calcProd(_p) : null;
+    return {
+      ...item,
+      imagen:      item.imagen      || (_p ? (_p.imagen || null) : null),
+      precioLista: item.precioLista || (_c  ? +_c.precioConISV.toFixed(2) : 0),
+      _id: item._id || 'vi_' + Date.now() + '_' + Math.random().toString(36).slice(2,6)
+    };
+  });
   renderItemsVenta();
 
   // Guardar snapshot de los datos originales para detectar cambios
