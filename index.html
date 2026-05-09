@@ -12555,9 +12555,13 @@ function calcularYRenderLiquidacion() {
     return d >= dInicio && d <= dFin;
   });
 
+  const ventaIdsPeriodo = new Set(ventasPeriodo.map(v => String(v.id)));
   const devolucionesPeriodo = devoluciones.filter(d => {
-    if (String(d.vendedorId) !== String(vendedorId)) return false;
-    const fd = new Date(d.fechaDevolucion + 'T12:00:00');
+    // Coincide por vendedorId (registros nuevos) o por ventaId (fallback para registros viejos con vendedor vacío)
+    const byVendedorId = d.vendedorId && String(d.vendedorId) === String(vendedorId);
+    const byVentaId    = d.ventaId    && ventaIdsPeriodo.has(String(d.ventaId));
+    if (!byVendedorId && !byVentaId) return false;
+    const fd = new Date((d.fechaDevolucion || '') + 'T12:00:00');
     return fd >= dInicio && fd <= dFin;
   });
 
