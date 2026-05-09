@@ -3563,15 +3563,11 @@ function renderTablaProductos() {
         const ords  = (ordenesCompra||[]).filter(o => o.productoId === p.id && o.estado === 'en_transito');
         const uds   = ords.reduce((s,o) => s + (parseInt(o.cantidadOrdenada)||0), 0);
         const fecha = ords.map(o => o.fechaEstimada).filter(Boolean).sort()[0];
-        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(162,155,254,.08);border:1px solid rgba(162,155,254,.2);border-radius:8px">
-          <span style="font-size:20px">🚢</span>
-          <div>
-            <div style="font-weight:700;font-size:13px;color:var(--text)">${p.producto}</div>
-            <div style="font-size:12px;color:#a29bfe;margin-top:2px">
-              <strong>${uds} unidad${uds!==1?'es':''} en camino</strong>
-              ${fecha ? `<span style="color:var(--text3)"> · Llegada estimada: <strong style="color:var(--text2)">${fecha}</strong></span>` : ''}
-            </div>
-          </div>
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;background:rgba(162,155,254,.08);border:1px solid rgba(162,155,254,.2);border-radius:8px;flex-wrap:wrap">
+          <span>🚢</span>
+          <span style="font-size:12px;color:var(--text3)">SKU: <strong style="color:var(--text2)">${p.sku}</strong></span>
+          <span style="font-size:13px;font-weight:700;color:var(--text)">${p.producto}</span>
+          <span style="font-size:12px;color:#a29bfe;margin-left:4px">· <strong>${uds} unidad${uds!==1?'es':''} en camino</strong>${fecha ? ` · 📅 <strong style="color:var(--text2)">${fecha}</strong>` : ''}</span>
         </div>`;
       }).join('');
       alertaEl.innerHTML = `
