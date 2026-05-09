@@ -9979,11 +9979,12 @@ function imprimirCotizacion(id) {
 
   // ── Productos con imagen ──────────────────────────────────────────────
   const tieneImagenes = (c.items||[]).some(it => it.imagen);
-  const barcodeDataUrl = (sku) => { try { const cv=document.createElement('canvas'); JsBarcode(cv,sku,{format:'CODE128',width:1.2,height:32,displayValue:false,margin:2}); return cv.toDataURL('image/png'); } catch(e){ return ''; } };
+  const _bcUrl = (sku) => { try { const cv=document.createElement('canvas'); JsBarcode(cv,sku,{format:'CODE128',width:1.2,height:32,displayValue:false,margin:2}); return cv.toDataURL('image/png'); } catch(e){ return ''; } };
+  const _bcMap = {}; (c.items||[]).forEach(it=>{ if(it.sku && !_bcMap[it.sku]) _bcMap[it.sku]=_bcUrl(it.sku); });
   const itemsHtml=(c.items||[]).map((it,i)=>`<tr style="${i%2===1?'background:#f8f8f8':''}">
     <td style="text-align:center;font-weight:700;color:#666">${i+1}</td>
     ${tieneImagenes?`<td style="text-align:center;padding:4px 6px">${it.imagen?`<img src="${it.imagen}" style="width:80px;height:80px;object-fit:contain;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;padding:3px" onerror="this.style.display='none'">`:'<span style="color:#ccc;font-size:24px">📦</span>'}</td>`:''}
-    <td style="font-family:monospace;font-size:10px;color:#555">${it.sku||'—'}${it.sku?(()=>{const u=barcodeDataUrl(it.sku);return u?`<br><img src="${u}" style="max-width:100%;display:block">`:'';})()):''}</td>
+    <td style="font-family:monospace;font-size:10px;color:#555">${it.sku||'—'}${(_bcMap[it.sku]?'<br><img src="'+_bcMap[it.sku]+'" style="max-width:100%;display:block">':'')}</td>
     <td><strong style="font-size:12px">${it.descripcion||it.nombre||'—'}</strong>${it.notaItem?`<br><span style="font-size:10px;color:#555;font-style:italic">${it.notaItem}</span>`:''}</td>
     <td style="text-align:center">${it.cantidad||1}</td>
     <td style="text-align:right">${fmtL(it.precioFinal||0)}</td>
