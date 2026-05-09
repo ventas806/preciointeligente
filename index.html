@@ -3552,7 +3552,39 @@ function renderTablaProductos() {
   // Alertas banner
   const lowStock = productos.filter(p=>(parseInt(p.minStock)||0) > 0 && (parseInt(p.cantidad)||0) <= parseInt(p.minStock));
   const alertaEl = document.getElementById('alertasBanner');
-  if (alertaEl) alertaEl.innerHTML = '';
+  if (alertaEl) {
+    // Banner: productos agotados con pedido en tránsito en la vista actual
+    const agotadosEnCamino = prods.filter(p => {
+      if ((parseInt(p.cantidad)||0) > 0) return false;
+      return (ordenesCompra||[]).some(o => o.productoId === p.id && o.estado === 'en_transito');
+    });
+    if (agotadosEnCamino.length > 0) {
+      const items = agotadosEnCamino.map(p => {
+        const ords  = (ordenesCompra||[]).filter(o => o.productoId === p.id && o.estado === 'en_transito');
+        const uds   = ords.reduce((s,o) => s + (parseInt(o.cantidadOrdenada)||0), 0);
+        const fecha = ords.map(o => o.fechaEstimada).filter(Boolean).sort()[0];
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(162,155,254,.08);border:1px solid rgba(162,155,254,.2);border-radius:8px">
+          <span style="font-size:20px">🚢</span>
+          <div>
+            <div style="font-weight:700;font-size:13px;color:var(--text)">${p.producto}</div>
+            <div style="font-size:12px;color:#a29bfe;margin-top:2px">
+              <strong>${uds} unidad${uds!==1?'es':''} en camino</strong>
+              ${fecha ? `<span style="color:var(--text3)"> · Llegada estimada: <strong style="color:var(--text2)">${fecha}</strong></span>` : ''}
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+      alertaEl.innerHTML = `
+        <div style="margin-bottom:12px;padding:14px 16px;background:rgba(162,155,254,.06);border:1px solid rgba(162,155,254,.3);border-radius:10px;border-left:4px solid #a29bfe">
+          <div style="font-size:12px;font-weight:700;color:#a29bfe;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">
+            📦 Productos agotados · Pedido en tránsito
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">${items}</div>
+        </div>`;
+    } else {
+      alertaEl.innerHTML = '';
+    }
+  }
 
   const tbody = document.getElementById('tbodyProductos');
   if(prods.length===0) {
