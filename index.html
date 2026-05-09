@@ -3486,7 +3486,7 @@ function renderDashboard() {
 // ===== TABLA PRODUCTOS =====
 function getHeadersPorRol() {
   const perms = PERMS[currentUser.rol];
-  const base = [{k:'img',l:'IMG'},{k:'sku',l:'SKU'},{k:'producto',l:'Producto'},{k:'estado',l:'Estado'},{k:'cantidad',l:'Cant.'},{k:'notaRapida',l:'Nota'},{k:'webPublicado',l:'🌐 Web'},{k:'invelec',l:'INVELEC'},{k:'link',l:'🔗'},{k:'wix',l:'🛒'},{k:'descVend',l:'💰'}];
+  const base = [{k:'img',l:'IMG'},{k:'sku',l:'SKU'},{k:'producto',l:'Producto'},{k:'estado',l:'Estado'},{k:'cantidad',l:'Cant.'},{k:'enCamino',l:'🚢 Camino'},{k:'webPublicado',l:'🌐 Web'},{k:'invelec',l:'INVELEC'},{k:'link',l:'🔗'},{k:'wix',l:'🛒'},{k:'descVend',l:'💰'}];
   const costFields  = [{k:'costoTotalLPS',l:'Costo LPS'}];
   const priceFields = [{k:'descMax',l:'Desc.MAX'},{k:'precioConDesc',l:'Precio c/Desc'}];
   const utilFields  = [{k:'utilBrutaLPS',l:'Utilidad LPS'},{k:'roi',l:'ROI %'}];
@@ -3598,13 +3598,11 @@ function renderTablaProductos() {
     const stockWarn = (parseInt(p.minStock)||0) > 0 && cant <= parseInt(p.minStock);
     const sinStock  = cant === 0;
     const rowStyle  = sinStock ? 'background:rgba(255,71,87,.08);border-left:3px solid rgba(255,71,87,.4)' : '';
-    const ordsTransito = (ordenesCompra||[]).filter(o => o.productoId === p.id && o.estado === 'en_transito');
-    const unidadesEnCamino = ordsTransito.reduce((s,o) => s + (parseInt(o.cantidadOrdenada)||0), 0);
     return `<tr onclick="verDetalle('${p.id}')" style="${rowStyle}">` + cols.map(col=>{
       switch(col.k) {
         case 'img': return p.imagen ? `<td style="text-align:center;padding:4px"><div class="prod-thumb" style="margin:0 auto;" onmouseenter="mostrarImgPreview('${p.imagen}',event)" onmouseleave="ocultarImgPreview()"><img src="${p.imagen}"></div></td>` : `<td style="text-align:center;color:var(--text3);font-size:18px">📦</td>`;
         case 'sku': return `<td class="td-sku" onclick="event.stopPropagation();copiarSKU('${p.sku}')" title="Click para copiar SKU" style="cursor:copy">${p.sku} <span style="font-size:10px;color:var(--text3)">📋</span></td>`;
-        case 'producto': return `<td class="td-name" style="max-width:200px">${p.producto}${sinStock && unidadesEnCamino > 0 ? `<div style="display:inline-flex;align-items:center;gap:4px;margin-top:3px;padding:2px 7px;background:rgba(162,155,254,.15);border:1px solid rgba(162,155,254,.35);border-radius:20px;font-size:10px;font-weight:700;color:#a29bfe;white-space:nowrap">🚢 ${unidadesEnCamino} en camino</div>` : ''}</td>`;
+        case 'producto': return `<td class="td-name" style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${p.producto}</td>`;
         case 'categoria': return `<td><span style="font-size:11px;display:block;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.categoria||''}">${p.categoria||'-'}</span></td>`;
         case 'subcategoria': return `<td><span style="font-size:11px;color:var(--text2);display:block;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.subcategoria||''}">${p.subcategoria||'-'}</span></td>`;
         case 'cantidad': { const stStyle = sinStock ? 'color:var(--red);font-weight:700' : stockWarn?'color:var(--red);font-weight:700':''; return `<td style="${stStyle}">` + cant + (sinStock?' ⛔': stockWarn?' ⚠️':'') + `</td>`; }
@@ -3630,6 +3628,15 @@ function renderTablaProductos() {
         case 'utilBrutaCant': return `<td style="color:var(--gold);font-weight:700">${fmtLPS(c.utilBrutaCant)}</td>`;
         case 'link': return `<td onclick="event.stopPropagation()" style="text-align:center">${p.url1 ? `<a href="${p.url1}" target="_blank" title="${p.url1}" style="color:var(--accent);font-size:16px;text-decoration:none">🔗</a>` : `<span style="color:var(--text3);font-size:13px">—</span>`}</td>`;
         case 'wix': return `<td onclick="event.stopPropagation()" style="text-align:center">${p.url2 ? `<a href="${p.url2}" target="_blank" title="Ver en Focus Store: ${p.url2}" style="font-size:16px;text-decoration:none;opacity:.85;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.85">🛒</a>` : `<span style="color:var(--text3);font-size:13px">—</span>`}</td>`;
+        case 'enCamino': {
+          const ordsT = (ordenesCompra||[]).filter(o => o.productoId === p.id && o.estado === 'en_transito');
+          const uds   = ordsT.reduce((s,o) => s + (parseInt(o.cantidadOrdenada)||0), 0);
+          const fechas = ordsT.map(o => o.fechaEstimada).filter(Boolean).sort();
+          const proxFecha = fechas[0] ? `<div style="font-size:10px;color:var(--text3);margin-top:2px">📅 ${fechas[0]}</div>` : '';
+          return uds > 0
+            ? `<td style="text-align:center;white-space:nowrap"><span style="font-weight:700;color:#a29bfe">🚢 ${uds}</span>${proxFecha}</td>`
+            : `<td style="text-align:center;color:var(--text3);font-size:12px">—</td>`;
+        }
         case 'notaRapida': return `<td onclick="event.stopPropagation()">
           <input type="text" value="${(p.notaRapida||'').substring(0,12)}" maxlength="12"
             onclick="event.stopPropagation()"
