@@ -461,6 +461,14 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
 </head>
 <body>
 
+<!-- ── Barra de carga global ── -->
+<div id="gLoadBar" style="position:fixed;top:0;left:0;height:3px;width:0%;background:linear-gradient(90deg,#3d6aff,#00c8a0);z-index:999999;opacity:0;transition:width .25s ease,opacity .3s ease;border-radius:0 2px 2px 0;pointer-events:none"></div>
+<div id="gLoadSpinner" style="position:fixed;top:10px;right:16px;z-index:999999;opacity:0;transition:opacity .2s;pointer-events:none;display:flex;align-items:center;gap:6px;background:var(--bg2,#1e2030);border:1px solid var(--border,#333);border-radius:20px;padding:4px 10px 4px 8px;box-shadow:0 2px 12px rgba(0,0,0,.4)">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="animation:gSpin .7s linear infinite;flex-shrink:0"><circle cx="12" cy="12" r="10" stroke="#3d6aff" stroke-width="3" stroke-dasharray="48" stroke-dashoffset="12" stroke-linecap="round"/></svg>
+  <span style="font-size:11px;color:var(--text2,#aaa);white-space:nowrap">Cargando...</span>
+</div>
+<style>@keyframes gSpin{to{transform:rotate(360deg)}}</style>
+
 <!-- MODAL EDITAR PENDIENTE -->
 <div class="modal-overlay" id="modalEditarPendiente">
   <div class="modal" style="max-width:600px">
@@ -2444,6 +2452,37 @@ const SUPABASE_URL  = 'https://uzhjnedhmbvgfqqssuov.supabase.co';
 const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6aGpuZWRobWJ2Z2ZxcXNzdW92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMjA1MTgsImV4cCI6MjA5MDg5NjUxOH0.w8oomn73rEZWqKv4RA56uCrBwv1z4VYnks7fyhafqz8';
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── Loading indicator global ──────────────────────────────────────
+let _gLoadCount = 0;
+function showLoading() {
+  _gLoadCount++;
+  const bar = document.getElementById('gLoadBar');
+  const spin = document.getElementById('gLoadSpinner');
+  if (bar)  { bar.style.width  = '75%'; bar.style.opacity  = '1'; }
+  if (spin) { spin.style.opacity = '1'; }
+}
+function hideLoading() {
+  _gLoadCount = Math.max(0, _gLoadCount - 1);
+  if (_gLoadCount > 0) return;
+  const bar = document.getElementById('gLoadBar');
+  const spin = document.getElementById('gLoadSpinner');
+  if (bar)  { bar.style.width = '100%'; setTimeout(() => { bar.style.opacity = '0'; setTimeout(() => { bar.style.width = '0%'; }, 350); }, 150); }
+  if (spin) { setTimeout(() => { spin.style.opacity = '0'; }, 300); }
+}
+// Interceptar fetch: mostrar spinner en cualquier petición a Supabase
+(function() {
+  const _origFetch = window.fetch;
+  window.fetch = async function(url, ...rest) {
+    const isSupabase = typeof url === 'string' && (url.includes('supabase.co') || url.includes('wixapis.com'));
+    if (isSupabase) showLoading();
+    try {
+      return await _origFetch.apply(this, [url, ...rest]);
+    } finally {
+      if (isSupabase) hideLoading();
+    }
+  };
+})();
 
 // ── Wix Integration ──────────────────────────────────
 const WIX_SITE_ID = '6649f7a9-4c04-4e09-beeb-b0905565860f';
