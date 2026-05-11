@@ -9167,6 +9167,7 @@ function _renderCobrosReporte(filtrados, hoy) {
         <td style="${tdStyle};text-align:right">
           <div style="display:flex;gap:4px;justify-content:flex-end">
             <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')" style="padding:4px 8px;font-size:11px">👁️</button>
+            <button data-cli="${(v.clienteNombre||'').replace(/"/g,'&quot;')}" onclick="imprimirReporteCobros(this.dataset.cli)" style="padding:6px 10px;font-size:12px;font-weight:700;background:#1a1a2e;border:none;border-radius:6px;color:#fff;cursor:pointer" title="Imprimir reporte de este cliente">🖨️</button>
             <button onclick="editarVenta('${v.id}', true)" style="padding:6px 13px;font-size:13px;font-weight:700;background:var(--gold);border:none;border-radius:6px;color:#000;cursor:pointer">✏️ Ingresar Abono</button>
           </div>
         </td>
@@ -9289,6 +9290,7 @@ function _renderCobrosTarjetas(filtrados) {
           <div style="font-size:11px;color:var(--text3)">Ref: ${(v.id||'').slice(-8)}</div>
           <div style="display:flex;gap:6px;margin-top:4px">
             <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')">👁️ Ver</button>
+            <button data-cli="${(v.clienteNombre||'').replace(/"/g,'&quot;')}" onclick="imprimirReporteCobros(this.dataset.cli)" style="padding:6px 10px;font-size:12px;font-weight:700;background:#1a1a2e;border:none;border-radius:6px;color:#fff;cursor:pointer" title="Imprimir reporte">🖨️</button>
             <button onclick="editarVenta('${v.id}', true)" style="padding:6px 13px;font-size:13px;font-weight:700;background:var(--gold);border:none;border-radius:6px;color:#000;cursor:pointer">✏️ Ingresar Abono</button>
           </div>
         </div>
@@ -10166,11 +10168,13 @@ function enviarEmailCotizacion() {
   showToast('✅ Gmail abierto — adjunta el PDF manualmente','success', 5000);
 }
 
-function imprimirReporteCobros() {
+function imprimirReporteCobros(clienteForzado) {
   // ── Re-calcular datos con los mismos filtros activos ──────────────────
   const hoy       = new Date(); hoy.setHours(0,0,0,0);
-  const q         = ((document.getElementById('cobrosBuscar')||{}).value||'').toLowerCase().trim();
-  const estadoFil = ((document.getElementById('cobrosEstado')||{}).value||'');
+  const q         = clienteForzado
+    ? clienteForzado.toLowerCase().trim()
+    : ((document.getElementById('cobrosBuscar')||{}).value||'').toLowerCase().trim();
+  const estadoFil = clienteForzado ? '' : ((document.getElementById('cobrosEstado')||{}).value||'');
 
   const esParcialFn = v => v.metodoPago === 'parcial' || (v.metodoPagoLabel||'').toLowerCase().includes('parcial');
   const enriquecer  = v => {
