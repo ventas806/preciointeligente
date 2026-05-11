@@ -10268,6 +10268,41 @@ function imprimirReporteCobros() {
         <td style="text-align:right;font-weight:700;color:${esvenc?'#c0392b':'#333'}">${fmtL(saldo)}</td>
       </tr>`;
 
+      // Sub-tabla de detalle de productos
+      const filasDetalle = (v.items && v.items.length > 0)
+        ? `<tr style="background:#f8f8ff">
+            <td colspan="9" style="padding:4px 8px 8px 32px">
+              <table style="width:100%;border-collapse:collapse;font-size:10.5px">
+                <thead>
+                  <tr style="background:#e8eaf6">
+                    <th style="padding:3px 6px;text-align:left;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9;width:90px">SKU</th>
+                    <th style="padding:3px 6px;text-align:left;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9">Descripción</th>
+                    <th style="padding:3px 6px;text-align:center;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9;width:50px">Cant.</th>
+                    <th style="padding:3px 6px;text-align:right;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9;width:100px">P. Unitario</th>
+                    <th style="padding:3px 6px;text-align:right;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9;width:100px">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${v.items.map(it => {
+                    const _sku  = it.sku || '—';
+                    const _nom  = it.descripcion || it.nombre || '—';
+                    const _qty  = it.cantidad || 1;
+                    const _pUnit = it.precioFinal || 0;
+                    const _sub  = _qty * _pUnit;
+                    return '<tr style="border-bottom:1px solid #e0e0f0">'
+                      + '<td style="padding:3px 6px;font-family:monospace;font-size:10px;color:#666">'+_sku+'</td>'
+                      + '<td style="padding:3px 6px;color:#333">'+_nom+'</td>'
+                      + '<td style="padding:3px 6px;text-align:center;color:#333">'+_qty+'</td>'
+                      + '<td style="padding:3px 6px;text-align:right;color:#333">'+fmtL(_pUnit)+'</td>'
+                      + '<td style="padding:3px 6px;text-align:right;font-weight:600;color:#1a237e">'+fmtL(_sub)+'</td>'
+                      + '</tr>';
+                  }).join('')}
+                </tbody>
+              </table>
+            </td>
+          </tr>`
+        : '';
+
       // Sub-filas de abonos (si existen)
       const filasAbonos = abonos.length
         ? abonos.map((a,i) => `<tr style="background:#f9fff9">
@@ -10287,7 +10322,7 @@ function imprimirReporteCobros() {
           </tr>`).join('')
         : `<tr style="background:#fffaf9"><td colspan="9" style="padding:3px 8px 3px 24px;font-size:10.5px;color:#bbb"><em>↳ Sin abonos registrados</em></td></tr>`;
 
-      return filaVenta + filasAbonos;
+      return filaVenta + filasDetalle + filasAbonos;
     }).join('');
 
     return `
