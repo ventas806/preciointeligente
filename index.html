@@ -1604,6 +1604,23 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
 
       <!-- ===== NUEVA VENTA ===== -->
       <div id="vPanelNueva" style="display:none">
+
+        <!-- Tipo de Venta -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px">
+          <span style="font-size:13px;font-weight:700;color:var(--text2)">Tipo de Venta:</span>
+          <div style="display:flex;gap:6px">
+            <button id="vBtnFormal" onclick="setTipoVenta('formal')"
+              style="padding:7px 20px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;background:var(--accent);color:#fff">
+              🧾 Formal
+            </button>
+            <button id="vBtnInformal" onclick="setTipoVenta('informal')"
+              style="padding:7px 20px;border-radius:8px;border:1px solid var(--border);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;background:transparent;color:var(--text2)">
+              🤝 Informal
+            </button>
+          </div>
+          <span id="vTipoVentaHint" style="font-size:11px;color:var(--text3);margin-left:4px">Con factura formal, RTN y datos completos</span>
+        </div>
+
         <div style="display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start">
 
           <!-- Columna izquierda: datos + productos -->
@@ -1625,15 +1642,15 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                   <input type="text" id="vClienteNombre" placeholder="Nombre completo">
                 </div>
                 <div class="form-field field-full">
-                  <label>Dirección Exacta *</label>
+                  <label id="vLblDireccion">Dirección Exacta *</label>
                   <input type="text" id="vClienteDireccion" placeholder="Calle, colonia, número de casa...">
                 </div>
                 <div class="form-field">
-                  <label>Ciudad *</label>
+                  <label id="vLblCiudad">Ciudad *</label>
                   <input type="text" id="vClienteCiudad" placeholder="Tegucigalpa, SPS...">
                 </div>
                 <div class="form-field">
-                  <label>Teléfono *</label>
+                  <label id="vLblTel">Teléfono *</label>
                   <input type="text" id="vClienteTel" placeholder="+504 9999-9999">
                 </div>
                 <div class="form-field">
@@ -2756,6 +2773,7 @@ async function sbSaveVenta(venta) {
     metodo_envio:     venta.metodoEnvio     || '',
     promesa_pago:     venta.promesaPago      || null,
     nota:             (venta.nota            || '').substring(0, 12),
+    tipo_venta:       venta.tipoVenta        || 'formal',
     items: (venta.items || []).map(it => ({
       sku:         it.sku         || '',
       nombre:      it.descripcion || it.nombre || '',
@@ -5840,6 +5858,7 @@ let vItemsActuales = [];
 let vItemsAbonos   = [];   // [{_id, monto, fecha, nota, registradoPor}]
 let vClienteSelId  = null;
 let vEditandoId    = null;
+let vTipoVenta     = 'formal';
 let _ventasCargadas = false;
 
 // ── Guardar en Supabase (reemplaza localStorage) ──
@@ -5984,6 +6003,7 @@ function _mapVentaRow(v) {
     fechaRegistro:   v.fecha_registro  || '',
     registradoPor:   v.registrado_por  || '',
     nota:            v.nota            || '',
+    tipoVenta:       v.tipo_venta      || 'formal',
     items: (v.venta_items || []).map(it => ({
       tipo:        it.producto_id ? 'catalogo' : 'manual',
       productoId:  it.producto_id || null,
@@ -6908,10 +6928,10 @@ async function guardarVenta() {
   const tel       = (document.getElementById('vClienteTel').value||'').trim();
   const fecha     = document.getElementById('vFecha').value;
   const vendedorId= document.getElementById('vVendedor').value;
-  if (!nombre)     { showToast('⚠️ Ingresa el nombre del cliente','warn'); return; }
-  if (!direccion)  { showToast('⚠️ Ingresa la dirección del cliente','warn'); return; }
-  if (!ciudad)     { showToast('⚠️ Ingresa la ciudad','warn'); return; }
-  if (!tel)        { showToast('⚠️ Ingresa el teléfono del cliente','warn'); return; }
+  if (!nombre)                              { showToast('⚠️ Ingresa el nombre del cliente','warn'); return; }
+  if (vTipoVenta === 'formal' && !direccion){ showToast('⚠️ Ingresa la dirección del cliente','warn'); return; }
+  if (vTipoVenta === 'formal' && !ciudad)   { showToast('⚠️ Ingresa la ciudad','warn'); return; }
+  if (vTipoVenta === 'formal' && !tel)      { showToast('⚠️ Ingresa el teléfono del cliente','warn'); return; }
   if (!fecha)      { showToast('⚠️ Selecciona la fecha de venta','warn'); return; }
   if (!vendedorId) { showToast('⚠️ Selecciona el vendedor','warn'); return; }
 
@@ -7008,7 +7028,8 @@ async function guardarVenta() {
     saldoPendiente:   Math.max(0, total - vItemsAbonos.reduce((s,a)=>s+(a.monto||0),0)),
     fechaRegistro: new Date().toISOString(),
     registradoPor: currentUser ? currentUser.nombre : '—',
-    nota: vEditandoId ? ((ventas.find(x=>x.id===vEditandoId)||{}).nota||'') : ''
+    nota: vEditandoId ? ((ventas.find(x=>x.id===vEditandoId)||{}).nota||'') : '',
+    tipoVenta: vTipoVenta || 'formal'
   };
 
   // ── Guardar en Supabase (fuente de verdad) ──
@@ -7086,6 +7107,38 @@ function limpiarVenta() {
   if (banner) banner.style.display = 'none';
   const grid = document.querySelector('#vPanelNueva > div[style*="grid-template-columns"]');
   if (grid) grid.style.gridTemplateColumns = '1fr 380px';
+  // Reset tipo venta
+  setTipoVenta('formal');
+}
+
+// ── Tipo de Venta (Formal / Informal) ────────────────────────────
+function setTipoVenta(tipo) {
+  vTipoVenta = tipo;
+  const btnF = document.getElementById('vBtnFormal');
+  const btnI = document.getElementById('vBtnInformal');
+  const hint = document.getElementById('vTipoVentaHint');
+  if (!btnF || !btnI) return;
+
+  if (tipo === 'formal') {
+    btnF.style.background = 'var(--accent)'; btnF.style.color = '#fff'; btnF.style.border = 'none';
+    btnI.style.background = 'transparent';   btnI.style.color = 'var(--text2)'; btnI.style.border = '1px solid var(--border)';
+    if (hint) hint.textContent = 'Con factura formal, RTN y datos completos del cliente';
+    // Restaurar labels y required visual
+    const lblDir = document.getElementById('vLblDireccion'); if(lblDir) lblDir.textContent = 'DIRECCIÓN *';
+    const lblCiu = document.getElementById('vLblCiudad');    if(lblCiu) lblCiu.textContent = 'CIUDAD *';
+    const lblTel = document.getElementById('vLblTel');       if(lblTel) lblTel.textContent = 'TELÉFONO *';
+  } else {
+    btnI.style.background = '#f39c12'; btnI.style.color = '#000'; btnI.style.border = 'none';
+    btnF.style.background = 'transparent'; btnF.style.color = 'var(--text2)'; btnF.style.border = '1px solid var(--border)';
+    if (hint) hint.textContent = 'Venta rápida sin datos formales — consumidor final';
+    // Marcar campos opcionales
+    const lblDir = document.getElementById('vLblDireccion'); if(lblDir) lblDir.textContent = 'DIRECCIÓN (opcional)';
+    const lblCiu = document.getElementById('vLblCiudad');    if(lblCiu) lblCiu.textContent = 'CIUDAD (opcional)';
+    const lblTel = document.getElementById('vLblTel');       if(lblTel) lblTel.textContent = 'TELÉFONO (opcional)';
+    // Pre-rellenar nombre si está vacío
+    const nomEl = document.getElementById('vClienteNombre');
+    if (nomEl && !nomEl.value.trim()) nomEl.value = 'Consumidor Final';
+  }
 }
 
 // ===== HISTORIAL DE VENTAS =====
@@ -7280,7 +7333,9 @@ function renderHistorialVentas() {
             ${fmtFecha(v.fecha)}
             ${fechaIng ? `<div style="font-size:10px;color:var(--text3);margin-top:2px">🕐 ${fechaIng}</div>` : ''}
           </td>
-          <td style="font-weight:600">${v.clienteNombre}${thumbsHtml}</td>
+          <td style="font-weight:600">
+            ${v.tipoVenta === 'informal' ? '<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:rgba(243,156,18,.15);color:#f39c12;margin-right:5px;vertical-align:middle">🤝 Inf.</span>' : '<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:rgba(61,106,255,.12);color:var(--accent);margin-right:5px;vertical-align:middle">🧾 For.</span>'}${v.clienteNombre}${thumbsHtml}
+          </td>
           <td onclick="event.stopPropagation()">
             <input type="text" value="${(v.nota||'').replace(/"/g,'&quot;')}" maxlength="12"
               onclick="event.stopPropagation()"
@@ -7904,6 +7959,9 @@ function editarVenta(id, _modoAbono) {
 
   // Marcar como edición
   vEditandoId = id;
+
+  // Restaurar tipo de venta
+  setTipoVenta(v.tipoVenta || 'formal');
 
   // Cargar datos del cliente
   vClienteSelId = v.clienteId || null;
