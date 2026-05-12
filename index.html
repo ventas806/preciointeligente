@@ -605,9 +605,10 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
     <button onclick="abrirWixManager()" style="background:linear-gradient(135deg,#00c8a0,#00a080);color:#fff;border:none;cursor:pointer;font-weight:600;border-radius:8px;padding:6px 14px;font-size:13px;margin-left:4px" title="Gestor Wix">🗂️ Wix</button>
   </div>
 
-  <!-- SECOND BAR: navigation tabs (scrollable) -->
-  <nav class="topnav" style="height:44px;padding:0 16px;overflow-x:auto;overflow-y:hidden;gap:4px;position:sticky;top:52px;z-index:100;scrollbar-width:none;-ms-overflow-style:none">
-    <div class="nav-tabs" id="navTabs" style="flex-shrink:0">
+  <!-- SECOND BAR: navigation tabs — 2 rows -->
+  <nav style="background:var(--bg2);border-bottom:1px solid var(--border);padding:4px 16px 4px;position:sticky;top:52px;z-index:100;display:flex;flex-direction:column;gap:2px">
+    <!-- Fila 1: Operación / Ventas -->
+    <div class="nav-tabs" id="navTabs" style="flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none">
       <button class="nav-tab active" onclick="showTab('dashboard')">🏠 Dashboard</button>
       <button class="nav-tab" onclick="showTab('productos')" id="tabProductos">📦 Productos</button>
       <button class="nav-tab" onclick="showTab('ingresar')" id="tabIngresar">➕ Ingresar</button>
@@ -616,15 +617,18 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
       <button class="nav-tab" onclick="showTab('etiquetas')" id="tabEtiquetas">🏷️ Etiquetas</button>
       <button class="nav-tab" onclick="showTab('combos')" id="tabCombos">🎁 Combos</button>
       <button class="nav-tab" onclick="showTab('ventas')" id="tabVentas">🛒 Ventas</button>
-      <button class="nav-tab" onclick="showTab('cotizaciones')" id="tabCotizaciones" data-role="admin gerencia ventas">📋 Cotizaciones</button>
-      <button class="nav-tab" onclick="showTab('cobros')" id="tabCobros" data-role="admin gerencia ventas">💰 Cobros <span id="badgeCobros" style="display:none;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
-      <button class="nav-tab" onclick="showTab('inventario')" id="tabInventario" data-role="admin gerencia">📊 Inventario</button>
-      <button class="nav-tab" onclick="showTab('liquidacion')" id="tabLiquidacion" data-role="admin gerencia">💳 Liquidación</button>
-      <button class="nav-tab" onclick="showTab('parametros')" id="tabParametros" data-role="admin gerencia">⚙️ Parámetros</button>
-      <button class="nav-tab" onclick="showTab('historial')" id="tabHistorial" data-role="admin gerencia">🕓 Historial</button>
-      <button class="nav-tab" onclick="showTab('aprobacion')" id="tabAprobacion" data-role="admin">🔔 Aprobaciones <span id="badgePendientes" style="display:none;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
-      <button class="nav-tab" onclick="showTab('usuarios')" id="tabUsuarios" data-role="admin">👤 Usuarios</button>
-      <button class="nav-tab" onclick="showTab('gastos')" id="tabGastos" data-role="admin gerencia">💸 Gastos</button>
+      <button class="nav-tab" onclick="showTab('cotizaciones')" id="tabCotizaciones">📋 Cotizaciones</button>
+      <button class="nav-tab" onclick="showTab('cobros')" id="tabCobros">💰 Cobros <span id="badgeCobros" style="display:none;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
+    </div>
+    <!-- Fila 2: Administración -->
+    <div class="nav-tabs" id="navTabs2" style="flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none">
+      <button class="nav-tab" onclick="showTab('inventario')" id="tabInventario">📊 Inventario</button>
+      <button class="nav-tab" onclick="showTab('liquidacion')" id="tabLiquidacion">💳 Liquidación</button>
+      <button class="nav-tab" onclick="showTab('gastos')" id="tabGastos">💸 Gastos</button>
+      <button class="nav-tab" onclick="showTab('parametros')" id="tabParametros">⚙️ Parámetros</button>
+      <button class="nav-tab" onclick="showTab('historial')" id="tabHistorial">🕓 Historial</button>
+      <button class="nav-tab" onclick="showTab('aprobacion')" id="tabAprobacion">🔔 Aprobaciones <span id="badgePendientes" style="display:none;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
+      <button class="nav-tab" onclick="showTab('usuarios')" id="tabUsuarios">👤 Usuarios</button>
     </div>
   </nav>
 
