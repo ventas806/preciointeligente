@@ -297,6 +297,11 @@ select.field-input { cursor:pointer; }
 }
 .dto-input::-webkit-inner-spin-button { display:none; }
 .dto-pct { font-size:12px; color:var(--text3); }
+.btn-dto-tipo {
+  height:28px; padding:0 7px; border-radius:6px; border:1px solid var(--border2);
+  background:var(--bg4); color:var(--accent4); font-size:11px; font-weight:800;
+  cursor:pointer; line-height:1; touch-action:manipulation;
+}
 
 /* Price field */
 .price-wrap { margin-left:auto; text-align:right; }
@@ -1069,10 +1074,13 @@ async function sbSaveVenta(venta) {
     vendedor_id:       venta.vendedorId     || '',
     vendedor_nombre:   venta.vendedorNombre || '',
     envio:             venta.envio          || 0,
-    subtotal_sin_isv:  venta.subtotalSinISV || 0,
-    total_isv:         venta.totalISV       || 0,
-    total:             venta.total          || 0,
-    utilidad_bruta:    venta.utilidadBruta  || 0,
+    subtotal_sin_isv:  venta.subtotalSinISV  || 0,
+    total_isv:         venta.totalISV        || 0,
+    total:             venta.total           || 0,
+    descuento:         venta.descuento       || 0,
+    descuento_tipo:    venta.descuentoTipo   || '%',
+    descuento_valor:   venta.descuentoValor  || 0,
+    utilidad_bruta:    venta.utilidadBruta   || 0,
     pct_comision:      venta.pctComision    || 0,
     comision:          venta.comision       || 0,
     observaciones:     venta.observaciones  || '',
@@ -1377,6 +1385,8 @@ function agregarDeCatalogo(prodId) {
     costoLPS:    c.costoTotalLPS,
     stockActual: parseInt(p.cantidad)||0,
     cantidad:    1,
+    dtoTipo:     '%',
+    dtoValor:    0,
     _id:         'vi_' + Date.now() + '_' + Math.random().toString(36).slice(2,6)
   });
   document.getElementById('vProdBuscar').value = '';
@@ -1399,6 +1409,8 @@ function agregarManual() {
     precioFinal: 0,
     costoLPS:    0,
     cantidad:    1,
+    dtoTipo:     '%',
+    dtoValor:    0,
     _id:         'vi_' + Date.now() + '_' + Math.random().toString(36).slice(2,6)
   });
   renderItems();
@@ -1425,9 +1437,8 @@ function renderItem(it) {
   const isvOn = it.llevaISV;
   const toggleClass = isvOn ? 'toggle-isv on' : 'toggle-isv';
 
-  const descPct = it.precioLista > 0 && it.precioFinal < it.precioLista
-    ? Math.round((1 - it.precioFinal/it.precioLista)*100)
-    : 0;
+  const dtoTipo  = it.dtoTipo  || '%';
+  const dtoValor = it.dtoValor != null ? it.dtoValor : 0;
 
   const originalHtml = it.precioLista > 0 && it.precioFinal < it.precioLista
     ? `<div class="price-original">${fmtLPS(it.precioLista)}</div>`
@@ -1435,13 +1446,14 @@ function renderItem(it) {
 
   const linea = (it.precioFinal||0) * (it.cantidad||1);
 
-  // Dto% para catálogo (basado en precioLista) y para manual (basado en precio actual)
+  const dtoStep  = dtoTipo === 'L' ? '0.01' : '1';
+  const dtoMax   = dtoTipo === 'L' ? '999999' : '99';
   const descInput = `
     <div class="dto-wrap">
       <span class="dto-label">Dto</span>
-      <input type="number" class="dto-input" value="${descPct||0}" min="0" max="99" step="1"
+      <input type="number" class="dto-input" value="${fmtNum(dtoValor)}" min="0" max="${dtoMax}" step="${dtoStep}"
         onchange="actualizarDescItem('${it._id}',this.value)" onclick="this.select()">
-      <span class="dto-pct">%</span>
+      <button class="btn-dto-tipo" onclick="toggleDtoTipoItem('${it._id}')" ontouchend="event.preventDefault();toggleDtoTipoItem('${it._id}')">${dtoTipo}</button>
     </div>`;
 
   let nameField = '';
@@ -1523,17 +1535,26 @@ function actualizarItem(vid, campo, valor) {
   calcResumen();
 }
 
-function actualizarDescItem(vid, pct) {
+function actualizarDescItem(vid, val) {
   const it = vItems.find(x => x._id === vid);
   if (!it) return;
-  const d    = Math.max(0, Math.min(99, parseFloat(pct)||0));
-  const base = it.precioLista > 0 ? it.precioLista : it.precioFinal; // catálogo usa lista, manual usa precio actual
+  const dtoTipo = it.dtoTipo || '%';
+  const base    = it.precioLista > 0 ? it.precioLista : it.precioFinal;
   if (!base) return;
-  // Guardar precio original si no existe
   if (!it.precioLista || it.precioLista === 0) it.precioLista = it.precioFinal;
-  it.precioFinal = +(it.precioLista*(1-d/100)).toFixed(2);
-  it.precioBase  = it.llevaISV ? it.precioFinal/(1+it.isvPct) : it.precioFinal;
-  // Update price input
+
+  let d = parseFloat(val) || 0;
+  if (dtoTipo === '%') {
+    d = Math.max(0, Math.min(99, d));
+    it.dtoValor   = d;
+    it.precioFinal = +(it.precioLista * (1 - d/100)).toFixed(2);
+  } else {
+    d = Math.max(0, d);
+    it.dtoValor   = d;
+    it.precioFinal = Math.max(0, +(it.precioLista - d).toFixed(2));
+  }
+  it.precioBase = it.llevaISV ? it.precioFinal/(1+it.isvPct) : it.precioFinal;
+
   const card = document.getElementById('icard_'+vid);
   if (card) {
     const priceEl = card.querySelector('.price-final-input');
@@ -1543,6 +1564,25 @@ function actualizarDescItem(vid, pct) {
     if (lineEl) lineEl.textContent = fmtLPS(linea);
   }
   calcResumen();
+}
+
+function toggleDtoTipoItem(vid) {
+  const it = vItems.find(x => x._id === vid);
+  if (!it) return;
+  const wasL     = (it.dtoTipo || '%') === 'L';
+  const base     = it.precioLista > 0 ? it.precioLista : it.precioFinal;
+  const curValor = it.dtoValor || 0;
+
+  if (wasL) {
+    // L → %: convert saved L amount to equivalent %
+    it.dtoTipo  = '%';
+    it.dtoValor = base > 0 ? Math.max(0, Math.min(99, +((curValor/base)*100).toFixed(1))) : 0;
+  } else {
+    // % → L: convert saved % to equivalent L amount
+    it.dtoTipo  = 'L';
+    it.dtoValor = base > 0 ? +((base * curValor / 100)).toFixed(2) : 0;
+  }
+  renderItems(); calcResumen();
 }
 
 function toggleISV(vid) {
