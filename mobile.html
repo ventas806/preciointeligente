@@ -509,6 +509,19 @@ select.field-input { cursor:pointer; }
 .cr-nombre { font-size:13px; font-weight:600; }
 .cr-meta   { font-size:11px; color:var(--text3); }
 
+/* ── Safe area bottom (gesture nav) ── */
+#panelNueva    { padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 80px); }
+#panelHistorial{ padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 20px); }
+
+/* stock badge */
+.stock-badge {
+  display:inline-block; font-size:10px; font-weight:700; padding:2px 6px;
+  border-radius:20px; margin-left:6px;
+}
+.stock-ok      { background:#1a3a2a; color:var(--green); }
+.stock-low     { background:#3a2e1a; color:var(--gold); }
+.stock-out     { background:#3a1a1a; color:var(--red); }
+
 /* ══════════════════════════════════════════
    RESPONSIVE TWEAKS
 ══════════════════════════════════════════ */
@@ -712,13 +725,17 @@ select.field-input { cursor:pointer; }
             <span class="resumen-label">Subtotal (sin ISV)</span>
             <span class="resumen-val" id="rSubtotal">L 0.00</span>
           </div>
-          <div class="resumen-row">
-            <span class="resumen-label">ISV (<span id="rISVPct">0%</span>)</span>
-            <span class="resumen-val" id="rISV">L 0.00</span>
-          </div>
           <div class="resumen-row" id="rDescRow" style="display:none">
             <span class="resumen-label" id="rDescLabel">− Descuento</span>
             <span class="resumen-val" style="color:var(--green)" id="rDesc">L 0.00</span>
+          </div>
+          <div class="resumen-row" id="rSubDescRow" style="display:none">
+            <span class="resumen-label">Subtotal c/desc.</span>
+            <span class="resumen-val" id="rSubDesc">L 0.00</span>
+          </div>
+          <div class="resumen-row">
+            <span class="resumen-label">ISV (<span id="rISVPct">0%</span>)</span>
+            <span class="resumen-val" id="rISV">L 0.00</span>
           </div>
           <div class="resumen-row">
             <span class="resumen-label">Envío</span>
@@ -1169,6 +1186,9 @@ async function initApp() {
 
   calcResumen();
   vShowSub('nueva');
+
+  // Cargar clientes/ventas en segundo plano para que el autocomplete funcione de inmediato
+  cargarVentasYClientes().catch(()=>{});
 }
 
 /* ════════════════════════════════════════════
@@ -1250,7 +1270,10 @@ function buscarCliente(q) {
   ).slice(0,5);
   if (!found.length) { res.style.display='none'; return; }
   res.innerHTML = found.map(c => `
-    <div class="cr-item" onclick="seleccionarCliente('${c.id}')">
+    <div class="cr-item"
+      ontouchstart="event.stopPropagation()"
+      ontouchend="event.preventDefault();seleccionarCliente('${c.id}')"
+      onclick="seleccionarCliente('${c.id}')">
       <div class="cr-nombre">${c.nombre}</div>
       <div class="cr-meta">${[c.ciudad,c.tel].filter(Boolean).join(' · ')}</div>
     </div>`).join('');
@@ -1272,13 +1295,13 @@ function seleccionarCliente(id) {
   showToast('✅ Cliente cargado: ' + c.nombre, 'success', 2000);
 }
 
-// Cerrar dropdown al tocar fuera
+// Cerrar dropdowns al tocar fuera — respetar toque en el resultado mismo
 document.addEventListener('touchstart', e => {
-  if (!e.target.closest('.cliente-search-wrap')) {
+  if (!e.target.closest('.cliente-search-wrap') && !e.target.closest('#clienteResultados')) {
     const r = document.getElementById('clienteResultados');
     if(r) r.style.display='none';
   }
-  if (!e.target.closest('.search-wrap')) {
+  if (!e.target.closest('.search-wrap') && !e.target.closest('#vProdResultados')) {
     const r = document.getElementById('vProdResultados');
     if(r) r.style.display='none';
   }
@@ -1309,11 +1332,16 @@ function buscarProdVenta() {
     const img    = p.imagen
       ? `<img class="sri-img" src="${p.imagen}" onerror="this.style.display='none'">`
       : `<div class="sri-img-ph">📦</div>`;
-    return `<div class="search-result-item" onclick="agregarDeCatalogo('${p.id}')">
+    const stockCls = p.cantidad<=0 ? 'stock-out' : p.cantidad<=3 ? 'stock-low' : 'stock-ok';
+    const stockTxt = p.cantidad<=0 ? '⚠ Agotado' : `Stock: ${p.cantidad}`;
+    return `<div class="search-result-item"
+      ontouchstart="event.stopPropagation()"
+      ontouchend="event.preventDefault();agregarDeCatalogo('${p.id}')"
+      onclick="agregarDeCatalogo('${p.id}')">
       ${img}
       <div class="sri-info">
         <div class="sri-name">${p.producto}</div>
-        <div class="sri-meta">SKU: ${p.sku} · ${isv?'Con ISV':'Sin ISV'} · Stock: ${p.cantidad}</div>
+        <div class="sri-meta">SKU: ${p.sku} · ${isv?'Con ISV':'Sin ISV'} · <span class="stock-badge ${stockCls}">${stockTxt}</span></div>
       </div>
       <div class="sri-price">${fmtLPS(precio)}</div>
     </div>`;
@@ -1349,6 +1377,7 @@ function agregarDeCatalogo(prodId) {
     precioLista,
     precioFinal,
     costoLPS:    c.costoTotalLPS,
+    stockActual: parseInt(p.cantidad)||0,
     cantidad:    1,
     _id:         'vi_' + Date.now() + '_' + Math.random().toString(36).slice(2,6)
   });
@@ -1408,16 +1437,14 @@ function renderItem(it) {
 
   const linea = (it.precioFinal||0) * (it.cantidad||1);
 
-  let descInput = '';
-  if (it.tipo === 'catalogo') {
-    descInput = `
-      <div class="dto-wrap">
-        <span class="dto-label">Dto</span>
-        <input type="number" class="dto-input" value="${descPct||0}" min="0" max="99" step="1"
-          onchange="actualizarDescItem('${it._id}',this.value)" onclick="this.select()">
-        <span class="dto-pct">%</span>
-      </div>`;
-  }
+  // Dto% para catálogo (basado en precioLista) y para manual (basado en precio actual)
+  const descInput = `
+    <div class="dto-wrap">
+      <span class="dto-label">Dto</span>
+      <input type="number" class="dto-input" value="${descPct||0}" min="0" max="99" step="1"
+        onchange="actualizarDescItem('${it._id}',this.value)" onclick="this.select()">
+      <span class="dto-pct">%</span>
+    </div>`;
 
   let nameField = '';
   if (it.tipo === 'manual') {
@@ -1431,7 +1458,7 @@ function renderItem(it) {
       ${img}
       <div style="flex:1;min-width:0">
         <div class="item-name">${it.tipo==='catalogo' ? it.descripcion : (it.descripcion||'Producto manual')}</div>
-        <div class="item-sku">SKU: ${it.sku||'—'}</div>
+        <div class="item-sku">SKU: ${it.sku||'—'}${it.stockActual!=null ? ` · <span class="stock-badge ${it.stockActual<=0?'stock-out':it.stockActual<=3?'stock-low':'stock-ok'}">${it.stockActual<=0?'⚠ Agotado':'Stock: '+it.stockActual}</span>` : ''}</div>
         <div class="isv-wrap">
           <span class="isv-label">ISV</span>
           <div class="${toggleClass}" onclick="toggleISV('${it._id}')"></div>
@@ -1471,11 +1498,9 @@ function cambiarCantidad(vid, delta) {
   const it = vItems.find(x => x._id === vid);
   if (!it) return;
   it.cantidad = Math.max(1, (it.cantidad||1) + delta);
-  if (it.productoId) {
-    const prod = productos.find(p => p.id === it.productoId);
-    if (prod && it.cantidad > (parseInt(prod.cantidad)||0)) {
-      showToast(`⚠️ Solo hay ${prod.cantidad} en stock`, 'warn');
-    }
+  const stock = it.stockActual;
+  if (stock != null && it.cantidad > stock) {
+    showToast(`⚠️ Solo hay ${stock} en stock`, 'warn');
   }
   renderItems(); calcResumen();
 }
@@ -1502,8 +1527,12 @@ function actualizarItem(vid, campo, valor) {
 
 function actualizarDescItem(vid, pct) {
   const it = vItems.find(x => x._id === vid);
-  if (!it || !it.precioLista) return;
-  const d = Math.max(0, Math.min(99, parseFloat(pct)||0));
+  if (!it) return;
+  const d    = Math.max(0, Math.min(99, parseFloat(pct)||0));
+  const base = it.precioLista > 0 ? it.precioLista : it.precioFinal; // catálogo usa lista, manual usa precio actual
+  if (!base) return;
+  // Guardar precio original si no existe
+  if (!it.precioLista || it.precioLista === 0) it.precioLista = it.precioFinal;
   it.precioFinal = +(it.precioLista*(1-d/100)).toFixed(2);
   it.precioBase  = it.llevaISV ? it.precioFinal/(1+it.isvPct) : it.precioFinal;
   // Update price input
@@ -1592,13 +1621,17 @@ function calcResumen() {
   const pctEl = document.getElementById('rISVPct');
   if (pctEl) pctEl.textContent = tasas.length===1 ? Math.round(tasas[0]*100)+'%' : tasas.length>1 ? 'mixto' : '0%';
 
-  // Descuento row
-  const descRow = document.getElementById('rDescRow');
-  const descEl  = document.getElementById('rDesc');
+  // Descuento row (ANTES del ISV en el DOM ya)
+  const descRow    = document.getElementById('rDescRow');
+  const descEl     = document.getElementById('rDesc');
+  const subDescRow = document.getElementById('rSubDescRow');
   if (descRow) descRow.style.display = descMonto>0 ? 'flex' : 'none';
   if (descEl)  descEl.textContent = '− '+fmtLPS(descMonto);
   const descLabel = document.getElementById('rDescLabel');
   if (descLabel) descLabel.textContent = descTipo==='%'&&descValor>0 ? `− Descuento (${descValor}%)` : '− Descuento';
+  // Fila subtotal con descuento
+  if (subDescRow) subDescRow.style.display = descMonto>0 ? 'flex' : 'none';
+  set('rSubDesc', fmtLPS(subtotalDesc));
 
   set('rEnvio', fmtLPS(envio));
 
