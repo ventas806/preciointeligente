@@ -3330,6 +3330,7 @@ async function doLogin() {
 }
 
 function doLogout() {
+  detenerRealtimeVentas();
   currentUser  = null;
   editingId    = null;
   // Resetear estado de carga para que la próxima sesión cargue todo de nuevo
@@ -3372,8 +3373,11 @@ function initApp() {
   // Cargar datos desde Google Sheets
   cargarDesdeSheetsYRenderizar();
 
-  // Auto-refresh cada 2 minutos en segundo plano
+  // Auto-refresh productos cada 2 minutos en segundo plano
   setInterval(() => sincronizarSilencioso(), 2 * 60 * 1000);
+
+  // Realtime + auto-refresh de ventas
+  iniciarRealtimeVentas();
 }
 
 async function sincronizarSilencioso() {
@@ -5862,7 +5866,64 @@ let vItemsAbonos   = [];   // [{_id, monto, fecha, nota, registradoPor}]
 let vClienteSelId  = null;
 let vEditandoId    = null;
 let vTipoVenta     = 'formal';
-let _ventasCargadas = false;
+let _ventasCargadas  = false;
+let _ventasChannel   = null;
+let _ventasAutoTimer = null;
+let _ventasReloadPending = false;
+
+/* ─── Realtime + auto-refresh de ventas ─── */
+async function _recargarVentasSilencioso(evento) {
+  if (!currentUser) return;
+  if (_ventasReloadPending) return;   // debounce
+  _ventasReloadPending = true;
+  setTimeout(() => { _ventasReloadPending = false; }, 3000);
+
+  try {
+    _ventasCargadas = false;
+    await cargarVentasYClientes();
+
+    // Mostrar toast solo si es INSERT de OTRO usuario
+    if (evento?.eventType === 'INSERT') {
+      const nuevaVenta = ventas.find(v => v.id === evento.new?.id);
+      const vendNombre = nuevaVenta?.vendedorNombre || evento.new?.vendedor_nombre || 'un vendedor';
+      const total      = nuevaVenta ? fmtLPS(nuevaVenta.total) : '';
+      if (evento.new?.vendedor_id !== String(currentUser.id)) {
+        showToast(`🔔 Nueva venta — ${vendNombre} · ${total}`, 'info', 5000);
+      }
+    }
+
+    // Re-renderizar si la vista de historial está activa
+    const histEl = document.getElementById('vHistorialLista');
+    if (histEl && histEl.closest('#panelVentas')?.style.display !== 'none') {
+      renderHistorialVentas();
+    }
+  } catch(e) {
+    console.warn('⚠️ Auto-reload ventas falló:', e.message);
+  }
+}
+
+function iniciarRealtimeVentas() {
+  // 1. Supabase Realtime
+  try {
+    _ventasChannel = sb.channel('ventas-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ventas' },
+          (payload) => _recargarVentasSilencioso(payload))
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') console.log('✅ Realtime ventas activo');
+        else if (status === 'CHANNEL_ERROR') console.warn('⚠️ Realtime ventas no disponible, usando auto-refresh');
+      });
+  } catch(e) {
+    console.warn('⚠️ Realtime init falló:', e.message);
+  }
+
+  // 2. Fallback: auto-refresh cada 2 minutos
+  _ventasAutoTimer = setInterval(() => _recargarVentasSilencioso(null), 2 * 60 * 1000);
+}
+
+function detenerRealtimeVentas() {
+  if (_ventasChannel) { sb.removeChannel(_ventasChannel); _ventasChannel = null; }
+  if (_ventasAutoTimer) { clearInterval(_ventasAutoTimer); _ventasAutoTimer = null; }
+}
 
 // ── Guardar en Supabase (reemplaza localStorage) ──
 async function guardarVentasLS()   { /* ventas se guardan en sbSaveVenta() directamente */ }
