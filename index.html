@@ -2274,7 +2274,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
               <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px">📄 Resumen de Cotización</div>
               <!-- 1. Subtotal sin ISV -->
               <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px">
-                <span style="color:var(--text2)">Subtotal (sin ISV)</span>
+                <span style="color:var(--text2)">Subtotal c/ISV</span>
                 <span id="cResSubtotal">L 0.00</span>
               </div>
               <!-- 2. Descuento (control + detalle) -->
@@ -9598,28 +9598,33 @@ function poblarSelectorVendedorCot() {
 }
 
 function calcResumenCotizacion() {
-  let subtotalSinISV=0, totalISV=0;
+  let subtotalSinISV=0, totalISVOrig=0;
   cItemsActuales.forEach(item => {
     const cant   = item.cantidad||1;
     const precio = item.precioFinal||0;
     const isvPct = item.llevaISV ? item.isvPct : 0;
     const sinISV = item.llevaISV ? precio/(1+isvPct) : precio;
     subtotalSinISV += sinISV*cant;
-    totalISV       += (precio-sinISV)*cant;
+    totalISVOrig   += (precio-sinISV)*cant;
   });
+  // Total con ISV antes del descuento global
+  const subtotalConISV = subtotalSinISV + totalISVOrig;
 
-  // Descuento se aplica sobre subtotalSinISV; ISV se recalcula proporcional
+  // Descuento aplicado sobre el total c/ISV:
+  //   % → X% del total (ej. 10% de 24,566 = 2,456)
+  //   L fijos → baja el total exactamente en ese monto (ej. L 1,700 = total − 1,700)
   const descActivo = document.getElementById('cDescActivo')?.checked;
   const descTipo   = document.getElementById('cDescTipoBtn')?.textContent.trim() || '%';
   const descValor  = parseFloat(document.getElementById('cDescValor')?.value) || 0;
   let descMonto = 0;
-  if (descActivo && descValor > 0 && subtotalSinISV > 0) {
-    descMonto = descTipo === '%' ? subtotalSinISV * (descValor / 100) : descValor;
-    descMonto = Math.min(descMonto, subtotalSinISV);
+  if (descActivo && descValor > 0 && subtotalConISV > 0) {
+    descMonto = descTipo === '%' ? subtotalConISV * (descValor / 100) : descValor;
+    descMonto = Math.min(descMonto, subtotalConISV);
   }
-  const subtotalDesc = subtotalSinISV - descMonto;
-  const isvAjustado  = subtotalSinISV > 0 ? totalISV * (subtotalDesc / subtotalSinISV) : 0;
-  const total = subtotalDesc + isvAjustado;
+  const ratio            = subtotalConISV > 0 ? (subtotalConISV - descMonto) / subtotalConISV : 1;
+  const subtotalSinISVFinal = +(subtotalSinISV * ratio).toFixed(2);
+  const isvAjustado      = +(totalISVOrig * ratio).toFixed(2);
+  const total            = +(subtotalConISV - descMonto).toFixed(2);
 
   // Ahorro total = descuentos por item + descuento general
   const cAhorroItems = cItemsActuales.reduce((s, it) => {
@@ -9640,11 +9645,9 @@ function calcResumenCotizacion() {
   // Etiqueta descuento con %
   const cDescLabelEl = el('cResDescLabel');
   if (cDescLabelEl) cDescLabelEl.textContent = descTipo === '%' && descValor > 0 ? `− Descuento (${descValor}%)` : '− Descuento';
-  // Subtotal con descuento
+  // Fila "Subtotal con descuento" — ya no se necesita (el TOTAL muestra el resultado directo)
   const cSubDescRow = el('cResSubtotalDescRow');
-  if (cSubDescRow) cSubDescRow.style.display = descMonto > 0 ? 'flex' : 'none';
-  const cSubDescEl = el('cResSubtotalDesc');
-  if (cSubDescEl) cSubDescEl.textContent = fmtLPS(subtotalDesc);
+  if (cSubDescRow) cSubDescRow.style.display = 'none';
   // ISV con % — mostrar tasa real si todos usan la misma, o "mixto"
   const cIsvPctEl = el('cResISVPct');
   if (cIsvPctEl) {
@@ -9656,7 +9659,7 @@ function calcResumenCotizacion() {
     }
   }
 
-  if(el('cResSubtotal')) el('cResSubtotal').textContent = fmtLPS(subtotalSinISV);
+  if(el('cResSubtotal')) el('cResSubtotal').textContent = fmtLPS(subtotalConISV); // total c/ISV antes del desc. global
   if(el('cResISV'))      el('cResISV').textContent      = fmtLPS(isvAjustado);
   if(el('cResTotal'))    el('cResTotal').textContent    = fmtLPS(total);
 
@@ -9674,7 +9677,7 @@ function calcResumenCotizacion() {
       vigEl.innerHTML = `⏳ Válida hasta: <strong>${fmtFecha(venc)}</strong>`;
     }
   }
-  return { subtotalSinISV, totalISV: isvAjustado, descuento: descMonto, descuentoTipo: descTipo, descuentoValor: descValor, total };
+  return { subtotalSinISV: subtotalSinISVFinal, totalISV: isvAjustado, descuento: descMonto, descuentoTipo: descTipo, descuentoValor: descValor, total };
 }
 
 function renderItemsCotizacion() {
@@ -10049,7 +10052,8 @@ function editarCotizacion(id) {
   const _cdv=document.getElementById('cDescValor');   if(_cdv) _cdv.value=c.descuentoValor!=null?c.descuentoValor:(c.descuento||0);
   const _cdb=document.getElementById('cDescTipoBtn'); if(_cdb){const t=c.descuentoTipo||'%';_cdb.textContent=t;_cdb.style.color=t==='L'?'var(--accent3)':'var(--accent4)';}
   const _cdr=document.getElementById('cResDescRow');  if(_cdr) _cdr.style.display=c.descuento>0?'flex':'none';
-  const _csdr=document.getElementById('cResSubtotalDescRow'); if(_csdr) _csdr.style.display=c.descuento>0?'flex':'none';
+  // Recalcular resumen con descuento restaurado (renderItemsCotizacion lo llama sin descuento aún)
+  calcResumenCotizacion();
   document.getElementById('cPanelNueva').scrollIntoView({behavior:'smooth'});
   showToast('✏️ Editando cotización '+c.numero,'success');
 }
