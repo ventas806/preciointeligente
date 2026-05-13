@@ -1031,6 +1031,7 @@ select.field-input { cursor:pointer; }
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
 <script>
 /* ════════════════════════════════════════════
    SUPABASE SETUP
@@ -3121,9 +3122,22 @@ function imprimirCot(id) {
   const firmaUrl  = parametros.firmaUrl  || '';
   const tsEmision = `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}`;
 
+  // Generar códigos de barras como data URL (igual que el escritorio)
+  const _bcUrl = (sku) => {
+    try {
+      const cv = document.createElement('canvas');
+      JsBarcode(cv, sku, {format:'CODE128', width:1.2, height:32, displayValue:false, margin:2});
+      return cv.toDataURL('image/png');
+    } catch(e) { return ''; }
+  };
+  const _bcMap = {};
+  (c.items||[]).forEach(it => { if(it.sku && !_bcMap[it.sku]) _bcMap[it.sku] = _bcUrl(it.sku); });
+  const tieneImagenes = (c.items||[]).some(it => it.imagen);
+
   const itemsHtml=(c.items||[]).map((it,i)=>`<tr style="${i%2===1?'background:#f8f8f8':''}">
     <td style="text-align:center;font-weight:700;color:#666">${i+1}</td>
-    <td style="font-family:monospace;font-size:10px;color:#555">${it.sku||'—'}</td>
+    ${tieneImagenes?`<td style="text-align:center;padding:4px 6px">${it.imagen?`<img src="${it.imagen}" style="width:80px;height:80px;object-fit:contain;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;padding:3px" onerror="this.style.display='none'">`:'<span style="color:#ccc;font-size:24px">📦</span>'}</td>`:''}
+    <td style="font-family:monospace;font-size:10px;color:#555">${it.sku||'—'}${(_bcMap[it.sku]?`<br><img src="${_bcMap[it.sku]}" style="max-width:100%;display:block">`:'' )}</td>
     <td><strong style="font-size:12px">${it.descripcion||it.nombre||'—'}</strong>${it.notaItem?`<br><span style="font-size:10px;color:#555;font-style:italic">${it.notaItem}</span>`:''}</td>
     <td style="text-align:center">${it.cantidad||1}</td>
     <td style="text-align:right">${fmtL(it.precioFinal||0)}</td>
@@ -3201,6 +3215,7 @@ td{padding:5px 8px;font-size:11.5px;border-bottom:1px solid #e8e8e8;vertical-ali
 <table>
   <thead><tr>
     <th style="width:28px;text-align:center">#</th>
+    ${tieneImagenes?'<th style="width:92px;text-align:center">Foto</th>':''}
     <th style="width:70px">SKU</th>
     <th>Descripción</th>
     <th style="width:50px;text-align:center">Cant.</th>
