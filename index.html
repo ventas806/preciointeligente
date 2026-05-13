@@ -12299,14 +12299,14 @@ function renderTablaInventario() {
     const ordActivas = ordenesCompra.filter(o => o.productoId === p.id && ['pendiente','en_transito'].includes(o.estado));
     const enCamino = ordActivas.reduce((s, o) => s + (parseInt(o.cantidadOrdenada) || 0), 0);
     const imgCell = p.imagen
-      ? `<td style="text-align:center;padding:6px"><img src="${p.imagen}" style="width:160px;height:160px;object-fit:cover;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.4);cursor:zoom-in;display:block;margin:0 auto" onmouseenter="mostrarImgPreview('${p.imagen}',event)" onmouseleave="ocultarImgPreview()"></td>`
-      : `<td style="text-align:center;color:var(--text3);font-size:26px">📦</td>`;
+      ? `<td style="text-align:center;padding:4px"><img src="${p.imagen}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:zoom-in;display:block;margin:0 auto" onmouseenter="mostrarImgPreview('${p.imagen}',event)" onmouseleave="ocultarImgPreview()"></td>`
+      : `<td style="text-align:center;color:var(--text3);font-size:20px">📦</td>`;
     const rowOpacity = p.descontinuado ? 'opacity:.55;' : '';
     return `<tr style="${rowOpacity}">
       ${imgCell}
-      <td style="font-weight:600;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.producto}">${p.producto}</td>
-      <td class="td-sku" onclick="copiarSKU('${p.sku}',this)" title="Clic para copiar SKU" style="cursor:pointer" onmouseover="this.style.color='var(--accent3)'" onmouseout="this.style.color=''">${p.sku}</td>
-      <td style="color:var(--text2)">${p.categoria || '—'}</td>
+      <td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.producto}">${p.producto}</td>
+      <td class="td-sku" onclick="copiarSKU('${p.sku}',this)" title="Clic para copiar SKU" style="cursor:pointer;font-size:11px" onmouseover="this.style.color='var(--accent3)'" onmouseout="this.style.color=''">${p.sku}</td>
+      <td style="color:var(--text2);font-size:11px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.categoria || '—'}</td>
       <td style="text-align:center"><span class="badge badge-${(p.estado||'nuevo').toLowerCase().replace(' ','-')}">${p.estado||'—'}</span></td>
       <td style="text-align:center">${badgeEstadoStock(est)}</td>
       <td style="text-align:center;font-weight:700;color:${cant===0?'var(--red)':cant<=min?'var(--gold)':'var(--green)'}">${cant}</td>
