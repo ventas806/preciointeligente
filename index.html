@@ -10255,9 +10255,10 @@ function imprimirCotizacion(id) {
   const subtotalLista = (c.items||[]).reduce((s,it)=>s+(_getListaPrice(it)||it.precioFinal)*(it.cantidad||1),0);
   // Subtotal a precio final de cada ítem × qty (antes del descuento global, con ISV incluido)
   const subtotalItemsFinal = (c.items||[]).reduce((s,it)=>s+(it.precioFinal||0)*(it.cantidad||1),0);
-  // Importe Gravado (base sin ISV de ítems con ISV) y Exento (ítems sin ISV), ya con desc. global
-  const importeGravado = c.totalISV > 0 ? +(c.totalISV / 0.15).toFixed(2) : 0;
-  const importeExento  = +Math.max(0, c.subtotalSinISV - importeGravado).toFixed(2);
+  // Importe Exento: suma directa de precioFinal de ítems que NO llevan ISV
+  const importeExento  = +((c.items||[]).reduce((s,it)=>(!it.llevaISV||!(it.isvPct>0))?s+(it.precioFinal||0)*(it.cantidad||1):s, 0)).toFixed(2);
+  // Importe Gravado: resto del subtotalSinISV (garantiza que gravado + exento = subtotalSinISV)
+  const importeGravado = +(Math.max(0, c.subtotalSinISV - importeExento)).toFixed(2);
   const countDescItems = (c.items||[]).filter(it=>_getListaPrice(it)>it.precioFinal+0.01).length;
 
   const itemsHtml=(c.items||[]).map((it,i)=>{
