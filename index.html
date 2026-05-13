@@ -10250,11 +10250,22 @@ function imprimirCotizacion(id) {
   const ahorroGlobal = c.descuento || 0;
   const ahorroTotal  = ahorroItems + ahorroGlobal;
 
+  // ── Cálculos para resumen fiscal ─────────────────────────────────────
+  // Subtotal a precio lista (con ISV, sin descuento alguno)
+  const subtotalLista = (c.items||[]).reduce((s,it)=>s+(_getListaPrice(it)||it.precioFinal)*(it.cantidad||1),0);
+  // Subtotal a precio final de cada ítem × qty (antes del descuento global, con ISV incluido)
+  const subtotalItemsFinal = (c.items||[]).reduce((s,it)=>s+(it.precioFinal||0)*(it.cantidad||1),0);
+  // Importe Gravado (base sin ISV de ítems con ISV) y Exento (ítems sin ISV), ya con desc. global
+  const importeGravado = c.totalISV > 0 ? +(c.totalISV / 0.15).toFixed(2) : 0;
+  const importeExento  = +Math.max(0, c.subtotalSinISV - importeGravado).toFixed(2);
+  const countDescItems = (c.items||[]).filter(it=>_getListaPrice(it)>it.precioFinal+0.01).length;
+
   const itemsHtml=(c.items||[]).map((it,i)=>{
     const lista    = _getListaPrice(it);
     const tieneDto = lista > it.precioFinal + 0.01;
     const ahorroIt = tieneDto ? (lista - it.precioFinal) * (it.cantidad||1) : 0;
     const pctDesc  = tieneDto ? Math.round((lista - it.precioFinal) / lista * 100) : 0;
+    const isvLabel = it.llevaISV && it.isvPct > 0 ? ((it.isvPct*100).toFixed(0)+'%') : '—';
     return `<tr style="${i%2===1?'background:#f8f8f8':''}">
     <td style="text-align:center;font-weight:700;color:#666">${i+1}</td>
     ${tieneImagenes?`<td style="text-align:center;padding:4px 6px">${it.imagen?`<img src="${it.imagen}" style="width:80px;height:80px;object-fit:contain;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;padding:3px" onerror="this.style.display='none'">`:'<span style="color:#ccc;font-size:24px">📦</span>'}</td>`:''}
@@ -10264,6 +10275,7 @@ function imprimirCotizacion(id) {
       ${it.notaItem?`<br><span style="font-size:10px;color:#555;font-style:italic">📝 ${it.notaItem}</span>`:''}
       ${tieneDto?`<br><span style="font-size:10px;color:#c0392b;text-decoration:line-through">${fmtL(lista)}</span> <span style="font-size:10px;color:#2e7d32;font-weight:700">▼ ${pctDesc}% desc. — ahorrás ${fmtL(ahorroIt)}</span>`:''}
     </td>
+    <td style="text-align:center;font-size:11px;color:${it.llevaISV?'#e65100':'#888'};font-weight:700">${isvLabel}</td>
     <td style="text-align:center">${it.cantidad||1}</td>
     <td style="text-align:right">${fmtL(it.precioFinal||0)}</td>
     <td style="text-align:right;font-weight:700;color:#1a237e">${fmtL((it.precioFinal||0)*(it.cantidad||1))}</td>
@@ -10361,6 +10373,7 @@ td{padding:5px 8px;font-size:11.5px;border-bottom:1px solid #e8e8e8;vertical-ali
     ${tieneImagenes?'<th style="width:64px;text-align:center">Img.</th>':''}
     <th style="width:100px">SKU</th>
     <th>Descripción</th>
+    <th style="width:38px;text-align:center">ISV</th>
     <th style="width:46px;text-align:center">Cant.</th>
     <th style="width:100px;text-align:right">P. Unitario</th>
     <th style="width:110px;text-align:right">Total</th>
@@ -10369,11 +10382,25 @@ td{padding:5px 8px;font-size:11.5px;border-bottom:1px solid #e8e8e8;vertical-ali
 </table>
 <div class="totals">
   <table>
-    ${ahorroItems>0?`<tr><td style="color:#888">Subtotal a precio lista</td><td style="text-align:right;color:#888">${fmtL((c.items||[]).reduce((s,it)=>s+(_getListaPrice(it)||it.precioFinal)*(it.cantidad||1),0))}</td></tr>
-    <tr><td style="color:#2e7d32">− Ahorro en productos (${(c.items||[]).filter(it=>_getListaPrice(it)>it.precioFinal+0.01).length} ítem/s)</td><td style="text-align:right;color:#2e7d32;font-weight:700">− ${fmtL(ahorroItems)}</td></tr>`:''}
+    <!-- Subtotal c/ISV (precio lista) — siempre visible -->
+    <tr><td style="color:#888">Subtotal c/ISV (precio lista)</td><td style="text-align:right;color:#888">${fmtL(subtotalLista)}</td></tr>
+    <!-- Ahorro en ítems — solo si hay descuentos por ítem -->
+    ${ahorroItems>0.01?`<tr><td style="color:#2e7d32">− Ahorro en productos (${countDescItems} ítem/s)</td><td style="text-align:right;color:#2e7d32;font-weight:700">− ${fmtL(ahorroItems)}</td></tr>`:''}
+    <!-- Subtotal después desc. ítem — solo si hubo descuentos por ítem -->
+    ${ahorroItems>0.01?`<tr style="border-top:1px solid #e0e0e0"><td style="font-weight:600">Subtotal después desc. ítem</td><td style="text-align:right;font-weight:600">${fmtL(subtotalItemsFinal)}</td></tr>`:''}
+    <!-- Descuento global — solo si existe -->
     ${c.descuento>0?`<tr><td style="color:#2e7d32">− Descuento global${c.descuentoTipo==='%'&&c.descuentoValor>0?' ('+c.descuentoValor+'%)':c.descuentoTipo==='L'?' (L fijos)':''}</td><td style="text-align:right;color:#2e7d32;font-weight:700">− ${fmtL(c.descuento)}</td></tr>`:''}
+    <!-- Separador -->
+    <tr><td colspan="2" style="padding:2px 0"><hr style="border:none;border-top:1px solid #ccc"></td></tr>
+    <!-- Subtotal sin ISV -->
     <tr><td style="color:#555">Subtotal (sin ISV)</td><td style="text-align:right">${fmtL(c.subtotalSinISV)}</td></tr>
-    <tr><td style="color:#555">ISV</td><td style="text-align:right">${fmtL(c.totalISV)}</td></tr>
+    <!-- Importe Gravado 15% -->
+    ${importeGravado>0?`<tr><td style="color:#555;font-size:11px;padding-left:14px">↳ Importe Gravado 15%</td><td style="text-align:right;font-size:11px">${fmtL(importeGravado)}</td></tr>`:''}
+    <!-- Importe Exento -->
+    ${importeExento>0.01?`<tr><td style="color:#555;font-size:11px;padding-left:14px">↳ Importe Exento</td><td style="text-align:right;font-size:11px">${fmtL(importeExento)}</td></tr>`:''}
+    <!-- ISV -->
+    <tr><td style="color:#555">ISV (15%)</td><td style="text-align:right">${fmtL(c.totalISV)}</td></tr>
+    <!-- TOTAL -->
     <tr class="total-final"><td><strong>TOTAL</strong></td><td style="text-align:right;color:#1a237e"><strong>${fmtL(c.total)}</strong></td></tr>
   </table>
 </div>
