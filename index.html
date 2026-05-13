@@ -12148,12 +12148,17 @@ function buscarProdRapido(q) {
           <span style="font-size:10px;color:var(--text3)">Min: ${minStock}</span>
           <span id="stockSaving_${p.id}" style="font-size:10px;color:var(--accent3);display:none">💾...</span>
         </div>
-        <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px">
+        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <button onclick="abrirModalDescVendedor('${p.id}')"
+            title="Calculadora de descuentos"
+            style="padding:4px 10px;background:linear-gradient(135deg,#f5c842,#e0a800);color:#000;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px">
+            💰 Calc. Descuento
+          </button>
           <button id="wixBtn_${p.id}" onclick="actualizarStockEnWixRapido('${p.id}','${p.sku}')"
-            style="padding:4px 10px;background:linear-gradient(135deg,#00c8a0,#00a080);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;width:fit-content">
+            style="padding:4px 10px;background:linear-gradient(135deg,#00c8a0,#00a080);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">
             🔄 Actualizar stock en Wix
           </button>
-          <div id="wixMsg_${p.id}" style="font-size:11px;display:none"></div>
+          <div id="wixMsg_${p.id}" style="font-size:11px;display:none;width:100%"></div>
         </div>
       </div>
     </div>`;
