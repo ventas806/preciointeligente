@@ -6661,7 +6661,7 @@ function renderItemsVenta() {
             Lleva ISV (${(parametros.isvNuevo*100).toFixed(0)}%)
           </label>
           <span style="font-size:11px;color:${item.llevaISV?'var(--gold)':'var(--text3)'}">${isvLabel}</span>
-          ${item.llevaISV ? (() => { const _basePrice = item.precioFinal / (1 + (item.isvPct||0)); return `<span style="font-size:11px;color:var(--text3);background:rgba(255,255,255,.05);padding:2px 7px;border-radius:4px;border:1px solid var(--border)" title="Precio antes de ISV">Antes ISV: ${fmtLPS(_basePrice)}</span>`; })() : ''}
+          ${item.llevaISV ? (() => { const _basePrice = item.precioFinal / (1 + (item.isvPct||0)); return `<span style="font-size:11px;color:var(--text3);background:rgba(255,255,255,.05);padding:2px 7px;border-radius:4px;border:1px solid var(--border)" title="Precio sin ISV">Precio sin ISV: ${fmtLPS(_basePrice)}</span>`; })() : ''}
           ${esManual ? `
           <div style="display:flex;align-items:center;gap:4px">
             <span style="font-size:11px;color:var(--text3)">Costo L</span>
