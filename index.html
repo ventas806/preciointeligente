@@ -8135,15 +8135,13 @@ function cancelarEdicionVenta() {
   vShowSub('lista');
 }
 
-function eliminarVenta(id) {
+async function eliminarVenta(id) {
   const v = ventas.find(x => x.id === id);
   if (!v) return;
   if (!confirm(`¿Eliminar la venta de "${v.clienteNombre}" por ${fmtLPS(v.total)}? Esta acción no se puede deshacer.`)) return;
+  const { error } = await sb.rpc('delete_venta', { p_user: currentUser?.user || '', p_venta_id: id });
+  if (error) { showToast('❌ Error al eliminar: ' + error.message, 'error'); return; }
   ventas = ventas.filter(x => x.id !== id);
-  // Eliminar en Supabase
-  sbExec(() => sb.from('ventas').delete().eq('id', id)).then(({error}) => {
-    if(error) console.warn('Error eliminando venta:', error.message);
-  });
   addHistorial(`Venta eliminada: ${v.clienteNombre} · ${fmtLPS(v.total)}`, 'Ventas');
   showToast('🗑️ Venta eliminada', 'success');
   renderHistorialVentas();
