@@ -2274,7 +2274,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
               <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px">📄 Resumen de Cotización</div>
               <!-- 1. Subtotal sin ISV -->
               <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px">
-                <span style="color:var(--text2)">Subtotal c/ISV</span>
+                <span style="color:var(--text2)">Subtotal (sin ISV)</span>
                 <span id="cResSubtotal">L 0.00</span>
               </div>
               <!-- 2. Descuento (control + detalle) -->
@@ -9659,7 +9659,7 @@ function calcResumenCotizacion() {
     }
   }
 
-  if(el('cResSubtotal')) el('cResSubtotal').textContent = fmtLPS(subtotalConISV); // total c/ISV antes del desc. global
+  if(el('cResSubtotal')) el('cResSubtotal').textContent = fmtLPS(subtotalSinISVFinal); // base sin ISV (post-descuento)
   if(el('cResISV'))      el('cResISV').textContent      = fmtLPS(isvAjustado);
   if(el('cResTotal'))    el('cResTotal').textContent    = fmtLPS(total);
 
