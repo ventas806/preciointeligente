@@ -2821,15 +2821,17 @@ async function sbSaveCotizacion(c) {
     vendedor_id:      c.vendedorId      || '',
     vendedor_nombre:  c.vendedorNombre  || '',
     items:            (c.items||[]).map(it=>({
-      sku:         it.sku         || '',
-      nombre:      it.descripcion || it.nombre || '',
-      cantidad:    it.cantidad    || 1,
-      precio_final:it.precioFinal || 0,
-      lleva_isv:   it.llevaISV   || false,
-      isv_pct:     it.isvPct     || 0,
-      producto_id: it.productoId || null,
-      imagen:      it.imagen     || null,
-      nota_item:   it.notaItem   || ''
+      sku:                it.sku              || '',
+      nombre:             it.descripcion      || it.nombre || '',
+      cantidad:           it.cantidad         || 1,
+      precio_final:       it.precioFinal      || 0,
+      precio_lista:       it.precioLista      || it.precioFinal || 0,
+      descuento_item_tipo:it.descuentoItemTipo|| '%',
+      lleva_isv:          it.llevaISV         || false,
+      isv_pct:            it.isvPct           || 0,
+      producto_id:        it.productoId       || null,
+      imagen:             it.imagen           || null,
+      nota_item:          it.notaItem         || ''
     })),
     observaciones:    c.observaciones   || '',
     subtotal_sin_isv: c.subtotalSinISV  || 0,
@@ -2860,21 +2862,29 @@ async function sbGetCotizaciones() {
     clienteEmail:     c.cliente_email     || '',
     vendedorId:       c.vendedor_id       || '',
     vendedorNombre:   c.vendedor_nombre   || '',
-    items:            (c.items||[]).map(it=>({
-      tipo:        it.producto_id ? 'catalogo' : 'manual',
-      productoId:  it.producto_id  || null,
-      sku:         it.sku          || '',
-      descripcion: it.nombre       || '',
-      nombre:      it.nombre       || '',
-      cantidad:    it.cantidad     || 1,
-      precioFinal: it.precio_final || 0,
-      llevaISV:    it.lleva_isv   || false,
-      isvPct:      it.isv_pct     || 0,
-      imagen:      it.imagen      || (it.producto_id ? (productos.find(p=>p.id===it.producto_id)||{}).imagen||null : null),
-      notaItem:    it.nota_item   || '',
-      productoId:  it.producto_id || null,
-      _id:         'vi_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)
-    })),
+    items:            (c.items||[]).map(it=>{
+      // precio_lista: usar el guardado; si no existe (registros viejos), calcular del catálogo
+      const prod = it.producto_id ? productos.find(p=>p.id===it.producto_id) : null;
+      const listaGuardada = it.precio_lista || 0;
+      const listaCatalogo = prod ? +calcProd(prod).precioConISV.toFixed(2) : 0;
+      const precioLista   = listaGuardada > 0 ? listaGuardada : (listaCatalogo || it.precio_final || 0);
+      return {
+        tipo:             it.producto_id ? 'catalogo' : 'manual',
+        productoId:       it.producto_id      || null,
+        sku:              it.sku              || '',
+        descripcion:      it.nombre           || '',
+        nombre:           it.nombre           || '',
+        cantidad:         it.cantidad         || 1,
+        precioFinal:      it.precio_final     || 0,
+        precioLista,
+        descuentoItemTipo:it.descuento_item_tipo || '%',
+        llevaISV:         it.lleva_isv        || false,
+        isvPct:           it.isv_pct          || 0,
+        imagen:           it.imagen           || (prod ? prod.imagen||null : null),
+        notaItem:         it.nota_item        || '',
+        _id:              'vi_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)
+      };
+    }),
     observaciones:    c.observaciones     || '',
     subtotalSinISV:   c.subtotal_sin_isv  || 0,
     totalISV:         c.total_isv         || 0,
