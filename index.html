@@ -10217,19 +10217,48 @@ function imprimirCotizacion(id) {
   const firmaUrl  = parametros.firmaUrl  || '';
   const tsEmision = `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}`;
 
-  // ── Productos con imagen ──────────────────────────────────────────────
+  // ── Productos con imagen + descuentos ────────────────────────────────
   const tieneImagenes = (c.items||[]).some(it => it.imagen);
   const _bcUrl = (sku) => { try { const cv=document.createElement('canvas'); JsBarcode(cv,sku,{format:'CODE128',width:1.2,height:32,displayValue:false,margin:2}); return cv.toDataURL('image/png'); } catch(e){ return ''; } };
   const _bcMap = {}; (c.items||[]).forEach(it=>{ if(it.sku && !_bcMap[it.sku]) _bcMap[it.sku]=_bcUrl(it.sku); });
-  const itemsHtml=(c.items||[]).map((it,i)=>`<tr style="${i%2===1?'background:#f8f8f8':''}">
+
+  // Precio lista por ítem: usar precioLista del item si es mayor al final,
+  // o bien calcular desde catálogo si hay productoId
+  const _getListaPrice = (it) => {
+    if (it.precioLista && it.precioLista > it.precioFinal + 0.01) return it.precioLista;
+    if (it.productoId) {
+      const prod = productos.find(p => p.id === it.productoId);
+      if (prod) return +calcProd(prod).precioConISV.toFixed(2);
+    }
+    return 0;
+  };
+  let ahorroItems = 0;
+  (c.items||[]).forEach(it => {
+    const lista = _getListaPrice(it);
+    if (lista > it.precioFinal + 0.01) ahorroItems += (lista - it.precioFinal) * (it.cantidad||1);
+  });
+  const ahorroGlobal = c.descuento || 0;
+  const ahorroTotal  = ahorroItems + ahorroGlobal;
+
+  const itemsHtml=(c.items||[]).map((it,i)=>{
+    const lista    = _getListaPrice(it);
+    const tieneDto = lista > it.precioFinal + 0.01;
+    const ahorroIt = tieneDto ? (lista - it.precioFinal) * (it.cantidad||1) : 0;
+    const pctDesc  = tieneDto ? Math.round((lista - it.precioFinal) / lista * 100) : 0;
+    return `<tr style="${i%2===1?'background:#f8f8f8':''}">
     <td style="text-align:center;font-weight:700;color:#666">${i+1}</td>
     ${tieneImagenes?`<td style="text-align:center;padding:4px 6px">${it.imagen?`<img src="${it.imagen}" style="width:80px;height:80px;object-fit:contain;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;padding:3px" onerror="this.style.display='none'">`:'<span style="color:#ccc;font-size:24px">📦</span>'}</td>`:''}
     <td style="font-family:monospace;font-size:10px;color:#555">${it.sku||'—'}${(_bcMap[it.sku]?'<br><img src="'+_bcMap[it.sku]+'" style="max-width:100%;display:block">':'')}</td>
-    <td><strong style="font-size:12px">${it.descripcion||it.nombre||'—'}</strong>${it.notaItem?`<br><span style="font-size:10px;color:#555;font-style:italic">${it.notaItem}</span>`:''}</td>
+    <td>
+      <strong style="font-size:12px">${it.descripcion||it.nombre||'—'}</strong>
+      ${it.notaItem?`<br><span style="font-size:10px;color:#555;font-style:italic">📝 ${it.notaItem}</span>`:''}
+      ${tieneDto?`<br><span style="font-size:10px;color:#c0392b;text-decoration:line-through">${fmtL(lista)}</span> <span style="font-size:10px;color:#2e7d32;font-weight:700">▼ ${pctDesc}% desc. — ahorrás ${fmtL(ahorroIt)}</span>`:''}
+    </td>
     <td style="text-align:center">${it.cantidad||1}</td>
     <td style="text-align:right">${fmtL(it.precioFinal||0)}</td>
     <td style="text-align:right;font-weight:700;color:#1a237e">${fmtL((it.precioFinal||0)*(it.cantidad||1))}</td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
 
   const fv=c.fechaVencimiento?fmtHN(new Date(c.fechaVencimiento+'T12:00:00')):'15 días desde emisión';
 
@@ -10330,11 +10359,21 @@ td{padding:5px 8px;font-size:11.5px;border-bottom:1px solid #e8e8e8;vertical-ali
 </table>
 <div class="totals">
   <table>
+    ${ahorroItems>0?`<tr><td style="color:#888">Subtotal a precio lista</td><td style="text-align:right;color:#888">${fmtL((c.items||[]).reduce((s,it)=>s+(_getListaPrice(it)||it.precioFinal)*(it.cantidad||1),0))}</td></tr>
+    <tr><td style="color:#2e7d32">− Ahorro en productos (${(c.items||[]).filter(it=>_getListaPrice(it)>it.precioFinal+0.01).length} ítem/s)</td><td style="text-align:right;color:#2e7d32;font-weight:700">− ${fmtL(ahorroItems)}</td></tr>`:''}
+    ${c.descuento>0?`<tr><td style="color:#2e7d32">− Descuento global${c.descuentoTipo==='%'&&c.descuentoValor>0?' ('+c.descuentoValor+'%)':c.descuentoTipo==='L'?' (L fijos)':''}</td><td style="text-align:right;color:#2e7d32;font-weight:700">− ${fmtL(c.descuento)}</td></tr>`:''}
     <tr><td style="color:#555">Subtotal (sin ISV)</td><td style="text-align:right">${fmtL(c.subtotalSinISV)}</td></tr>
-    <tr><td style="color:#555">ISV (15%)</td><td style="text-align:right">${fmtL(c.totalISV)}</td></tr>
+    <tr><td style="color:#555">ISV</td><td style="text-align:right">${fmtL(c.totalISV)}</td></tr>
     <tr class="total-final"><td><strong>TOTAL</strong></td><td style="text-align:right;color:#1a237e"><strong>${fmtL(c.total)}</strong></td></tr>
   </table>
 </div>
+${ahorroTotal>0.01?`<div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;padding:10px 16px;margin-top:10px;display:flex;justify-content:space-between;align-items:center">
+  <div>
+    <div style="font-size:10px;font-weight:700;color:#2e7d32;text-transform:uppercase;letter-spacing:.5px">🎉 Ahorro total del cliente</div>
+    ${ahorroItems>0&&ahorroGlobal>0?`<div style="font-size:10px;color:#555;margin-top:2px">Desc. en productos: ${fmtL(ahorroItems)} + Desc. global: ${fmtL(ahorroGlobal)}</div>`:''}
+  </div>
+  <div style="font-size:20px;font-weight:900;color:#2e7d32">${fmtL(ahorroTotal)}</div>
+</div>`:''}
 <div class="validity">⏳ <strong>Vigencia:</strong> Esta cotización es válida hasta el <strong>${fv}</strong>. Precios sujetos a disponibilidad de inventario.</div>
 ${c.observaciones?`<div class="obs">📝 <strong>Condiciones y Observaciones:</strong><br>${c.observaciones}</div>`:''}
 <div class="footer">
