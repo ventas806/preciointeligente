@@ -3177,11 +3177,16 @@ function imprimirCot(id) {
     const lista = _getListaPrice(it);
     if (lista > it.precioFinal + 0.01) ahorroItems += (lista - it.precioFinal) * (it.cantidad||1);
   });
-  // Descuento global como reducción real sobre el total c/ISV (= subtotalItemsFinal − c.total)
-  // Garantiza: (Subtotal después desc.) − (Desc. global) = TOTAL ✓
-  const ahorroGlobal       = c.descuento > 0 ? +Math.max(0, subtotalItemsFinal - c.total).toFixed(2) : 0;
+  // Descuento global = monto nominal ingresado (sobre sinISV, como se guardó)
+  const ahorroGlobal       = c.descuento > 0 ? +c.descuento.toFixed(2) : 0;
   const ahorroTotal        = +(ahorroItems + ahorroGlobal).toFixed(2);
   const countDescItems     = (c.items||[]).filter(it=>_getListaPrice(it)>it.precioFinal+0.01).length;
+  // sinISV antes del descuento global (calculado desde ítems directamente)
+  const subtotalSinISVOrig = +((c.items||[]).reduce((s,it)=>{
+    const isvPct = it.isvPct||0.15;
+    const sinISV = (it.llevaISV&&isvPct>0) ? (it.precioFinal||0)/(1+isvPct) : (it.precioFinal||0);
+    return s + sinISV*(it.cantidad||1);
+  },0)).toFixed(2);
   // Subtotal sin ISV real = total − ISV (post-descuento, para que sinISV + ISV = TOTAL ✓)
   const subtotalSinISVFinal = +(c.total - c.totalISV).toFixed(2);
   const _ratioDesc = subtotalItemsFinal > 0 ? c.total / subtotalItemsFinal : 1;
@@ -3295,8 +3300,9 @@ td{padding:5px 8px;font-size:11.5px;border-bottom:1px solid #e8e8e8;vertical-ali
   <tr style="color:#888"><td>Precio lista (incluye ISV)</td><td style="text-align:right">${fmtL(subtotalLista)}</td></tr>
   ${ahorroItems>0.01?`<tr style="color:#2e7d32"><td>− Ahorro en productos (${countDescItems} ítem/s)</td><td style="text-align:right;font-weight:700">− ${fmtL(ahorroItems)}</td></tr>`:''}
   ${ahorroItems>0.01?`<tr style="border-top:1px solid #e0e0e0"><td style="font-weight:600">Subtotal después desc. ítem</td><td style="text-align:right;font-weight:700">${fmtL(subtotalItemsFinal)}</td></tr>`:''}
-  ${c.descuento>0?`<tr style="color:#2e7d32"><td>− Descuento global${c.descuentoTipo==='%'&&c.descuentoValor>0?' ('+c.descuentoValor+'%)':c.descuentoTipo==='L'?' (L fijos)':''}</td><td style="text-align:right;font-weight:700">− ${fmtL(ahorroGlobal)}</td></tr>`:''}
   <tr><td colspan="2"><hr style="border:none;border-top:1px solid #ccc;margin:4px 0"></td></tr>
+  ${c.descuento>0?`<tr><td style="color:#555">Subtotal sin ISV</td><td style="text-align:right">${fmtL(subtotalSinISVOrig)}</td></tr>`:''}
+  ${c.descuento>0?`<tr style="color:#2e7d32"><td>− Descuento global${c.descuentoTipo==='%'&&c.descuentoValor>0?' ('+c.descuentoValor+'%)':c.descuentoTipo==='L'?' (L fijos)':''}</td><td style="text-align:right;font-weight:700">− ${fmtL(ahorroGlobal)}</td></tr>`:''}
   <tr><td>Subtotal neto antes ISV</td><td style="text-align:right">${fmtL(subtotalSinISVFinal)}</td></tr>
   ${importeGravado>0?`<tr><td style="color:#888;padding-left:14px">↳ Importe Gravado 15%</td><td style="text-align:right;color:#888">${fmtL(importeGravado)}</td></tr>`:''}
   ${importeExento>0.01?`<tr><td style="color:#888;padding-left:14px">↳ Importe Exento</td><td style="text-align:right;color:#888">${fmtL(importeExento)}</td></tr>`:''}
