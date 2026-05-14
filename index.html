@@ -10271,9 +10271,6 @@ function imprimirCotizacion(id) {
     const lista = _getListaPrice(it);
     if (lista > it.precioFinal + 0.01) ahorroItems += (lista - it.precioFinal) * (it.cantidad||1);
   });
-  // Descuento global = el monto nominal ingresado (sobre sinISV, que es como se guardó)
-  const ahorroGlobal = c.descuento > 0 ? +c.descuento.toFixed(2) : 0;
-  const ahorroTotal  = +(ahorroItems + ahorroGlobal).toFixed(2);
   const countDescItems = (c.items||[]).filter(it=>_getListaPrice(it)>it.precioFinal+0.01).length;
   // sinISV antes del descuento global (calculado desde ítems directamente)
   const subtotalSinISVOrig = +((c.items||[]).reduce((s,it)=>{
@@ -10283,6 +10280,11 @@ function imprimirCotizacion(id) {
   },0)).toFixed(2);
   // Subtotal sin ISV real = total − ISV (valor post-descuento, para que sinISV + ISV = TOTAL ✓)
   const subtotalSinISVFinal = +(c.total - c.totalISV).toFixed(2);
+  // Reducción efectiva de sinISV = diferencia real entre sinISVOrig y sinISVFinal.
+  // Garantiza que sinISVOrig − efectiva = sinISVFinal ✓ sin importar cómo se guardó el descuento.
+  const ahorroGlobal = c.descuento > 0 ? +Math.max(0, subtotalSinISVOrig - subtotalSinISVFinal).toFixed(2) : 0;
+  // Ahorro total al cliente = reducción real en el TOTAL pagado
+  const ahorroTotal  = +(ahorroItems + (subtotalItemsFinal - c.total)).toFixed(2);
   // Exento e gravado proporcionales al ratio de descuento global
   const _ratioDesc = subtotalItemsFinal > 0 ? c.total / subtotalItemsFinal : 1;
   const importeExento  = +(((c.items||[]).reduce((s,it)=>(!it.llevaISV||!(it.isvPct>0))?s+(it.precioFinal||0)*(it.cantidad||1):s, 0)) * _ratioDesc).toFixed(2);
