@@ -9610,21 +9610,27 @@ function calcResumenCotizacion() {
   // Total con ISV antes del descuento global
   const subtotalConISV = subtotalSinISV + totalISVOrig;
 
-  // Descuento aplicado sobre el total c/ISV:
-  //   % → X% del total (ej. 10% de 24,566 = 2,456)
-  //   L fijos → baja el total exactamente en ese monto (ej. L 1,700 = total − 1,700)
+  // Descuento global:
+  //   % → aplica sobre totalConISV (equivalente a aplicar sobre sinISV, matemáticamente idéntico)
+  //   L fijos → aplica sobre base SIN ISV (el descuento NO incluye ISV)
   const descActivo = document.getElementById('cDescActivo')?.checked;
   const descTipo   = document.getElementById('cDescTipoBtn')?.textContent.trim() || '%';
   const descValor  = parseFloat(document.getElementById('cDescValor')?.value) || 0;
   let descMonto = 0;
-  if (descActivo && descValor > 0 && subtotalConISV > 0) {
-    descMonto = descTipo === '%' ? subtotalConISV * (descValor / 100) : descValor;
-    descMonto = Math.min(descMonto, subtotalConISV);
+  let ratio = 1;
+  if (descActivo && descValor > 0) {
+    if (descTipo === '%') {
+      descMonto = +(Math.min(subtotalConISV * (descValor / 100), subtotalConISV)).toFixed(2);
+      ratio = subtotalConISV > 0 ? (subtotalConISV - descMonto) / subtotalConISV : 1;
+    } else {
+      // L fijos: descuento sobre base sin ISV → ratio afecta sinISV e ISV proporcionalmente
+      descMonto = +Math.min(descValor, subtotalSinISV).toFixed(2);
+      ratio = subtotalSinISV > 0 ? (subtotalSinISV - descMonto) / subtotalSinISV : 1;
+    }
   }
-  const ratio            = subtotalConISV > 0 ? (subtotalConISV - descMonto) / subtotalConISV : 1;
   const subtotalSinISVFinal = +(subtotalSinISV * ratio).toFixed(2);
-  const isvAjustado      = +(totalISVOrig * ratio).toFixed(2);
-  const total            = +(subtotalConISV - descMonto).toFixed(2);
+  const isvAjustado         = +(totalISVOrig * ratio).toFixed(2);
+  const total               = +(subtotalSinISVFinal + isvAjustado).toFixed(2);
 
   // Ahorro total = descuentos por item + descuento general
   const cAhorroItems = cItemsActuales.reduce((s, it) => {
