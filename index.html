@@ -2066,6 +2066,13 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             <label>Descripción / Nota</label>
             <textarea id="cNota" placeholder="Descripción del combo, qué incluye, para qué sirve..." style="min-height:60px"></textarea>
           </div>
+          <div class="form-field field-full">
+            <label>Imagen del Combo (URL)</label>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <input type="url" id="cImagenUrl" placeholder="https://..." style="flex:1;min-width:220px" oninput="previsualizarImagenCombo()">
+              <img id="cImagenPreview" src="" alt="" style="width:64px;height:64px;object-fit:contain;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);display:none" onerror="this.style.display='none'">
+            </div>
+          </div>
         </div>
         <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
           <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);margin-bottom:12px">📦 Ítems del Combo</div>
@@ -8791,6 +8798,8 @@ function nuevoCombo() {
   document.getElementById('cCategoria').value = '';
   document.getElementById('cNota').value = '';
   document.getElementById('cPrecioFinal').value = '';
+  document.getElementById('cImagenUrl').value = '';
+  document.getElementById('cImagenPreview').style.display = 'none';
   document.getElementById('comboItemBuscar').value = '';
   document.getElementById('comboItemResultados').style.display = 'none';
   renderComboItemsActuales();
@@ -8806,9 +8815,18 @@ function cancelarCombo() {
   document.getElementById('cCategoria').value = '';
   document.getElementById('cNota').value = '';
   document.getElementById('cPrecioFinal').value = '';
+  document.getElementById('cImagenUrl').value = '';
+  document.getElementById('cImagenPreview').style.display = 'none';
   document.getElementById('comboItemBuscar').value = '';
   document.getElementById('comboItemResultados').style.display = 'none';
   renderComboItemsActuales();
+}
+
+function previsualizarImagenCombo() {
+  const url = (document.getElementById('cImagenUrl').value||'').trim();
+  const img = document.getElementById('cImagenPreview');
+  if (url) { img.src = url; img.style.display = 'block'; }
+  else { img.style.display = 'none'; }
 }
 
 // ── Buscador de productos para añadir al combo ──
@@ -8972,6 +8990,7 @@ async function guardarCombo() {
     codigo: (document.getElementById('cCodigo').value||'').trim(),
     categoria: (document.getElementById('cCategoria').value||'').trim(),
     nota: (document.getElementById('cNota').value||'').trim(),
+    imagenUrl: (document.getElementById('cImagenUrl').value||'').trim(),
     items: [...comboItemsActuales],
     precioFinal,
     totalIndividual,
@@ -8990,6 +9009,7 @@ async function guardarCombo() {
   const comboRow = {
     id: combo.id, nombre: combo.nombre, codigo: combo.codigo||'',
     categoria: combo.categoria||'', nota: combo.nota||'',
+    imagen_url: combo.imagenUrl||'',
     creado_por: combo.creadoPor, ultima_modif: combo.ultimaModif, activo: true
   };
   try {
@@ -9029,6 +9049,8 @@ function editarCombo(id) {
   document.getElementById('cCategoria').value = combo.categoria||'';
   document.getElementById('cNota').value = combo.nota||'';
   document.getElementById('cPrecioFinal').value = combo.precioFinal||'';
+  document.getElementById('cImagenUrl').value = combo.imagenUrl||'';
+  previsualizarImagenCombo();
   renderComboItemsActuales();
   document.getElementById('comboFormCard').scrollIntoView({behavior:'smooth'});
 }
