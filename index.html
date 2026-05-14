@@ -8931,7 +8931,7 @@ function renderComboItemsActuales() {
       ${p.imagen ? `<img src="${p.imagen}" style="width:44px;height:44px;object-fit:contain;border-radius:6px;background:var(--bg4);flex-shrink:0" onerror="this.style.display='none'">` : ''}
       <div style="flex:1;min-width:180px">
         <div style="font-size:13px;font-weight:600">${p.producto}</div>
-        <div style="font-size:11px;color:var(--text2)">SKU: ${p.sku} · Precio ind.: ${fmtLPS(c.precioFinalDesc)} · ${stockLabel}</div>
+        <div style="font-size:11px;color:var(--text2)">SKU: ${p.sku} · Precio ind.: ${fmtLPS(c.precioFinalDesc)} · <span style="color:#f0b429">Desc. máx: ${fmtPct(c.descMax)}</span> · ${stockLabel}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <button onclick="cambiarCantidadItemCombo('${p.id}',-1)" style="width:28px;height:28px;background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;font-size:16px;font-weight:700">−</button>
