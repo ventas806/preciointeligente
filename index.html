@@ -3584,7 +3584,7 @@ function showTab(name) {
   if(name==='aprobacion') renderAprobacion();
   if(name==='exportar') initTablaExportar();
   if(name==='etiquetas') initTablaEtiquetas();
-  if(name==='combos') { renderCombos(); cancelarCombo(); }
+  if(name==='combos') { _combosCargados = false; renderCombos(); cancelarCombo(); }
   if(name==='ventas') { initVentas(); }
   if(name==='cobros') { renderCobros(); }
   if(name==='cotizaciones') { initCotizaciones(); }
