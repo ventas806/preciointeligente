@@ -655,7 +655,8 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
       <div class="card">
         <div class="card-header">
           <div><div class="card-title">📦 Lista de Productos</div><div class="card-sub">Ordenado por última modificación</div></div>
-          <div style="display:flex;gap:8px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button id="btnRefreshProductos" class="btn btn-sm" onclick="refrescarProductos()" title="Recargar productos desde Supabase" style="background:var(--bg3);border:1px solid var(--accent3);color:var(--accent3);font-weight:700">🔄 Actualizar</button>
             <button class="btn btn-gold btn-sm" onclick="hacerBackup()">💾 Backup</button>
             <button class="btn btn-ghost btn-sm" onclick="exportarExcel()">⬇️ Exportar Excel</button>
             <label class="btn btn-primary btn-sm" style="cursor:pointer">
@@ -3402,11 +3403,19 @@ function initApp() {
   // Cargar datos desde Google Sheets
   cargarDesdeSheetsYRenderizar();
 
-  // Auto-refresh productos cada 2 minutos en segundo plano
-  setInterval(() => sincronizarSilencioso(), 2 * 60 * 1000);
+  // Auto-refresh productos cada 30 segundos en segundo plano
+  setInterval(() => sincronizarSilencioso(), 30 * 1000);
 
   // Realtime + auto-refresh de ventas
   iniciarRealtimeVentas();
+}
+
+async function refrescarProductos() {
+  const btn = document.getElementById('btnRefreshProductos');
+  if (btn) { btn.textContent = '⏳ Actualizando...'; btn.disabled = true; }
+  await sincronizarSilencioso();
+  if (btn) { btn.textContent = '🔄 Actualizar'; btn.disabled = false; }
+  showToast('✅ Tabla actualizada', 'success', 2000);
 }
 
 async function sincronizarSilencioso() {
