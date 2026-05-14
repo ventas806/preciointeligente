@@ -2791,6 +2791,7 @@ async function sbSaveVenta(venta) {
     promesa_pago:     venta.promesaPago      || null,
     nota:             (venta.nota            || '').substring(0, 12),
     tipo_venta:       venta.tipoVenta        || 'formal',
+    fecha_liquidada:  venta.fechaLiquidada   || null,
     items: (venta.items || []).map(it => ({
       sku:         it.sku         || '',
       nombre:      it.descripcion || it.nombre || '',
@@ -6103,6 +6104,7 @@ function _mapVentaRow(v) {
     metodoEnvio:     v.metodo_envio   || '',
     promesaPago:     v.promesa_pago    || '',
     fechaRegistro:   v.fecha_registro  || '',
+    fechaLiquidada:  v.fecha_liquidada || '',
     registradoPor:   v.registrado_por  || '',
     nota:            v.nota            || '',
     tipoVenta:       v.tipo_venta      || 'formal',
@@ -7125,7 +7127,6 @@ async function guardarVenta() {
     observaciones: (document.getElementById('vObservaciones').value||'').trim(),
     mapsLink:      (document.getElementById('vMapsLink')?.value||'').trim(),
     metodoPago:    metodoPagoId,
-    metodoPagoLabel: (parametros.metodosPago||[]).find(m=>m.id===metodoPagoId)?.label || metodoPagoId,
     metodoPagoObs:    metodoPagoObs,
     metodoEnvio:      metodoEnvio,
     promesaPago:      promesaPago,
@@ -7136,6 +7137,16 @@ async function guardarVenta() {
     nota: vEditandoId ? ((ventas.find(x=>x.id===vEditandoId)||{}).nota||'') : '',
     tipoVenta: vTipoVenta || 'formal'
   };
+
+  // Si venta parcial queda saldada → marcar como "Parcial - Liquidada" y registrar fecha
+  const esParcialLiquidada = venta.metodoPago === 'parcial' && venta.saldoPendiente === 0;
+  const ventaExistente = vEditandoId ? (ventas.find(x => x.id === vEditandoId) || {}) : {};
+  venta.metodoPagoLabel = esParcialLiquidada
+    ? 'Parcial - Liquidada'
+    : ((parametros.metodosPago||[]).find(m=>m.id===metodoPagoId)?.label || metodoPagoId);
+  venta.fechaLiquidada = esParcialLiquidada
+    ? (ventaExistente.fechaLiquidada || new Date().toISOString().split('T')[0])
+    : (ventaExistente.fechaLiquidada || '');
 
   // ── Guardar en Supabase (fuente de verdad) ──
   mostrarCargando('☁️ Guardando venta en Supabase...');
@@ -7254,7 +7265,9 @@ function filtrarVentasPorPeriodo(lista, periodo, desde, hasta) {
     String(ahora.getDate()).padStart(2,'0');
 
   return lista.filter(v => {
-    const fechaStr = (v.fecha || '').substring(0, 10);
+    // Ventas parciales liquidadas → usar fecha_liquidada como referencia de período
+    const fechaBase = (v.fechaLiquidada && v.metodoPago === 'parcial') ? v.fechaLiquidada : v.fecha;
+    const fechaStr = (fechaBase || '').substring(0, 10);
 
     if (periodo === 'hoy') return fechaStr === hoyStr;
 
@@ -13071,7 +13084,9 @@ function calcularYRenderLiquidacion() {
 
   const ventasPeriodo = ventas.filter(v => {
     if (String(v.vendedorId) !== String(vendedorId)) return false;
-    const d = new Date(v.fecha + 'T12:00:00');
+    // Ventas parciales ya liquidadas → usar fecha_liquidada para comisión en período correcto
+    const fechaRef = (v.fechaLiquidada && v.metodoPago === 'parcial') ? v.fechaLiquidada : v.fecha;
+    const d = new Date(fechaRef + 'T12:00:00');
     return d >= dInicio && d <= dFin;
   });
 
