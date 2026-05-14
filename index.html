@@ -8776,6 +8776,7 @@ async function cargarCombos() {
         codigo:         c.codigo         || '',
         categoria:      c.categoria      || '',
         nota:           c.nota           || '',
+        imagenUrl:      c.imagen_url     || '',
         precioFinal:    c.precio_final   || 0,
         totalIndividual:c.total_individual|| 0,
         creadoPor:      c.creado_por     || '',
@@ -8856,12 +8857,13 @@ function buscarItemsCombo() {
     const c = calcProd(p);
     const precio = fmtLPS(c.precioFinalDesc);
     const yaEsta = comboItemsActuales.find(ci => ci.productoId === p.id);
-    return `<div onclick="agregarItemCombo('${p.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;transition:background .15s" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
-      <div>
+    return `<div onclick="agregarItemCombo('${p.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;transition:background .15s" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
+      ${p.imagen ? `<img src="${p.imagen}" style="width:40px;height:40px;object-fit:contain;border-radius:6px;background:var(--bg4);flex-shrink:0" onerror="this.style.display='none'">` : '<div style="width:40px;height:40px;background:var(--bg4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📦</div>'}
+      <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;color:var(--text)">${p.producto}</div>
-        <div style="font-size:11px;color:var(--text2)">SKU: ${p.sku} · ${p.categoria||'—'}</div>
+        <div style="font-size:11px;color:var(--text2)">SKU: ${p.sku} · ${p.categoria||'—'} · <span style="color:var(--gold)">Desc. máx: ${fmtPct(c.descMax)}</span></div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
         <span style="font-size:13px;color:var(--green);font-weight:700">${precio}</span>
         ${yaEsta ? '<span style="font-size:11px;color:var(--accent3);font-weight:700">✓ En combo</span>' : '<span style="font-size:11px;color:var(--accent)">+ Añadir</span>'}
       </div>
@@ -8925,6 +8927,7 @@ function renderComboItemsActuales() {
       ? `<span style="color:var(--red);font-weight:700">⚠️ Pediste ${cant}, stock: ${stockDisp}</span>`
       : `<span style="color:var(--text3)">Stock: ${stockDisp}</span>`;
     return `<div style="display:flex;align-items:center;gap:12px;background:${bgColor};border:1px solid ${borderColor};border-radius:8px;padding:10px 14px;flex-wrap:wrap;transition:all .2s">
+      ${p.imagen ? `<img src="${p.imagen}" style="width:44px;height:44px;object-fit:contain;border-radius:6px;background:var(--bg4);flex-shrink:0" onerror="this.style.display='none'">` : ''}
       <div style="flex:1;min-width:180px">
         <div style="font-size:13px;font-weight:600">${p.producto}</div>
         <div style="font-size:11px;color:var(--text2)">SKU: ${p.sku} · Precio ind.: ${fmtLPS(c.precioFinalDesc)} · ${stockLabel}</div>
@@ -9231,6 +9234,7 @@ async function renderCombos() {
           </div>
         </div>` : ''}
         <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
+          ${combo.imagenUrl ? `<img src="${combo.imagenUrl}" style="width:72px;height:72px;object-fit:contain;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);flex-shrink:0" onerror="this.style.display='none'">` : ''}
           <div style="flex:1;min-width:200px">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
               <span style="font-size:15px;font-weight:700">${combo.nombre}</span>
