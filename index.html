@@ -6958,7 +6958,7 @@ function calcResumenVenta() {
     } else {
       const tasasUsadas = [...new Set(vItemsActuales.filter(it => it.llevaISV && it.isvPct > 0).map(it => it.isvPct))];
       if (tasasUsadas.length === 1) {
-        isvPctEl.textContent = tasasUsadas[0] + '%';
+        isvPctEl.textContent = (tasasUsadas[0] * 100).toFixed(0) + '%';
       } else if (tasasUsadas.length > 1) {
         isvPctEl.textContent = 'mixto';
       } else {
@@ -9661,7 +9661,7 @@ function calcResumenCotizacion() {
       cIsvPctEl.textContent = '0%';
     } else {
       const cTasas = [...new Set(cItemsActuales.filter(it => it.llevaISV && it.isvPct > 0).map(it => it.isvPct))];
-      cIsvPctEl.textContent = cTasas.length === 1 ? cTasas[0] + '%' : cTasas.length > 1 ? 'mixto' : '15%';
+      cIsvPctEl.textContent = cTasas.length === 1 ? (cTasas[0]*100).toFixed(0)+'%' : cTasas.length > 1 ? 'mixto' : '15%';
     }
   }
 
