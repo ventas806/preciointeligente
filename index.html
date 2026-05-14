@@ -8936,11 +8936,13 @@ function renderComboItemsActuales() {
 function actualizarResumenCombo(fuente) {
   const grid = document.getElementById('comboPrecioGrid');
   const ahorroEl = document.getElementById('comboAhorroInfo');
-  const totalIndividual = comboItemsActuales.reduce((acc, ci) => {
-    const p = productos.find(x => x.id === ci.productoId);
-    if (!p) return acc;
-    return acc + calcProd(p).precioFinalDesc * (ci.cantidad||1);
-  }, 0);
+  const totalIndividual = comboItemsActuales.length > 0
+    ? comboItemsActuales.reduce((acc, ci) => {
+        const p = productos.find(x => x.id === ci.productoId);
+        if (!p) return acc;
+        return acc + calcProd(p).precioFinalDesc * (ci.cantidad||1);
+      }, 0)
+    : (editingComboId ? (combos.find(c => c.id === editingComboId)||{}).totalIndividual || 0 : 0);
 
   let precioFinal = parseFloat(document.getElementById('cPrecioFinal').value) || 0;
   let pctDesc = parseFloat(document.getElementById('cPctDescuento').value) || 0;
@@ -9050,8 +9052,20 @@ function editarCombo(id) {
   document.getElementById('cNota').value = combo.nota||'';
   document.getElementById('cPrecioFinal').value = combo.precioFinal||'';
   document.getElementById('cImagenUrl').value = combo.imagenUrl||'';
+  // Pre-fill % descuento from stored values
+  if (combo.precioFinal > 0 && combo.totalIndividual > 0) {
+    const pct = +((1 - combo.precioFinal / combo.totalIndividual) * 100).toFixed(1);
+    document.getElementById('cPctDescuento').value = pct > 0 ? pct : '';
+  } else {
+    document.getElementById('cPctDescuento').value = '';
+  }
   previsualizarImagenCombo();
   renderComboItemsActuales();
+  // Always show price section when editing a combo that already has a price
+  if (combo.precioFinal > 0) {
+    document.getElementById('comboPrecioResumen').style.display = 'block';
+    actualizarResumenCombo();
+  }
   document.getElementById('comboFormCard').scrollIntoView({behavior:'smooth'});
 }
 
