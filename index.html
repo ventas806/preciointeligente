@@ -10283,8 +10283,8 @@ function imprimirCotizacion(id) {
   // Reducción efectiva de sinISV = diferencia real entre sinISVOrig y sinISVFinal.
   // Garantiza que sinISVOrig − efectiva = sinISVFinal ✓ sin importar cómo se guardó el descuento.
   const ahorroGlobal = c.descuento > 0 ? +Math.max(0, subtotalSinISVOrig - subtotalSinISVFinal).toFixed(2) : 0;
-  // Ahorro total al cliente = reducción real en el TOTAL pagado
-  const ahorroTotal  = +(ahorroItems + (subtotalItemsFinal - c.total)).toFixed(2);
+  // Ahorro total = ítem discounts + global sinISV reduction (consistente con el desglose del texto)
+  const ahorroTotal  = +(ahorroItems + ahorroGlobal).toFixed(2);
   // Exento e gravado proporcionales al ratio de descuento global
   const _ratioDesc = subtotalItemsFinal > 0 ? c.total / subtotalItemsFinal : 1;
   const importeExento  = +(((c.items||[]).reduce((s,it)=>(!it.llevaISV||!(it.isvPct>0))?s+(it.precioFinal||0)*(it.cantidad||1):s, 0)) * _ratioDesc).toFixed(2);
