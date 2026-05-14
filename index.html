@@ -8763,8 +8763,8 @@ function pdfReporteEquipo() {
 
 let combos = []; // se cargan desde Supabase
 let _combosCargados = false;
-async function cargarCombos() {
-  if (_combosCargados) return;
+async function cargarCombos(forzar = false) {
+  if (_combosCargados && !forzar) return;
   try {
     const { data, error } = await sbExec(() => sb.from('combos')
       .select('*, combo_items(*, productos(id,producto,cantidad))')
@@ -8787,8 +8787,9 @@ async function cargarCombos() {
           precioSnapshot: it.precio_snapshot || 0
         }))
       }));
+      // Solo marcar como cargado si vino data válida
+      if (data.length > 0 || combos.length === 0) _combosCargados = true;
     }
-    _combosCargados = true;
   } catch(e) { console.warn('Error cargando combos:', e); }
 }
 let editingComboId = null;
@@ -9050,6 +9051,7 @@ async function guardarCombo() {
   addHistorial(`Combo ${editingComboId ? 'editado' : 'creado'}: ${nombre} (${comboItemsActuales.length} ítems)`, 'Combos');
   showToast(editingComboId ? '✅ Combo actualizado' : '✅ Combo creado correctamente', 'success');
   cancelarCombo();
+  _combosCargados = false;
   renderCombos();
 }
 
@@ -9093,6 +9095,7 @@ function eliminarCombo(id) {
     .then(({error}) => { if(error) console.warn('Error eliminando combo:', error.message); });
   addHistorial(`Combo eliminado: ${combo.nombre}`, 'Combos');
   showToast('🗑️ Combo eliminado','success');
+  _combosCargados = false;
   renderCombos();
 }
 
