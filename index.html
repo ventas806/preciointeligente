@@ -10434,12 +10434,11 @@ td{padding:5px 8px;font-size:11.5px;border-bottom:1px solid #e8e8e8;vertical-ali
     <tr class="total-final"><td><strong>TOTAL</strong></td><td style="text-align:right;color:#1a237e"><strong>${fmtL(c.total)}</strong></td></tr>
   </table>
 </div>
-${ahorroTotal>0.01?`<div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;padding:10px 16px;margin-top:10px;display:flex;justify-content:space-between;align-items:center">
-  <div>
-    <div style="font-size:10px;font-weight:700;color:#2e7d32;text-transform:uppercase;letter-spacing:.5px">🎉 Ahorro total del cliente</div>
-    ${ahorroItems>0&&ahorroGlobal>0?`<div style="font-size:10px;color:#555;margin-top:2px">Desc. en productos: ${fmtL(ahorroItems)} + Desc. global: ${fmtL(ahorroGlobal)}</div>`:''}
+${ahorroTotal>0.01?`<div style="display:flex;justify-content:flex-end;margin-top:6px">
+  <div style="font-size:10px;color:#777;border-top:1px dashed #c8e6c9;padding-top:4px">
+    Ahorro total del cliente:&nbsp;<span style="font-weight:700;color:#4caf50">${fmtL(ahorroTotal)}</span>
+    ${ahorroItems>0&&ahorroGlobal>0?`&nbsp;<span style="color:#aaa">(productos ${fmtL(ahorroItems)} + global ${fmtL(ahorroGlobal)})</span>`:''}
   </div>
-  <div style="font-size:20px;font-weight:900;color:#2e7d32">${fmtL(ahorroTotal)}</div>
 </div>`:''}
 <div class="validity">⏳ <strong>Vigencia:</strong> Esta cotización es válida hasta el <strong>${fv}</strong>. Precios sujetos a disponibilidad de inventario.</div>
 ${c.observaciones?`<div class="obs">📝 <strong>Condiciones y Observaciones:</strong><br>${c.observaciones}</div>`:''}
