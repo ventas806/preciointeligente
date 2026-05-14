@@ -4940,17 +4940,18 @@ function onMetodoPagoChange(limpiar = true) {
   if (!sel) return;
   const metodo = (parametros.metodosPago || []).find(m => m.id === sel.value);
   const esParcial = metodo && (metodo.id === 'parcial' || (metodo.label||'').toLowerCase().includes('parcial'));
+  const enModoAbono = document.getElementById('vBannerAbono')?.style.display !== 'none';
   // Mostrar/ocultar wrappers
   if (obsWrap) obsWrap.style.display = (metodo && metodo.observaciones) ? '' : 'none';
   if (proWrap) proWrap.style.display = (metodo && metodo.promesa)       ? '' : 'none';
-  if (aboWrap) aboWrap.style.display = esParcial ? '' : 'none';
+  if (aboWrap) aboWrap.style.display = (esParcial || enModoAbono) ? '' : 'none';
   // Solo limpiar campos si el usuario cambió el método manualmente
   if (limpiar) {
     if (metodo && !metodo.observaciones && document.getElementById('vMetodoPagoObs'))
       document.getElementById('vMetodoPagoObs').value = '';
     if (metodo && !metodo.promesa && document.getElementById('vPromesaPago'))
       document.getElementById('vPromesaPago').value = '';
-    if (!esParcial) {
+    if (!esParcial && !enModoAbono) {
       vItemsAbonos = [];
       renderAbonosVenta();
     }
@@ -6947,9 +6948,10 @@ function calcResumenVenta() {
   const pctComision = (vendedor && vendedor.comision != null ? vendedor.comision : (parametros.comisionVentas || 10)) / 100;
   const comision    = Math.max(0, utilidadAjustada * pctComision);
 
-  // Si el método de pago es parcial y aún hay saldo → comisión se difiere
+  // Si hay saldo pendiente (parcial o modo abono) → comisión se difiere
   const metodoPago   = document.getElementById('vMetodoPago')?.value || '';
-  const esParcial    = metodoPago === 'parcial';
+  const enModoAbonoCalc = document.getElementById('vBannerAbono')?.style.display !== 'none';
+  const esParcial    = metodoPago === 'parcial' || enModoAbonoCalc || vItemsAbonos.length > 0;
   const totalAbonado = esParcial ? vItemsAbonos.reduce((s,a)=>s+(a.monto||0),0) : total;
   const saldoPend    = Math.max(0, total - totalAbonado);
   const comisionVis  = (esParcial && saldoPend > 0) ? 0 : comision;
@@ -7138,9 +7140,10 @@ async function guardarVenta() {
     tipoVenta: vTipoVenta || 'formal'
   };
 
-  // Si venta parcial queda saldada → marcar como "Parcial - Liquidada" y registrar fecha
-  const esParcialLiquidada = venta.metodoPago === 'parcial' && venta.saldoPendiente === 0;
+  // Si una venta con saldo pendiente queda saldada → marcar como "Parcial - Liquidada"
   const ventaExistente = vEditandoId ? (ventas.find(x => x.id === vEditandoId) || {}) : {};
+  const teniaSaldo = (ventaExistente.saldoPendiente || 0) > 0;
+  const esParcialLiquidada = venta.saldoPendiente === 0 && (teniaSaldo || venta.abonos.length > 0);
   venta.metodoPagoLabel = esParcialLiquidada
     ? 'Parcial - Liquidada'
     : ((parametros.metodosPago||[]).find(m=>m.id===metodoPagoId)?.label || metodoPagoId);
@@ -7266,7 +7269,7 @@ function filtrarVentasPorPeriodo(lista, periodo, desde, hasta) {
 
   return lista.filter(v => {
     // Ventas parciales liquidadas → usar fecha_liquidada como referencia de período
-    const fechaBase = (v.fechaLiquidada && v.metodoPago === 'parcial') ? v.fechaLiquidada : v.fecha;
+    const fechaBase = v.fechaLiquidada || v.fecha;
     const fechaStr = (fechaBase || '').substring(0, 10);
 
     if (periodo === 'hoy') return fechaStr === hoyStr;
@@ -8196,6 +8199,9 @@ function editarVenta(id, _modoAbono) {
     const bannerInfo = document.getElementById('vBannerAbonoInfo');
     if (banner) banner.style.display = '';
     if (bannerInfo) bannerInfo.textContent = `Cliente: ${v.clienteNombre}  ·  Ref: ${(v.id||'').slice(-10)}  ·  Total: ${fmtLPS(v.total||0)}`;
+    // En modo abono siempre mostrar la sección de abonos
+    const _aboWrap = document.getElementById('vAbonoWrap');
+    if (_aboWrap) _aboWrap.style.display = '';
     // Cambiar botón guardar a modo abono
     if (btn) { btn.textContent = '💾 Guardar Abono'; btn.style.background = 'var(--gold)'; btn.style.color = '#000'; }
     // Cambiar layout a 1 columna (la sección de pago ocupa todo el ancho)
@@ -13084,8 +13090,8 @@ function calcularYRenderLiquidacion() {
 
   const ventasPeriodo = ventas.filter(v => {
     if (String(v.vendedorId) !== String(vendedorId)) return false;
-    // Ventas parciales ya liquidadas → usar fecha_liquidada para comisión en período correcto
-    const fechaRef = (v.fechaLiquidada && v.metodoPago === 'parcial') ? v.fechaLiquidada : v.fecha;
+    // Ventas ya liquidadas → usar fecha_liquidada para comisión en período correcto
+    const fechaRef = v.fechaLiquidada || v.fecha;
     const d = new Date(fechaRef + 'T12:00:00');
     return d >= dInicio && d <= dFin;
   });
