@@ -9024,6 +9024,8 @@ async function guardarCombo() {
     id: combo.id, nombre: combo.nombre, codigo: combo.codigo||'',
     categoria: combo.categoria||'', nota: combo.nota||'',
     imagen_url: combo.imagenUrl||'',
+    precio_final: combo.precioFinal||0,
+    total_individual: combo.totalIndividual||0,
     creado_por: combo.creadoPor, ultima_modif: combo.ultimaModif, activo: true
   };
   try {
