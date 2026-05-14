@@ -10398,7 +10398,7 @@ td{padding:5px 8px;font-size:11.5px;border-bottom:1px solid #e8e8e8;vertical-ali
 <div class="totals">
   <table>
     <!-- Subtotal c/ISV (precio lista) — siempre visible -->
-    <tr><td style="color:#888">Subtotal c/ISV (precio lista)</td><td style="text-align:right;color:#888">${fmtL(subtotalLista)}</td></tr>
+    <tr><td style="color:#888">Precio lista (incluye ISV)</td><td style="text-align:right;color:#888">${fmtL(subtotalLista)}</td></tr>
     <!-- Ahorro en ítems — solo si hay descuentos por ítem -->
     ${ahorroItems>0.01?`<tr><td style="color:#2e7d32">− Ahorro en productos (${countDescItems} ítem/s)</td><td style="text-align:right;color:#2e7d32;font-weight:700">− ${fmtL(ahorroItems)}</td></tr>`:''}
     <!-- Subtotal después desc. ítem — solo si hubo descuentos por ítem -->
@@ -10408,7 +10408,7 @@ td{padding:5px 8px;font-size:11.5px;border-bottom:1px solid #e8e8e8;vertical-ali
     <!-- Separador -->
     <tr><td colspan="2" style="padding:2px 0"><hr style="border:none;border-top:1px solid #ccc"></td></tr>
     <!-- Subtotal sin ISV (post-descuento: c.total − c.totalISV, garantiza sinISV+ISV=TOTAL) -->
-    <tr><td style="color:#555">Subtotal después descuentos</td><td style="text-align:right">${fmtL(subtotalSinISVFinal)}</td></tr>
+    <tr><td style="color:#555">Subtotal neto antes ISV</td><td style="text-align:right">${fmtL(subtotalSinISVFinal)}</td></tr>
     <!-- Importe Gravado 15% -->
     ${importeGravado>0?`<tr><td style="color:#555;font-size:11px;padding-left:14px">↳ Importe Gravado 15%</td><td style="text-align:right;font-size:11px">${fmtL(importeGravado)}</td></tr>`:''}
     <!-- Importe Exento -->

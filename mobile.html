@@ -3283,12 +3283,12 @@ td{padding:5px 8px;font-size:11.5px;border-bottom:1px solid #e8e8e8;vertical-ali
   <tbody>${itemsHtml}</tbody>
 </table>
 <div class="totals"><table>
-  <tr style="color:#888"><td>Subtotal c/ISV (precio lista)</td><td style="text-align:right">${fmtL(subtotalLista)}</td></tr>
+  <tr style="color:#888"><td>Precio lista (incluye ISV)</td><td style="text-align:right">${fmtL(subtotalLista)}</td></tr>
   ${ahorroItems>0.01?`<tr style="color:#2e7d32"><td>− Ahorro en productos (${countDescItems} ítem/s)</td><td style="text-align:right;font-weight:700">− ${fmtL(ahorroItems)}</td></tr>`:''}
   ${ahorroItems>0.01?`<tr style="border-top:1px solid #e0e0e0"><td style="font-weight:600">Subtotal después desc. ítem</td><td style="text-align:right;font-weight:700">${fmtL(subtotalItemsFinal)}</td></tr>`:''}
   ${c.descuento>0?`<tr style="color:#2e7d32"><td>− Descuento global${c.descuentoTipo==='%'&&c.descuentoValor>0?' ('+c.descuentoValor+'%)':c.descuentoTipo==='L'?' (L fijos)':''}</td><td style="text-align:right;font-weight:700">− ${fmtL(ahorroGlobal)}</td></tr>`:''}
   <tr><td colspan="2"><hr style="border:none;border-top:1px solid #ccc;margin:4px 0"></td></tr>
-  <tr><td>Subtotal después descuentos</td><td style="text-align:right">${fmtL(subtotalSinISVFinal)}</td></tr>
+  <tr><td>Subtotal neto antes ISV</td><td style="text-align:right">${fmtL(subtotalSinISVFinal)}</td></tr>
   ${importeGravado>0?`<tr><td style="color:#888;padding-left:14px">↳ Importe Gravado 15%</td><td style="text-align:right;color:#888">${fmtL(importeGravado)}</td></tr>`:''}
   ${importeExento>0.01?`<tr><td style="color:#888;padding-left:14px">↳ Importe Exento</td><td style="text-align:right;color:#888">${fmtL(importeExento)}</td></tr>`:''}
   <tr><td>ISV (15%)</td><td style="text-align:right">${fmtL(c.totalISV)}</td></tr>
