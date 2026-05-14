@@ -9803,10 +9803,10 @@ function cAgregarManual() {
   const empty = document.getElementById('cItemsEmpty');
   if (empty) empty.style.display = 'none';
   renderItemsCotizacion();
-  // Enfocar el campo descripción del nuevo item
+  // Enfocar el campo descripción del nuevo ítem (está al tope, index 0)
   setTimeout(() => {
     const inputs = document.querySelectorAll('#cItemsLista input[type="text"]');
-    if (inputs.length) inputs[inputs.length-1].focus();
+    if (inputs.length) { inputs[0].focus(); inputs[0].scrollIntoView({behavior:'smooth', block:'nearest'}); }
   }, 50);
 }
 
@@ -9915,6 +9915,8 @@ function cAgregarProducto(prodId) {
   document.getElementById('cProdBuscar').value='';
   document.getElementById('cProdResultados').style.display='none';
   renderItemsCotizacion();
+  // Devolver foco al buscador (nuevo ítem queda arriba, no hace falta scroll abajo)
+  setTimeout(() => { const b = document.getElementById('cProdBuscar'); if(b) b.focus(); }, 50);
 }
 
 function buscarClienteCot(q) {

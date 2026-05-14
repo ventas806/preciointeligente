@@ -2590,6 +2590,8 @@ function cAgregarProducto(prodId) {
   }
   const inp = document.getElementById('cProdBuscar'); if(inp) inp.value='';
   const res = document.getElementById('cProdResultados'); if(res) res.style.display='none';
+  // Devolver foco al buscador (nuevo ítem queda arriba, no hace falta scroll abajo)
+  setTimeout(()=>{ const b=document.getElementById('cProdBuscar'); if(b) b.focus(); },50);
 }
 
 function cAgregarManual() {
@@ -2603,7 +2605,7 @@ function cAgregarManual() {
   cRenderItems();
   setTimeout(()=>{
     const inputs=document.querySelectorAll('#cItemsLista input[type="text"]');
-    if(inputs.length) inputs[inputs.length-1].focus();
+    if(inputs.length){ inputs[0].focus(); inputs[0].scrollIntoView({behavior:'smooth',block:'nearest'}); }
   },50);
 }
 
