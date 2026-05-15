@@ -2797,6 +2797,7 @@ async function sbSaveVenta(venta) {
       nombre:      it.descripcion || it.nombre || '',
       cantidad:    it.cantidad    || 1,
       precio_final:it.precioFinal || 0,
+      precio_lista:it.precioLista || it.precioFinal || 0,
       lleva_isv:   it.llevaISV    || false,
       isv_pct:     it.isvPct      || 0,
       costo_lps:   it.costoLPS    || 0,
@@ -10908,23 +10909,42 @@ function imprimirReporteCobros(clienteForzado) {
                     <th style="padding:3px 6px;text-align:center;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9;width:50px">Cant.</th>
                     <th style="padding:3px 6px;text-align:right;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9;width:100px">P. Unitario</th>
                     <th style="padding:3px 6px;text-align:right;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9;width:100px">Subtotal</th>
+                    <th style="padding:3px 6px;text-align:right;font-weight:700;color:#2e7d32;border-bottom:1px solid #c5cae9;width:90px">Ahorro</th>
                   </tr>
                 </thead>
                 <tbody>
-                  ${v.items.map(it => {
-                    const _sku  = it.sku || '—';
-                    const _nom  = it.descripcion || it.nombre || '—';
-                    const _qty  = it.cantidad || 1;
-                    const _pUnit = it.precioFinal || 0;
-                    const _sub  = _qty * _pUnit;
-                    return '<tr style="border-bottom:1px solid #e0e0f0">'
-                      + '<td style="padding:3px 6px;font-family:monospace;font-size:10px;color:#666">'+_sku+'</td>'
-                      + '<td style="padding:3px 6px;color:#333">'+_nom+'</td>'
-                      + '<td style="padding:3px 6px;text-align:center;color:#333">'+_qty+'</td>'
-                      + '<td style="padding:3px 6px;text-align:right;color:#333">'+fmtL(_pUnit)+'</td>'
-                      + '<td style="padding:3px 6px;text-align:right;font-weight:600;color:#1a237e">'+fmtL(_sub)+'</td>'
-                      + '</tr>';
-                  }).join('')}
+                  ${(() => {
+                    let totalAhorro = 0;
+                    const rows = v.items.map(it => {
+                      const _sku   = it.sku || '—';
+                      const _nom   = it.descripcion || it.nombre || '—';
+                      const _qty   = it.cantidad || 1;
+                      const _pUnit = it.precioFinal || 0;
+                      const _lista = it.precioLista && it.precioLista > _pUnit ? it.precioLista : _pUnit;
+                      const _sub   = _qty * _pUnit;
+                      const _ahorro = +( (_lista - _pUnit) * _qty ).toFixed(2);
+                      if (_ahorro > 0) totalAhorro += _ahorro;
+                      const ahorroCel = _ahorro > 0
+                        ? '<td style="padding:3px 6px;text-align:right;color:#2e7d32;font-weight:600">'+fmtL(_ahorro)+'</td>'
+                        : '<td style="padding:3px 6px;text-align:right;color:#bbb">—</td>';
+                      return '<tr style="border-bottom:1px solid #e0e0f0">'
+                        + '<td style="padding:3px 6px;font-family:monospace;font-size:10px;color:#666">'+_sku+'</td>'
+                        + '<td style="padding:3px 6px;color:#333">'+_nom+'</td>'
+                        + '<td style="padding:3px 6px;text-align:center;color:#333">'+_qty+'</td>'
+                        + '<td style="padding:3px 6px;text-align:right;color:#333">'+fmtL(_pUnit)+'</td>'
+                        + '<td style="padding:3px 6px;text-align:right;font-weight:600;color:#1a237e">'+fmtL(_sub)+'</td>'
+                        + ahorroCel
+                        + '</tr>';
+                    }).join('');
+                    const totalRow = totalAhorro > 0
+                      ? '<tr style="background:#f1f8f1;border-top:1px solid #a5d6a7">'
+                        + '<td colspan="4" style="padding:4px 6px;text-align:right;font-weight:700;color:#2e7d32;font-size:10.5px">🎉 Ahorro total en esta factura:</td>'
+                        + '<td style="padding:4px 6px;text-align:right"></td>'
+                        + '<td style="padding:4px 6px;text-align:right;font-weight:800;color:#2e7d32;font-size:11px">'+fmtL(totalAhorro)+'</td>'
+                        + '</tr>'
+                      : '';
+                    return rows + totalRow;
+                  })()}
                 </tbody>
               </table>
             </td>
