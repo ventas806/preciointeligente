@@ -6608,31 +6608,137 @@ function buscarProductoVenta() {
   const q   = (document.getElementById('vProdBuscar').value || '').toLowerCase().trim();
   const res = document.getElementById('vProdResultados');
   if (!q) { res.style.display = 'none'; return; }
+
   const encontrados = productos.filter(p =>
     String(p.sku||'').toLowerCase().includes(q) ||
     String(p.producto||'').toLowerCase().includes(q)
   ).slice(0, 8);
-  if (!encontrados.length) { res.innerHTML = '<div style="padding:10px 14px;color:var(--text3);font-size:13px">Sin resultados — usa "+ Manual" para producto fuera de catálogo</div>'; res.style.display='block'; return; }
-  res.innerHTML = encontrados.map(p => {
-    const c      = calcProd(p);
-    const precio = c.precioFinalDesc;
-    const isv    = p.estado === 'Nuevo';
-    const thumb  = p.imagen
-      ? `<div class="prod-thumb" style="flex-shrink:0;width:40px;height:40px" onmouseenter="mostrarImgPreview('${p.imagen}',event)" onmouseleave="ocultarImgPreview()"><img src="${p.imagen}"></div>`
-      : `<div style="flex-shrink:0;width:40px;height:40px;border-radius:6px;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:20px">📦</div>`;
-    return `<div onclick="agregarProductoCatalogo('${p.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
-      ${thumb}
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.producto}</div>
-        <div style="font-size:11px;color:var(--text2)">SKU: ${p.sku} · ${isv?'Con ISV':'Sin ISV'} · Stock: ${p.cantidad}</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:14px;font-weight:700;color:var(--green)">${fmtLPS(precio)}</div>
-        <div style="font-size:10px;color:var(--text3)">precio sugerido</div>
-      </div>
-    </div>`;
-  }).join('');
+
+  const combosEncontrados = (combos||[]).filter(c =>
+    (c.nombre||'').toLowerCase().includes(q) ||
+    (c.codigo||'').toLowerCase().includes(q)
+  ).slice(0, 3);
+
+  if (!encontrados.length && !combosEncontrados.length) {
+    res.innerHTML = '<div style="padding:10px 14px;color:var(--text3);font-size:13px">Sin resultados — usa "+ Manual" para producto fuera de catálogo</div>';
+    res.style.display = 'block';
+    return;
+  }
+
+  let html = '';
+
+  if (encontrados.length) {
+    html += encontrados.map(p => {
+      const c      = calcProd(p);
+      const precio = c.precioFinalDesc;
+      const isv    = p.estado === 'Nuevo';
+      const thumb  = p.imagen
+        ? `<div class="prod-thumb" style="flex-shrink:0;width:40px;height:40px" onmouseenter="mostrarImgPreview('${p.imagen}',event)" onmouseleave="ocultarImgPreview()"><img src="${p.imagen}"></div>`
+        : `<div style="flex-shrink:0;width:40px;height:40px;border-radius:6px;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:20px">📦</div>`;
+      return `<div onclick="agregarProductoCatalogo('${p.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
+        ${thumb}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.producto}</div>
+          <div style="font-size:11px;color:var(--text2)">SKU: ${p.sku} · ${isv?'Con ISV':'Sin ISV'} · Stock: ${p.cantidad}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:14px;font-weight:700;color:var(--green)">${fmtLPS(precio)}</div>
+          <div style="font-size:10px;color:var(--text3)">precio sugerido</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  if (combosEncontrados.length) {
+    html += `<div style="padding:6px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);background:var(--bg4);border-bottom:1px solid var(--border)">🎁 Combos</div>`;
+    html += combosEncontrados.map(combo => {
+      // Calcular combos armables
+      let stockDisp = Infinity;
+      (combo.items||[]).forEach(ci => {
+        const p = productos.find(x => x.id === ci.productoId);
+        if (p) {
+          const disp = Math.floor((parseInt(p.cantidad)||0) / (ci.cantidad||1));
+          if (disp < stockDisp) stockDisp = disp;
+        }
+      });
+      if (stockDisp === Infinity) stockDisp = 0;
+      const stockColor = stockDisp === 0 ? 'var(--red)' : stockDisp <= 2 ? 'var(--gold)' : 'var(--green)';
+      const nItems = (combo.items||[]).length;
+      return `<div onclick="agregarComboVenta('${combo.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
+        <div style="flex-shrink:0;width:40px;height:40px;border-radius:6px;background:rgba(61,106,255,.12);display:flex;align-items:center;justify-content:center;font-size:20px">🎁</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${combo.nombre}</div>
+          <div style="font-size:11px;color:var(--text2)">${nItems} producto${nItems!==1?'s':''} · Armables: <strong style="color:${stockColor}">${stockDisp}</strong></div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:14px;font-weight:700;color:var(--green)">${fmtLPS(combo.precioFinal)}</div>
+          <div style="font-size:10px;color:var(--text3)">precio combo</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  res.innerHTML = html;
   res.style.display = 'block';
+}
+
+function agregarComboVenta(comboId) {
+  const combo = combos.find(c => c.id === comboId);
+  if (!combo || !combo.items?.length) return;
+
+  // Stock disponible (combos armables)
+  let stockDisp = Infinity;
+  combo.items.forEach(ci => {
+    const p = productos.find(x => x.id === ci.productoId);
+    if (p) {
+      const disp = Math.floor((parseInt(p.cantidad)||0) / (ci.cantidad||1));
+      if (disp < stockDisp) stockDisp = disp;
+    }
+  });
+  if (stockDisp === Infinity) stockDisp = 0;
+  if (stockDisp === 0) {
+    showToast(`⚠️ Sin stock suficiente para armar el combo "${combo.nombre}"`, 'warning');
+  }
+
+  // Ratio proporcional para distribuir el precio del combo entre sus ítems
+  const totalConISV = combo.items.reduce((acc, ci) => {
+    const p = productos.find(x => x.id === ci.productoId);
+    return acc + (p ? calcProd(p).precioFinalDesc * (ci.cantidad||1) : 0);
+  }, 0);
+  const ratio = totalConISV > 0 ? combo.precioFinal / totalConISV : 1;
+
+  const stamp = Date.now();
+  combo.items.forEach((ci, idx) => {
+    const p = productos.find(x => x.id === ci.productoId);
+    if (!p) return;
+    const c = calcProd(p);
+    const isv = p.estado === 'Nuevo';
+    const isvPct = isv ? (parametros.isvNuevo || 0.15) : 0;
+    const precioConISVCombo = +(c.precioFinalDesc * ratio).toFixed(2);
+    const precioSinISV = isv ? precioConISVCombo / (1 + isvPct) : precioConISVCombo;
+    vItemsActuales.push({
+      tipo:         'catalogo',
+      productoId:   ci.productoId,
+      sku:          p.sku,
+      descripcion:  p.producto,
+      imagen:       p.imagen || null,
+      llevaISV:     isv,
+      isvPct,
+      precioBase:   precioSinISV,
+      precioLista:  +c.precioConISV.toFixed(2),
+      precioFinal:  precioConISVCombo,
+      costoLPS:     c.costoTotalLPS,
+      cantidad:     ci.cantidad || 1,
+      _id:          'vi_' + stamp + '_' + idx,
+      _comboId:     combo.id,
+      _comboNombre: combo.nombre
+    });
+  });
+
+  document.getElementById('vProdBuscar').value = '';
+  document.getElementById('vProdResultados').style.display = 'none';
+  renderItemsVenta();
+  showToast(`✅ Combo "${combo.nombre}" agregado — ${combo.items.length} producto${combo.items.length!==1?'s':''}`, 'success');
 }
 
 function agregarProductoCatalogo(prodId) {
