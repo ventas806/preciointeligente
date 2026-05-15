@@ -12515,7 +12515,7 @@ function buscarProdRapido(q) {
     const minStock = p.minStock || 0;
     const stockClr = stock > minStock ? '#00c8a0' : stock > 0 ? '#f5c842' : '#ff4757';
     return `<div style="display:flex;gap:10px;padding:10px 8px;border-bottom:1px solid var(--border2);align-items:flex-start">
-      <div style="flex-shrink:0;width:52px;height:52px;border-radius:6px;overflow:hidden;background:var(--bg3);display:flex;align-items:center;justify-content:center">
+      <div data-thumb="${p.id}" style="flex-shrink:0;width:52px;height:52px;border-radius:6px;overflow:hidden;background:var(--bg3);display:flex;align-items:center;justify-content:center">
         ${p.imagen
           ? `<img src="${p.imagen}" style="width:52px;height:52px;object-fit:contain">`
           : `<span style="font-size:22px">📦</span>`}
@@ -12541,6 +12541,21 @@ function buscarProdRapido(q) {
             title="Editar stock — presiona Enter o haz clic afuera para guardar">
           <span style="font-size:10px;color:var(--text3)">Min: ${minStock}</span>
           <span id="stockSaving_${p.id}" style="font-size:10px;color:var(--accent3);display:none">💾...</span>
+        </div>
+        <div style="margin-top:6px;display:flex;gap:4px;align-items:center">
+          <span style="font-size:10px;color:var(--text3);white-space:nowrap">🖼️ Foto:</span>
+          <input type="text" id="imgInput_${p.id}"
+            placeholder="Pega el link de la imagen..."
+            value="${p.imagen||''}"
+            style="flex:1;min-width:0;padding:3px 7px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text2);font-size:10px;outline:none"
+            oninput="prevImgRapido('${p.id}',this.value)"
+            onkeydown="if(event.key==='Enter')guardarImagenRapido('${p.id}')">
+          <button onclick="guardarImagenRapido('${p.id}')"
+            id="imgBtn_${p.id}"
+            style="padding:3px 8px;background:rgba(61,106,255,.2);border:1px solid rgba(61,106,255,.4);border-radius:6px;color:var(--accent);font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">
+            💾
+          </button>
+          <span id="imgMsg_${p.id}" style="font-size:10px;display:none"></span>
         </div>
         <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
           <button onclick="abrirModalDescVendedor('${p.id}')"
@@ -12621,6 +12636,44 @@ async function actualizarStockRapido(prodId, nuevoValor) {
     if (typeof showToast === 'function') showToast(`✅ Stock actualizado: ${val}`, 'success');
   } catch(e) {
     if (saving) saving.style.display = 'none';
+    if (typeof showToast === 'function') showToast('❌ ' + e.message, 'error');
+  }
+}
+
+function prevImgRapido(prodId, url) {
+  // Actualiza la miniatura en tiempo real mientras pegan el link
+  const thumb = document.querySelector(`#prodRapidoResultados [data-thumb="${prodId}"]`);
+  if (!thumb) return;
+  const u = (url||'').trim();
+  if (u) {
+    thumb.innerHTML = `<img src="${u}" style="width:52px;height:52px;object-fit:contain" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" onload="this.style.display='';this.nextElementSibling.style.display='none'"><span style="font-size:22px;display:none">📦</span>`;
+  } else {
+    thumb.innerHTML = `<span style="font-size:22px">📦</span>`;
+  }
+  // Marcar botón como "listo para guardar"
+  const btn = document.getElementById('imgBtn_' + prodId);
+  if (btn) btn.style.background = 'rgba(0,200,160,.25)', btn.style.borderColor = 'rgba(0,200,160,.5)', btn.style.color = '#00c8a0';
+}
+
+async function guardarImagenRapido(prodId) {
+  const input = document.getElementById('imgInput_' + prodId);
+  const btn   = document.getElementById('imgBtn_'   + prodId);
+  const msg   = document.getElementById('imgMsg_'   + prodId);
+  if (!input) return;
+  const url = input.value.trim();
+  const p = (typeof productos !== 'undefined' ? productos : []).find(x => x.id === prodId);
+  if (!p) return;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  if (msg) msg.style.display = 'none';
+  try {
+    p.imagen = url;
+    await sbSaveProducto(p);
+    if (msg) { msg.style.display = 'inline'; msg.style.color = '#00c8a0'; msg.textContent = '✅ Guardado'; setTimeout(() => { if(msg) msg.style.display='none'; }, 2500); }
+    if (btn) { btn.disabled = false; btn.textContent = '✅'; btn.style.background = 'rgba(0,200,160,.2)'; btn.style.borderColor = 'rgba(0,200,160,.4)'; btn.style.color = '#00c8a0'; }
+    if (typeof showToast === 'function') showToast('✅ Foto del producto actualizada', 'success');
+  } catch(e) {
+    if (msg) { msg.style.display = 'inline'; msg.style.color = '#ff4757'; msg.textContent = '❌ Error'; }
+    if (btn) { btn.disabled = false; btn.textContent = '💾'; }
     if (typeof showToast === 'function') showToast('❌ ' + e.message, 'error');
   }
 }
