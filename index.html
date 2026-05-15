@@ -5754,6 +5754,7 @@ function initTablaExportar() {
 // ===== ETIQUETAS DYMO =====
 let etiqSeleccionados = new Set();
 let etiqProductosFiltrados = [];
+let etiqCombosFiltrados = [];
 
 function etiqToggleRow(id, e) {
   if(e.target.type==='checkbox') return;
@@ -5777,22 +5778,31 @@ function initTablaEtiquetas() {
   // Sin búsqueda → mostrar todos los productos
   const orden  = (document.getElementById('etiqFiltOrden')||{}).value||'modif';
 
+  const buscarLC = buscar.toLowerCase();
   const lista = !buscar
     ? [...productos].sort((a,b)=> orden==='ingreso' ? new Date(b.fechaIngreso)-new Date(a.fechaIngreso) : new Date(b.ultimaModif)-new Date(a.ultimaModif))
     : productos.filter(p =>
-        String(p.sku||'').toLowerCase().includes(buscar.toLowerCase()) ||
-        String(p.producto||'').toLowerCase().includes(buscar.toLowerCase())
+        String(p.sku||'').toLowerCase().includes(buscarLC) ||
+        String(p.producto||'').toLowerCase().includes(buscarLC)
       ).sort((a,b)=> orden==='ingreso' ? new Date(b.fechaIngreso)-new Date(a.fechaIngreso) : new Date(b.ultimaModif)-new Date(a.ultimaModif));
 
-  etiqProductosFiltrados = lista;
+  const listaC = !buscar
+    ? [...(combos||[])]
+    : (combos||[]).filter(c =>
+        (c.codigo||'').toLowerCase().includes(buscarLC) ||
+        (c.nombre||'').toLowerCase().includes(buscarLC)
+      );
 
-  if(!lista.length) {
+  etiqProductosFiltrados = lista;
+  etiqCombosFiltrados = listaC;
+
+  if(!lista.length && !listaC.length) {
     tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text3)">${productos.length===0 ? '⏳ Sin productos cargados' : `Sin resultados para "${buscar}"`}</td></tr>`;
     actualizarContadorEtiq();
     return;
   }
 
-  tbody.innerHTML = lista.map(p => {
+  const rowsProductos = lista.map(p => {
     const c = calcProd(p);
     const precio = 'L ' + c.precioConISV.toLocaleString('es-HN', {minimumFractionDigits:2, maximumFractionDigits:2});
     const checked = etiqSeleccionados.has(p.id) ? 'checked' : '';
@@ -5816,11 +5826,50 @@ function initTablaEtiquetas() {
     </tr>`;
   }).join('');
 
+  const separadorCombos = listaC.length ? `<tr style="background:rgba(61,106,255,.06)">
+    <td colspan="9" style="padding:6px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent)">🎁 Combos</td>
+  </tr>` : '';
+
+  const rowsCombos = listaC.map(combo => {
+    const ckey = 'combo_' + combo.id;
+    const checked = etiqSeleccionados.has(ckey) ? 'checked' : '';
+    const skuCombo = String(combo.codigo||combo.id).replace(/[^A-Za-z0-9\-\.]/g,'').substring(0,30) || 'COMBO';
+    let stockDisp = Infinity;
+    (combo.items||[]).forEach(ci => {
+      const p = productos.find(x => x.id === ci.productoId);
+      if (p) { const d = Math.floor((parseInt(p.cantidad)||0)/(ci.cantidad||1)); if(d<stockDisp) stockDisp=d; }
+    });
+    if (stockDisp===Infinity) stockDisp=0;
+    const stockColor = stockDisp===0?'var(--red)':stockDisp<=2?'var(--gold)':'var(--green)';
+    const precioFmt = 'L ' + (combo.precioFinal||0).toLocaleString('es-HN',{minimumFractionDigits:2,maximumFractionDigits:2});
+    return `<tr onclick="etiqToggleRow('${ckey}',event)" style="cursor:pointer">
+      <td onclick="event.stopPropagation()"><input type="checkbox" class="etiqChk" data-id="${ckey}" ${checked} onchange="etiqToggleCheck('${ckey}',this)"></td>
+      <td class="td-sku" style="color:var(--accent)">${combo.codigo||'—'}</td>
+      <td class="td-name" style="max-width:220px;overflow:hidden;text-overflow:ellipsis">${combo.nombre||''}</td>
+      <td style="font-size:12px">Combo</td>
+      <td><span style="background:rgba(61,106,255,.15);color:var(--accent);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">🎁 Combo</span></td>
+      <td style="text-align:center;font-weight:700;color:${stockColor}">${stockDisp}</td>
+      <td style="font-size:12px;color:var(--text2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${combo.nota||''}">${combo.nota||'—'}</td>
+      <td class="td-price">${precioFmt}</td>
+      <td onclick="event.stopPropagation()">
+        <div style="background:#fff;padding:3px 6px;border-radius:4px;display:inline-block;border:1px solid #ccc">
+          <svg id="bc_prev_${ckey}" data-sku="${skuCombo}"></svg>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  tbody.innerHTML = rowsProductos + separadorCombos + rowsCombos;
+
   setTimeout(() => {
     if(typeof JsBarcode !== 'undefined') {
       lista.forEach(p => {
         const s = String(p.sku||'').replace(/[^A-Za-z0-9\-\.]/g,'').substring(0,30) || '0000';
         try { JsBarcode(`#bc_prev_${p.id}`, s, {format:'CODE128', width:1.5, height:20, displayValue:false, margin:1}); } catch(e) {}
+      });
+      listaC.forEach(combo => {
+        const s = String(combo.codigo||combo.id).replace(/[^A-Za-z0-9\-\.]/g,'').substring(0,30) || 'COMBO';
+        try { JsBarcode(`#bc_prev_combo_${combo.id}`, s, {format:'CODE128', width:1.5, height:20, displayValue:false, margin:1}); } catch(e) {}
       });
     }
   }, 200);
@@ -5829,15 +5878,16 @@ function initTablaEtiquetas() {
 }
 
 function imprimirEtiquetas() {
-  const seleccionados = productos.filter(p => etiqSeleccionados.has(p.id));
-  if(!seleccionados.length) { showToast('⚠️ Selecciona al menos un producto marcando el checkbox','warn'); return; }
+  const fmt = n => 'L ' + n.toLocaleString('es-HN', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const selProductos = productos.filter(p => etiqSeleccionados.has(p.id));
+  const selCombos = (combos||[]).filter(c => etiqSeleccionados.has('combo_' + c.id));
+  if(!selProductos.length && !selCombos.length) { showToast('⚠️ Selecciona al menos un producto o combo','warn'); return; }
 
-  const etiquetasHTML = seleccionados.map(p => {
+  const etiqProductosHTML = selProductos.map(p => {
     const c = calcProd(p);
-    const fmt = n => 'L ' + n.toLocaleString('es-HN', {minimumFractionDigits:2, maximumFractionDigits:2});
-    const precioFinal = fmt(c.precioFinalDesc);   // Col AA — precio principal (con descuento)
-    const precioAntes = fmt(c.precioConISV);       // Col X  — precio anterior tachado
-    const tieneDesc   = c.precioFinalDesc < c.precioConISV; // solo mostrar tachado si hay descuento
+    const precioFinal = fmt(c.precioFinalDesc);
+    const precioAntes = fmt(c.precioConISV);
+    const tieneDesc   = c.precioFinalDesc < c.precioConISV;
     const skuSafe = String(p.sku||'').replace(/[^A-Za-z0-9\-\.]/g,'').substring(0,30) || '0000';
     const nombre = String(p.producto||'').length > 42 ? String(p.producto).substring(0,42)+'…' : String(p.producto||'');
     return `<div class="etiqueta">
@@ -5849,6 +5899,21 @@ function imprimirEtiquetas() {
       </div>
     </div>`;
   }).join('');
+
+  const etiqCombosHTML = selCombos.map(combo => {
+    const skuSafe = String(combo.codigo||combo.id).replace(/[^A-Za-z0-9\-\.]/g,'').substring(0,30) || 'COMBO';
+    const nombre = String(combo.nombre||'').length > 42 ? String(combo.nombre).substring(0,42)+'…' : String(combo.nombre||'');
+    return `<div class="etiqueta">
+      <div class="etiq-nombre">${nombre}</div>
+      <svg class="etiq-barcode" id="bc_combo_${combo.id}" data-sku="${skuSafe}"></svg>
+      <div class="etiq-precios">
+        <div class="etiq-precio">${fmt(combo.precioFinal||0)}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const etiquetasHTML = etiqProductosHTML + etiqCombosHTML;
+  const totalEtiq = selProductos.length + selCombos.length;
 
   const win = window.open('','_blank','width=500,height=700');
   if(!win) { showToast('⚠️ Permite ventanas emergentes en tu navegador para imprimir','warn'); return; }
@@ -5868,7 +5933,7 @@ function imprimirEtiquetas() {
     @media print{body{margin:0;}.no-print{display:none;}}
   </style></head><body>
   <div class="no-print" style="padding:12px;background:#f0f4ff;border-bottom:1px solid #ccd;font-family:Arial;font-size:13px;display:flex;gap:12px;align-items:center;">
-    <strong>🏷️ ${seleccionados.length} etiqueta(s) · DYMO 1-1/8" × 3-1/2"</strong>
+    <strong>🏷️ ${totalEtiq} etiqueta(s) · DYMO 1-1/8" × 3-1/2"</strong>
     <button onclick="window.print()" style="padding:8px 18px;background:#3d6aff;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🖨️ Imprimir</button>
     <span style="color:#666;font-size:12px;">Selecciona DYMO LabelWriter 450 y tamaño 30252.</span>
   </div>
@@ -5889,8 +5954,8 @@ function imprimirEtiquetas() {
 
 </body></html>`);
   win.document.close();
-  addHistorial(`Etiquetas impresas: ${seleccionados.length} producto(s)`, 'Etiquetas');
-  showToast(`🖨️ Abriendo ${seleccionados.length} etiqueta(s)`, 'success');
+  addHistorial(`Etiquetas impresas: ${selProductos.length} producto(s), ${selCombos.length} combo(s)`, 'Etiquetas');
+  showToast(`🖨️ Abriendo ${totalEtiq} etiqueta(s)`, 'success');
 }
 
 
