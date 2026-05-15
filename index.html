@@ -2090,7 +2090,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
           <div style="margin-top:12px">
             <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
               <div>
-                <div style="font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600">PRECIO FINAL DEL COMBO</div>
+                <div style="font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600">PRECIO COMBO (sin ISV)</div>
                 <input type="number" id="cPrecioFinal" placeholder="L 0.00" step="0.01" min="0" oninput="actualizarResumenCombo('precio')" style="width:180px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);color:var(--green);font-size:16px;font-weight:700;outline:none">
               </div>
               <div style="font-size:20px;color:var(--text3);padding-bottom:10px">⇄</div>
@@ -8968,38 +8968,57 @@ function renderComboItemsActuales() {
 function actualizarResumenCombo(fuente) {
   const grid = document.getElementById('comboPrecioGrid');
   const ahorroEl = document.getElementById('comboAhorroInfo');
-  const totalIndividual = comboItemsActuales.length > 0
-    ? comboItemsActuales.reduce((acc, ci) => {
-        const p = productos.find(x => x.id === ci.productoId);
-        if (!p) return acc;
-        return acc + calcProd(p).precioFinalDesc * (ci.cantidad||1);
-      }, 0)
-    : (editingComboId ? (combos.find(c => c.id === editingComboId)||{}).totalIndividual || 0 : 0);
 
-  let precioFinal = parseFloat(document.getElementById('cPrecioFinal').value) || 0;
+  // Compute totals in sinISV and conISV from current items
+  let totalConISV = 0, totalSinISV = 0;
+  if (comboItemsActuales.length > 0) {
+    comboItemsActuales.forEach(ci => {
+      const p = productos.find(x => x.id === ci.productoId);
+      if (!p) return;
+      const cp = calcProd(p);
+      const isvRate = p.estado === 'Nuevo' ? (parametros.isvNuevo || 0.15) : 0;
+      totalConISV += cp.precioFinalDesc * (ci.cantidad || 1);
+      totalSinISV += (cp.precioFinalDesc / (1 + isvRate)) * (ci.cantidad || 1);
+    });
+  } else if (editingComboId) {
+    const c = combos.find(x => x.id === editingComboId) || {};
+    totalConISV = c.totalIndividual || 0;
+    totalSinISV = totalConISV;
+  }
+
+  // Weighted ISV rate derived from totals
+  const isvPct = totalSinISV > 0 ? (totalConISV / totalSinISV - 1) : 0;
+
+  // cPrecioFinal holds sinISV value
+  let sinISVInput = parseFloat(document.getElementById('cPrecioFinal').value) || 0;
   let pctDesc = parseFloat(document.getElementById('cPctDescuento').value) || 0;
 
-  if (fuente === 'pct' && totalIndividual > 0) {
-    precioFinal = +(totalIndividual * (1 - pctDesc / 100)).toFixed(2);
-    document.getElementById('cPrecioFinal').value = pctDesc > 0 ? precioFinal : '';
-  } else if (fuente === 'precio' && totalIndividual > 0 && precioFinal > 0) {
-    pctDesc = +((1 - precioFinal / totalIndividual) * 100).toFixed(1);
+  if (fuente === 'pct' && totalSinISV > 0) {
+    sinISVInput = +(totalSinISV * (1 - pctDesc / 100)).toFixed(2);
+    document.getElementById('cPrecioFinal').value = pctDesc > 0 ? sinISVInput : '';
+  } else if (fuente === 'precio' && totalSinISV > 0 && sinISVInput > 0) {
+    pctDesc = +((1 - sinISVInput / totalSinISV) * 100).toFixed(1);
     document.getElementById('cPctDescuento').value = pctDesc > 0 ? pctDesc : '';
   }
 
-  const ahorro = totalIndividual - precioFinal;
-  const pctAhorro = totalIndividual > 0 && precioFinal > 0 ? (ahorro / totalIndividual * 100) : 0;
+  const conISVFinal = sinISVInput > 0 ? +(sinISVInput * (1 + isvPct)).toFixed(2) : 0;
+  const isvAmount = conISVFinal - sinISVInput;
+  const ahorroSinISV = totalSinISV - sinISVInput;
+  const pctAhorro = totalSinISV > 0 && sinISVInput > 0 ? (ahorroSinISV / totalSinISV * 100) : 0;
+  const isvLabel = (isvPct * 100).toFixed(0) + '%';
 
   grid.innerHTML = `
-    <div class="calc-item"><div class="calc-item-label">Suma Individual</div><div class="calc-item-value" style="color:var(--text2)">${fmtLPS(totalIndividual)}</div></div>
-    <div class="calc-item"><div class="calc-item-label">Precio Combo</div><div class="calc-item-value" style="color:var(--green)">${precioFinal > 0 ? fmtLPS(precioFinal) : '—'}</div></div>
-    <div class="calc-item"><div class="calc-item-label">Ahorro Cliente</div><div class="calc-item-value" style="color:${ahorro>0?'var(--accent3)':'var(--text3)'}">${ahorro > 0 ? fmtLPS(ahorro) : '—'}</div></div>
+    <div class="calc-item"><div class="calc-item-label">Suma Individual sin ISV</div><div class="calc-item-value" style="color:var(--text2)">${totalSinISV > 0 ? fmtLPS(totalSinISV) : '—'}</div></div>
+    <div class="calc-item"><div class="calc-item-label">Precio Combo sin ISV</div><div class="calc-item-value" style="color:var(--green)">${sinISVInput > 0 ? fmtLPS(sinISVInput) : '—'}</div></div>
+    <div class="calc-item"><div class="calc-item-label">ISV (${isvLabel})</div><div class="calc-item-value" style="color:var(--text3)">${conISVFinal > 0 ? fmtLPS(isvAmount) : '—'}</div></div>
+    <div class="calc-item"><div class="calc-item-label">Precio Final con ISV</div><div class="calc-item-value" style="color:var(--green);font-weight:700">${conISVFinal > 0 ? fmtLPS(conISVFinal) : '—'}</div></div>
+    <div class="calc-item"><div class="calc-item-label">Ahorro Cliente</div><div class="calc-item-value" style="color:${ahorroSinISV>0?'var(--accent3)':'var(--text3)'}">${ahorroSinISV > 0 ? fmtLPS(ahorroSinISV) : '—'}</div></div>
     <div class="calc-item"><div class="calc-item-label">% Descuento</div><div class="calc-item-value" style="color:${pctAhorro>0?'var(--gold)':'var(--text3)'}">${pctAhorro > 0 ? pctAhorro.toFixed(1)+'%' : '—'}</div></div>
   `;
-  if (precioFinal > 0 && ahorro > 0) {
-    ahorroEl.innerHTML = `🎉 El cliente ahorra <strong style="color:var(--accent3)">${fmtLPS(ahorro)}</strong> comprando el combo (${pctAhorro.toFixed(1)}% menos que por separado).`;
-  } else if (precioFinal > totalIndividual && totalIndividual > 0) {
-    ahorroEl.innerHTML = `<span style="color:var(--red)">⚠️ El precio del combo es mayor que la suma individual (${fmtLPS(totalIndividual)}). Verifica el precio.</span>`;
+  if (sinISVInput > 0 && ahorroSinISV > 0) {
+    ahorroEl.innerHTML = `🎉 El cliente ahorra <strong style="color:var(--accent3)">${fmtLPS(ahorroSinISV)}</strong> comprando el combo (${pctAhorro.toFixed(1)}% menos que por separado).`;
+  } else if (sinISVInput > totalSinISV && totalSinISV > 0) {
+    ahorroEl.innerHTML = `<span style="color:var(--red)">⚠️ El precio del combo es mayor que la suma individual sin ISV (${fmtLPS(totalSinISV)}). Verifica el precio.</span>`;
   } else {
     ahorroEl.innerHTML = '';
   }
@@ -9010,13 +9029,21 @@ async function guardarCombo() {
   const nombre = (document.getElementById('cNombre').value||'').trim();
   if (!nombre) { showToast('⚠️ Escribe un nombre para el combo','warn'); return; }
   if (!comboItemsActuales.length) { showToast('⚠️ Añade al menos un producto al combo','warn'); return; }
-  const precioFinal = parseFloat(document.getElementById('cPrecioFinal').value)||0;
-  if (!precioFinal) { showToast('⚠️ Ingresa el precio de venta del combo','warn'); return; }
+  const sinISVInput = parseFloat(document.getElementById('cPrecioFinal').value)||0;
+  if (!sinISVInput) { showToast('⚠️ Ingresa el precio de venta del combo','warn'); return; }
 
-  const totalIndividual = comboItemsActuales.reduce((acc, ci) => {
+  let totalConISV = 0, totalSinISV = 0;
+  comboItemsActuales.forEach(ci => {
     const p = productos.find(x => x.id === ci.productoId);
-    return acc + (p ? calcProd(p).precioFinalDesc * (ci.cantidad||1) : 0);
-  }, 0);
+    if (!p) return;
+    const cp = calcProd(p);
+    const isvRate = p.estado === 'Nuevo' ? (parametros.isvNuevo || 0.15) : 0;
+    totalConISV += cp.precioFinalDesc * (ci.cantidad || 1);
+    totalSinISV += (cp.precioFinalDesc / (1 + isvRate)) * (ci.cantidad || 1);
+  });
+  const isvPctGuardar = totalSinISV > 0 ? (totalConISV / totalSinISV - 1) : 0;
+  const precioFinal = +(sinISVInput * (1 + isvPctGuardar)).toFixed(2);
+  const totalIndividual = totalConISV;
 
   const combo = {
     id: editingComboId || 'combo_' + Date.now(),
@@ -9085,11 +9112,23 @@ function editarCombo(id) {
   document.getElementById('cCodigo').value = combo.codigo||'';
   document.getElementById('cCategoria').value = combo.categoria||'';
   document.getElementById('cNota').value = combo.nota||'';
-  document.getElementById('cPrecioFinal').value = combo.precioFinal||'';
+  // Convert stored conISV → sinISV for the price field
+  let totalConISVEdit = 0, totalSinISVEdit = 0;
+  (combo.items||[]).forEach(ci => {
+    const p = productos.find(x => x.id === ci.productoId);
+    if (!p) return;
+    const cp = calcProd(p);
+    const isvRate = p.estado === 'Nuevo' ? (parametros.isvNuevo || 0.15) : 0;
+    totalConISVEdit += cp.precioFinalDesc * (ci.cantidad || 1);
+    totalSinISVEdit += (cp.precioFinalDesc / (1 + isvRate)) * (ci.cantidad || 1);
+  });
+  const isvPctEdit = totalSinISVEdit > 0 ? (totalConISVEdit / totalSinISVEdit - 1) : 0;
+  const sinISVEdit = combo.precioFinal > 0 ? +(combo.precioFinal / (1 + isvPctEdit)).toFixed(2) : '';
+  document.getElementById('cPrecioFinal').value = sinISVEdit || '';
   document.getElementById('cImagenUrl').value = combo.imagenUrl||'';
-  // Pre-fill % descuento from stored values
-  if (combo.precioFinal > 0 && combo.totalIndividual > 0) {
-    const pct = +((1 - combo.precioFinal / combo.totalIndividual) * 100).toFixed(1);
+  // Pre-fill % descuento using sinISV base
+  if (sinISVEdit > 0 && totalSinISVEdit > 0) {
+    const pct = +((1 - sinISVEdit / totalSinISVEdit) * 100).toFixed(1);
     document.getElementById('cPctDescuento').value = pct > 0 ? pct : '';
   } else {
     document.getElementById('cPctDescuento').value = '';
