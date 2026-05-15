@@ -8785,10 +8785,9 @@ let _combosCargados = false;
 async function cargarCombos(forzar = false) {
   if (_combosCargados && !forzar) return;
   try {
-    const { data, error } = await sbExec(() => sb.from('combos')
-      .select('*, combo_items(*, productos(id,producto,cantidad))')
-      .eq('activo', true).order('ultima_modif', { ascending: false }));
-    if (!error && data) {
+    const u = currentUser?.user || '';
+    const { data, error } = await sb.rpc('get_combos', { p_user: u });
+    if (!error && Array.isArray(data)) {
       combos = data.map(c => ({
         id:             c.id,
         nombre:         c.nombre         || '',
@@ -8806,8 +8805,9 @@ async function cargarCombos(forzar = false) {
           precioSnapshot: it.precio_snapshot || 0
         }))
       }));
-      // Solo marcar como cargado si vino data válida
-      if (data.length > 0 || combos.length === 0) _combosCargados = true;
+      _combosCargados = true;
+    } else if (error) {
+      console.warn('Error cargando combos:', error.message);
     }
   } catch(e) { console.warn('Error cargando combos:', e); }
 }
