@@ -7048,13 +7048,14 @@ function ajustarPrecioItem(id, valorStr) {
 
   if (item.precioLista && item.precioLista > 0) {
     // Tiene precio lista → calcular descuento automáticamente
-    if (precioDeseado < item.precioLista) {
-      item.descuentoItemTipo = 'L'; // mostrar en Lempiras
+    if (precioDeseado > item.precioLista) {
+      // El usuario subió el precio por encima de la lista → actualizar lista
+      item.precioLista = precioDeseado;
     }
-    // Si precio deseado >= lista → sin descuento
     item.precioFinal = precioDeseado;
   } else {
-    // Sin precio lista (manual o sin referencia) → cambio directo
+    // Sin precio lista (manual o sin referencia) → fijar como precio base
+    item.precioLista = precioDeseado;
     item.precioFinal = precioDeseado;
   }
   // Actualizar base sin ISV
