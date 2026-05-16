@@ -2289,6 +2289,10 @@ ${v.promesaPago && esParcial ? `<div class="bold" style="font-size:12px">Promesa
 <div class="center bold" style="margin-top:2px;font-size:11px">${fmtNow()}</div>
 <hr class="divider" style="margin:8px 0">
 <div style="text-align:center;margin:4px 0"><svg id="barcode"></svg></div>
+<div style="margin-top:24px;padding:0 2mm">
+  <hr style="border:none;border-top:1px solid #000;margin:0">
+  <div class="center bold" style="font-size:11px;margin-top:3px">Firma del Cliente</div>
+</div>
 <div class="center" style="font-size:10px;font-weight:700;margin-top:1px">${refId}</div>
 <br>
 <script>
@@ -2346,7 +2350,8 @@ function generarTextoRecibo(v) {
     ...(v.metodoPagoLabel||v.metodoPago ? [lin('-'), 'Pago: '+(v.metodoPagoLabel||v.metodoPago)] : []),
     ...(v.promesaPago&&esParcial ? ['Promesa: '+fmtD(v.promesaPago)] : []),
     lin('-'), cen('Gracias por su compra!'), cen(fmtNow()), lin('-'),
-    cen((v.id||'').replace(/[^A-Za-z0-9]/g,'').slice(-16).toUpperCase()), '',''
+    cen((v.id||'').replace(/[^A-Za-z0-9]/g,'').slice(-16).toUpperCase()),
+    '', lin('-'), cen('Firma del Cliente'), '', ''
   ];
   return lineas.join('\n');
 }
