@@ -2375,7 +2375,9 @@ function imprimirRawBT(id) {
     '',''
   ];
 
-  const texto = lineas.join('\n');
+  // Comando ESC/POS: 4 saltos de línea + corte parcial de papel (GS V 1)
+  const CUT = '\n\n\n\n\x1D\x56\x01';
+  const texto = lineas.join('\n') + CUT;
   // Mostrar modal con texto listo — botón compartir abre menú Android (elige RawBT)
   let modal = document.getElementById('modalRawBT');
   if (!modal) {
