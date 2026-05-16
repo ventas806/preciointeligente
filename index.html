@@ -7739,27 +7739,25 @@ function imprimirReciboTermico(id) {
   const pad  = n  => String(n).padStart(2, '0');
   const fmtL = n  => 'L ' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   const fmtD = s  => { if (!s) return '—'; const [y,m,d] = s.split('-'); return `${pad(d)}/${pad(m)}/${y}`; };
-  const line = (w=42) => '─'.repeat(w);
   const ahora = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Tegucigalpa'}));
-  const fmtNow = () => `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()}  ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}`;
+  const fmtNow = () => `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}`;
 
-  const empresa = parametros.empresa || 'FOCUS STORE';
   const items   = v.items || [];
+  const totalItems = items.reduce((s, it) => s + (it.cantidad || 1), 0);
 
-  // Filas de productos
+  // Filas de productos — todo en negro fuerte, negrita
   const filasItems = items.map(it => {
-    const nombre = (it.descripcion || it.nombre || 'Producto').substring(0, 30);
+    const nombre = (it.descripcion || it.nombre || 'Producto');
     const qty    = it.cantidad || 1;
     const precio = it.precioFinal || 0;
     const sub    = precio * qty;
     return `
       <tr>
-        <td colspan="3" style="padding:1px 0;font-size:12px;word-break:break-word">${nombre}</td>
+        <td colspan="2" style="padding:2px 0 0;font-size:12px;font-weight:900;color:#000;word-break:break-word">${nombre}</td>
       </tr>
       <tr>
-        <td style="padding:0 0 4px;font-size:12px;color:#555">${qty} x ${fmtL(precio)}</td>
-        <td></td>
-        <td style="text-align:right;padding:0 0 4px;font-size:12px;font-weight:700">${fmtL(sub)}</td>
+        <td style="padding:0 0 5px;font-size:12px;font-weight:700;color:#000">${qty} x ${fmtL(precio)}</td>
+        <td style="text-align:right;padding:0 0 5px;font-size:12px;font-weight:900;color:#000">${fmtL(sub)}</td>
       </tr>`;
   }).join('');
 
@@ -7771,11 +7769,15 @@ function imprimirReciboTermico(id) {
   const saldo        = Math.max(0, totalVenta - totalAbonado);
   const esParcial    = v.metodoPago === 'parcial';
 
+  // ID corto para el código de barras (máx 20 chars, alfanumérico)
+  const refId = (v.id||'').replace(/[^A-Za-z0-9]/g,'').slice(-16).toUpperCase();
+
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Recibo</title>
+<title>Comprobante de Pago</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
 <style>
   * { margin:0;padding:0;box-sizing:border-box }
   body {
@@ -7790,16 +7792,20 @@ function imprimirReciboTermico(id) {
   .center { text-align:center }
   .right  { text-align:right }
   .bold   { font-weight:700 }
+  .bolder { font-weight:900 }
   .small  { font-size:11px }
-  .divider { border:none;border-top:1px dashed #333;margin:5px 0 }
+  .lbl    { font-size:11px;font-weight:700;color:#000 }
+  .val    { font-size:11px;font-weight:900;color:#000 }
+  .divider { border:none;border-top:1px dashed #000;margin:5px 0 }
   .divider-solid { border:none;border-top:2px solid #000;margin:5px 0 }
   table { width:100%;border-collapse:collapse }
   td { vertical-align:top }
-  .total-row td { font-size:13px;font-weight:700;padding-top:3px }
-  .gran-total td { font-size:16px;font-weight:900;padding-top:4px }
-  .saldo-row td { font-size:13px;font-weight:700;color:#c00;padding-top:3px }
+  .total-row td { font-size:13px;font-weight:900;color:#000;padding-top:3px }
+  .gran-total td { font-size:17px;font-weight:900;color:#000;padding-top:4px }
+  .saldo-row td { font-size:13px;font-weight:900;color:#000;padding-top:3px }
   .print-btn { margin:10px 0;text-align:center }
   .print-btn button { background:#222;color:#fff;border:none;padding:8px 20px;font-size:13px;font-weight:700;border-radius:5px;cursor:pointer }
+  #barcode { display:block;max-width:100%;height:50px }
   @media print {
     .print-btn { display:none }
     body { width:72mm;margin:0;padding:3mm 2mm }
@@ -7812,31 +7818,33 @@ function imprimirReciboTermico(id) {
 <div class="print-btn"><button onclick="window.print()">🖨️ Imprimir</button></div>
 
 <!-- Encabezado -->
-<div class="center bold" style="font-size:18px;letter-spacing:1px">${empresa}</div>
-<div class="center small" style="margin-top:2px">Fecha impresión: ${fmtNow()}</div>
+<div class="center bolder" style="font-size:17px;letter-spacing:2px">COMPROBANTE DE PAGO</div>
+<div class="center bold" style="font-size:12px;letter-spacing:1px;margin-top:1px">Original</div>
+<div class="center small" style="margin-top:3px;font-weight:700">Fecha impresión: ${fmtNow()}</div>
 <hr class="divider-solid" style="margin:6px 0">
 
 <!-- Info venta -->
 <table>
-  <tr><td class="small" style="color:#555">Ref:</td><td class="right small">${(v.id||'').slice(-12)}</td></tr>
-  <tr><td class="small" style="color:#555">Fecha venta:</td><td class="right small">${fmtD(v.fecha)}</td></tr>
-  <tr><td class="small" style="color:#555">Cliente:</td><td class="right small bold">${v.clienteNombre||'—'}</td></tr>
-  ${v.clienteTel ? `<tr><td class="small" style="color:#555">Tel:</td><td class="right small">${v.clienteTel}</td></tr>` : ''}
-  ${v.vendedorNombre ? `<tr><td class="small" style="color:#555">Vendedor:</td><td class="right small">${v.vendedorNombre}</td></tr>` : ''}
+  <tr><td class="lbl">Ref:</td><td class="right val">${(v.id||'').slice(-12)}</td></tr>
+  <tr><td class="lbl">Fecha venta:</td><td class="right val">${fmtD(v.fecha)}</td></tr>
+  <tr><td class="lbl">Cliente:</td><td class="right val">${v.clienteNombre||'—'}</td></tr>
+  ${v.clienteTel ? `<tr><td class="lbl">Tel:</td><td class="right val">${v.clienteTel}</td></tr>` : ''}
+  ${v.vendedorNombre ? `<tr><td class="lbl">Vendedor:</td><td class="right val">${v.vendedorNombre}</td></tr>` : ''}
 </table>
 <hr class="divider" style="margin:5px 0">
 
 <!-- Productos -->
-<div class="small bold" style="margin-bottom:3px">DETALLE</div>
+<div style="font-size:12px;font-weight:900;color:#000;margin-bottom:3px">DETALLE</div>
 <table>${filasItems}</table>
 <hr class="divider">
 
 <!-- Totales -->
 <table>
   ${envio > 0 ? `
-  <tr><td class="small">Subtotal productos</td><td class="right small">${fmtL(subtotal)}</td></tr>
-  <tr><td class="small">Envío</td><td class="right small">${fmtL(envio)}</td></tr>` : ''}
-  ${v.descuento > 0 ? `<tr><td class="small">Descuento</td><td class="right small" style="color:#c00">- ${fmtL(v.descuento)}</td></tr>` : ''}
+  <tr><td class="lbl">Subtotal productos</td><td class="right val">${fmtL(subtotal)}</td></tr>
+  <tr><td class="lbl">Envío</td><td class="right val">${fmtL(envio)}</td></tr>` : ''}
+  ${v.descuento > 0 ? `<tr><td class="lbl">Descuento</td><td class="right val">- ${fmtL(v.descuento)}</td></tr>` : ''}
+  <tr><td class="lbl">Total Items</td><td class="right val">${totalItems}</td></tr>
 </table>
 <hr class="divider-solid" style="margin:4px 0">
 <table>
@@ -7846,29 +7854,51 @@ function imprimirReciboTermico(id) {
 ${esParcial ? `
 <hr class="divider" style="margin:5px 0">
 <table>
-  <tr class="total-row"><td>Total Abonado</td><td class="right" style="color:green">${fmtL(totalAbonado)}</td></tr>
-  ${saldo > 0 ? `<tr class="saldo-row"><td>⚠ SALDO PENDIENTE</td><td class="right">${fmtL(saldo)}</td></tr>` : ''}
+  <tr class="total-row"><td>Total Abonado</td><td class="right" style="color:#000">${fmtL(totalAbonado)}</td></tr>
+  ${saldo > 0 ? `<tr class="saldo-row"><td>&#9888; SALDO PENDIENTE</td><td class="right">${fmtL(saldo)}</td></tr>` : ''}
 </table>` : ''}
 
 ${v.metodoPagoLabel||v.metodoPago ? `
 <hr class="divider" style="margin:5px 0">
-<div class="center small">Pago: <strong>${v.metodoPagoLabel||v.metodoPago}</strong></div>` : ''}
+<div class="bold" style="font-size:12px">Pago: <strong>${v.metodoPagoLabel||v.metodoPago}</strong></div>` : ''}
 
-${v.promesaPago && esParcial ? `<div class="center small">Promesa de pago: <strong>${fmtD(v.promesaPago)}</strong></div>` : ''}
+${v.promesaPago && esParcial ? `<div class="bold" style="font-size:12px">Promesa de pago: <strong>${fmtD(v.promesaPago)}</strong></div>` : ''}
 
 <hr class="divider" style="margin:8px 0">
-<div class="center small">¡Gracias por su compra!</div>
-<div class="center small" style="margin-top:2px;color:#555">${fmtNow()}</div>
+<div class="center bold" style="font-size:12px">¡Gracias por su compra!</div>
+<div class="center bold" style="margin-top:2px;font-size:11px">${fmtNow()}</div>
+
+<!-- Código de barras -->
+<hr class="divider" style="margin:8px 0">
+<div style="text-align:center;margin:4px 0">
+  <svg id="barcode"></svg>
+</div>
+<div class="center" style="font-size:10px;font-weight:700;margin-top:1px">${refId}</div>
 <br>
 
+<script>
+  if (typeof JsBarcode !== 'undefined') {
+    try {
+      JsBarcode('#barcode', '${refId}', {
+        format: 'CODE128',
+        width: 1.5,
+        height: 45,
+        displayValue: false,
+        margin: 2,
+        lineColor: '#000',
+        background: '#fff'
+      });
+    } catch(e) {}
+  }
+<\/script>
 </body>
 </html>`;
 
-  const win = window.open('', '_blank', 'width=320,height=600');
+  const win = window.open('', '_blank', 'width=320,height=650');
   win.document.write(html);
   win.document.close();
-  // Auto-print después de cargar
-  win.onload = () => { win.focus(); win.print(); };
+  // Auto-print después de que cargue el script del barcode
+  win.onload = () => { setTimeout(() => { win.focus(); win.print(); }, 500); };
 }
 
 function compartirWhatsApp(id) {
