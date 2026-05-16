@@ -2179,7 +2179,8 @@ function renderHistorial() {
         <div style="display:flex;align-items:center;gap:8px">
           <div class="vi-total">${fmtLPS(v.total)}</div>
           <button onclick="event.stopPropagation();imprimirReciboTermico('${v.id}')" title="Imprimir recibo (Chrome)" style="background:#444;color:#fff;border:none;border-radius:6px;padding:4px 9px;font-size:13px;cursor:pointer;flex-shrink:0">🧾</button>
-          <button onclick="event.stopPropagation();imprimirRawBT('${v.id}')" title="Imprimir directo en RawBT" style="background:#1565c0;color:#fff;border:none;border-radius:6px;padding:4px 9px;font-size:13px;cursor:pointer;flex-shrink:0">📲</button>
+          <button onclick="event.stopPropagation();imprimirRawBT('${v.id}')" title="Imprimir via RawBT" style="background:#1565c0;color:#fff;border:none;border-radius:6px;padding:4px 9px;font-size:13px;cursor:pointer;flex-shrink:0">📲</button>
+          <button onclick="event.stopPropagation();imprimirUSBDirecto('${v.id}')" title="Imprimir directo por USB (sin apps)" style="background:#1b5e20;color:#fff;border:none;border-radius:6px;padding:4px 9px;font-size:13px;cursor:pointer;flex-shrink:0">⚡</button>
         </div>
       </div>
       <div class="vi-meta">${fh} · ${items} producto${items!==1?'s':''} · ${v.vendedorNombre||'—'} · ${v.metodoPagoLabel||v.metodoPago||'—'}</div>
@@ -2300,21 +2301,17 @@ ${v.promesaPago && esParcial ? `<div class="bold" style="font-size:12px">Promesa
   win.onload = () => { setTimeout(() => { win.focus(); win.print(); }, 500); };
 }
 
-function imprimirRawBT(id) {
-  const v = ventas.find(x => x.id === id);
-  if (!v) return;
+// ── Generador de texto ESC/POS compartido ─────────────────────────────────
+function generarTextoRecibo(v) {
   const pad  = n => String(n).padStart(2,'0');
   const fmtL = n => 'L ' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
   const fmtD = s => { if(!s) return '-'; const [y,m,d]=s.split('-'); return `${pad(d)}/${pad(m)}/${y}`; };
   const ahora  = new Date(new Date().toLocaleString('en-US',{timeZone:'America/Tegucigalpa'}));
   const fmtNow = () => `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}`;
-
-  // Ancho fijo para 80mm ~42 caracteres en monoespaciada
   const W = 42;
-  const cen  = s => { const p=Math.max(0,Math.floor((W-s.length)/2)); return ' '.repeat(p)+s; };
-  const lr   = (l,r) => { const sp=Math.max(1,W-l.length-r.length); return l+' '.repeat(sp)+r; };
-  const lin  = (c='-') => c.repeat(W);
-
+  const cen = s => { const p=Math.max(0,Math.floor((W-s.length)/2)); return ' '.repeat(p)+s; };
+  const lr  = (l,r) => { const sp=Math.max(1,W-l.length-r.length); return l+' '.repeat(sp)+r; };
+  const lin = (c='-') => c.repeat(W);
   const items      = v.items||[];
   const totalItems = items.reduce((s,it)=>s+(it.cantidad||1),0);
   const totalVenta   = v.total||0;
@@ -2324,60 +2321,107 @@ function imprimirRawBT(id) {
   const totalAbonado = abonos.reduce((s,a)=>s+(a.monto||0),0);
   const saldo        = Math.max(0,totalVenta-totalAbonado);
   const esParcial    = v.metodoPago==='parcial';
-  const refId        = (v.id||'').replace(/[^A-Za-z0-9]/g,'').slice(-16).toUpperCase();
-
-  // Líneas de productos
-  const lineasItems = items.map(it => {
+  const lineasItems  = items.map(it => {
     const nombre = (it.descripcion||it.nombre||'Producto');
     const qty    = it.cantidad||1;
-    const precio = it.precioFinal||0;
-    const sub    = fmtL(precio*qty);
-    const qxp    = `${qty} x ${fmtL(precio)}`;
-    // Partir nombre si es muy largo
+    const sub    = fmtL((it.precioFinal||0)*qty);
+    const qxp    = `${qty} x ${fmtL(it.precioFinal||0)}`;
     const chunks = [];
     for(let i=0;i<nombre.length;i+=W) chunks.push(nombre.slice(i,i+W));
     return chunks.join('\n') + '\n' + lr(qxp, sub);
   }).join('\n'+lin('.')+'\n');
-
-  // Construir texto plano
   const lineas = [
-    cen('COMPROBANTE DE PAGO'),
-    cen('Original'),
-    cen('Fecha: '+fmtNow()),
-    lin('='),
-    lr('Ref:', (v.id||'').slice(-12)),
-    lr('Fecha venta:', fmtD(v.fecha)),
+    cen('COMPROBANTE DE PAGO'), cen('Original'), cen('Fecha: '+fmtNow()), lin('='),
+    lr('Ref:', (v.id||'').slice(-12)), lr('Fecha venta:', fmtD(v.fecha)),
     lr('Cliente:', (v.clienteNombre||'-').slice(0,22)),
-    ...(v.clienteTel  ? [lr('Tel:', v.clienteTel)] : []),
-    ...(v.vendedorNombre ? [lr('Vendedor:', v.vendedorNombre.slice(0,22))] : []),
-    lin('-'),
-    'DETALLE',
-    lin('-'),
-    lineasItems,
-    lin('-'),
+    ...(v.clienteTel       ? [lr('Tel:', v.clienteTel)] : []),
+    ...(v.vendedorNombre   ? [lr('Vendedor:', v.vendedorNombre.slice(0,22))] : []),
+    lin('-'), 'DETALLE', lin('-'), lineasItems, lin('-'),
     ...(envio>0 ? [lr('Subtotal productos:', fmtL(subtotal)), lr('Envio:', fmtL(envio))] : []),
     ...(v.descuento>0 ? [lr('Descuento:', '-'+fmtL(v.descuento))] : []),
-    lr('Total Items:', String(totalItems)),
-    lin('='),
+    lr('Total Items:', String(totalItems)), lin('='),
     lr('TOTAL:', fmtL(totalVenta)),
-    ...(esParcial ? [
-      lin('-'),
-      lr('Total Abonado:', fmtL(totalAbonado)),
-      ...(saldo>0 ? [lr('SALDO PENDIENTE:', fmtL(saldo))] : []),
-    ] : []),
+    ...(esParcial ? [lin('-'), lr('Total Abonado:', fmtL(totalAbonado)),
+      ...(saldo>0 ? [lr('SALDO PENDIENTE:', fmtL(saldo))] : [])] : []),
     ...(v.metodoPagoLabel||v.metodoPago ? [lin('-'), 'Pago: '+(v.metodoPagoLabel||v.metodoPago)] : []),
     ...(v.promesaPago&&esParcial ? ['Promesa: '+fmtD(v.promesaPago)] : []),
-    lin('-'),
-    cen('Gracias por su compra!'),
-    cen(fmtNow()),
-    lin('-'),
-    cen(refId),
-    '',''
+    lin('-'), cen('Gracias por su compra!'), cen(fmtNow()), lin('-'),
+    cen((v.id||'').replace(/[^A-Za-z0-9]/g,'').slice(-16).toUpperCase()), '',''
   ];
+  return lineas.join('\n');
+}
 
-  // Comando ESC/POS: 4 saltos de línea + corte parcial de papel (GS V 1)
-  const CUT = '\n\n\n\n\x1D\x56\x01';
-  const texto = lineas.join('\n') + CUT;
+// ── Impresión directa WebUSB (sin apps) ───────────────────────────────────
+async function imprimirUSBDirecto(id) {
+  const v = ventas.find(x => x.id === id);
+  if (!v) return;
+  if (!navigator.usb) {
+    alert('WebUSB no disponible.\nUsá Chrome actualizado.');
+    return;
+  }
+  const texto = generarTextoRecibo(v);
+  // ESC @ (init) + texto + 4 feeds + corte parcial GS V 1
+  const init     = new Uint8Array([0x1B, 0x40]);
+  const txtBytes = new TextEncoder().encode(texto);
+  const cut      = new Uint8Array([0x0A,0x0A,0x0A,0x0A,0x1D,0x56,0x01]);
+  const payload  = new Uint8Array(init.length + txtBytes.length + cut.length);
+  payload.set(init, 0);
+  payload.set(txtBytes, init.length);
+  payload.set(cut, init.length + txtBytes.length);
+
+  let device;
+  try {
+    // Mostrar selector USB al usuario
+    device = await navigator.usb.requestDevice({ filters: [] });
+    await device.open();
+    if (device.configuration === null) await device.selectConfiguration(1);
+
+    // Buscar endpoint bulk OUT en cualquier interfaz
+    let ifaceNum = null, epNum = null;
+    for (const ifc of device.configuration.interfaces) {
+      for (const alt of ifc.alternates) {
+        for (const ep of alt.endpoints) {
+          if (ep.direction === 'out' && ep.type === 'bulk') {
+            ifaceNum = ifc.interfaceNumber;
+            epNum    = ep.endpointNumber;
+            break;
+          }
+        }
+        if (epNum !== null) break;
+      }
+      if (epNum !== null) break;
+    }
+    if (epNum === null) throw new Error('No se encontró endpoint de impresión.');
+
+    await device.claimInterface(ifaceNum);
+    await device.transferOut(epNum, payload);
+    await device.releaseInterface(ifaceNum);
+    await device.close();
+
+    // Toast de éxito
+    const t = document.createElement('div');
+    t.textContent = '✅ Impreso por USB directamente';
+    t.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#2e7d32;color:#fff;padding:12px 24px;border-radius:10px;font-weight:700;font-size:14px;z-index:9999;white-space:nowrap';
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+
+  } catch(e) {
+    if (device) try { await device.close(); } catch(_) {}
+    if (e.name === 'NotFoundError' || e.message?.includes('No device selected')) return; // usuario canceló
+    const msg = e.message || String(e);
+    if (msg.includes('claim')) {
+      alert('⚠️ La impresora está en uso por otra app (ej. RawBT).\nCerrá RawBT, desconectá y reconectá el USB, y volvé a intentar.');
+    } else {
+      alert('Error USB: ' + msg);
+    }
+  }
+}
+
+function imprimirRawBT(id) {
+  const v = ventas.find(x => x.id === id);
+  if (!v) return;
+  const CUT   = '\n\n\n\n\x1D\x56\x01';
+  const texto = generarTextoRecibo(v) + CUT;
   // Mostrar modal con texto listo — botón compartir abre menú Android (elige RawBT)
   let modal = document.getElementById('modalRawBT');
   if (!modal) {
