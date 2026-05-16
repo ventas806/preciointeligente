@@ -2176,7 +2176,10 @@ function renderHistorial() {
     return `<div class="venta-item" onclick="verVenta('${v.id}')">
       <div class="vi-header">
         <div class="vi-cliente">${v.clienteNombre||'—'}<span class="vi-estado vi-estado-${estado}">${estado}</span></div>
-        <div class="vi-total">${fmtLPS(v.total)}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="vi-total">${fmtLPS(v.total)}</div>
+          <button onclick="event.stopPropagation();imprimirReciboTermico('${v.id}')" title="Imprimir recibo térmico" style="background:#444;color:#fff;border:none;border-radius:6px;padding:4px 9px;font-size:13px;cursor:pointer;flex-shrink:0">🧾</button>
+        </div>
       </div>
       <div class="vi-meta">${fh} · ${items} producto${items!==1?'s':''} · ${v.vendedorNombre||'—'} · ${v.metodoPagoLabel||v.metodoPago||'—'}</div>
     </div>`;
@@ -2197,6 +2200,103 @@ async function recargarHistorial() {
   ventas = []; clientes = [];
   await cargarVentasYClientes();
   renderHistorial();
+}
+
+function imprimirReciboTermico(id) {
+  const v = ventas.find(x => x.id === id);
+  if (!v) return;
+  const pad  = n  => String(n).padStart(2, '0');
+  const fmtL = n  => 'L ' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const fmtD = s  => { if (!s) return '—'; const [y,m,d] = s.split('-'); return `${pad(d)}/${pad(m)}/${y}`; };
+  const ahora = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Tegucigalpa'}));
+  const fmtNow = () => `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}`;
+  const items   = v.items || [];
+  const totalItems = items.reduce((s, it) => s + (it.cantidad || 1), 0);
+  const filasItems = items.map(it => {
+    const nombre = (it.descripcion || it.nombre || 'Producto');
+    const qty    = it.cantidad || 1;
+    const precio = it.precioFinal || 0;
+    const sub    = precio * qty;
+    return `
+      <tr>
+        <td colspan="2" style="padding:2px 0 0;font-size:12px;font-weight:900;color:#000;word-break:break-word">${nombre}</td>
+      </tr>
+      <tr>
+        <td style="padding:0 0 5px;font-size:12px;font-weight:700;color:#000">${qty} x ${fmtL(precio)}</td>
+        <td style="text-align:right;padding:0 0 5px;font-size:12px;font-weight:900;color:#000">${fmtL(sub)}</td>
+      </tr>`;
+  }).join('');
+  const totalVenta   = v.total || 0;
+  const envio        = v.envio || 0;
+  const subtotal     = totalVenta - envio;
+  const abonos       = v.abonos || [];
+  const totalAbonado = abonos.reduce((s,a) => s+(a.monto||0), 0);
+  const saldo        = Math.max(0, totalVenta - totalAbonado);
+  const esParcial    = v.metodoPago === 'parcial';
+  const refId        = (v.id||'').replace(/[^A-Za-z0-9]/g,'').slice(-16).toUpperCase();
+  const html = `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<title>Comprobante de Pago</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Courier New',Courier,monospace;font-size:13px;width:72mm;margin:0 auto;padding:4mm 3mm;color:#000;background:#fff}
+  .center{text-align:center}.right{text-align:right}.bold{font-weight:700}.bolder{font-weight:900}.small{font-size:11px}
+  .lbl{font-size:11px;font-weight:700;color:#000}.val{font-size:11px;font-weight:900;color:#000}
+  .divider{border:none;border-top:1px dashed #000;margin:5px 0}
+  .divider-solid{border:none;border-top:2px solid #000;margin:5px 0}
+  table{width:100%;border-collapse:collapse}td{vertical-align:top}
+  .total-row td{font-size:13px;font-weight:900;color:#000;padding-top:3px}
+  .gran-total td{font-size:17px;font-weight:900;color:#000;padding-top:4px}
+  .saldo-row td{font-size:13px;font-weight:900;color:#000;padding-top:3px}
+  .print-btn{margin:10px 0;text-align:center}
+  .print-btn button{background:#222;color:#fff;border:none;padding:8px 20px;font-size:13px;font-weight:700;border-radius:5px;cursor:pointer}
+  @media print{.print-btn{display:none}body{width:74mm;margin:0 auto;padding:3mm 3mm 3mm 4mm}@page{size:80mm auto;margin:2mm 3mm}}
+</style></head><body>
+<div class="print-btn"><button onclick="window.print()">🖨️ Imprimir</button></div>
+<div class="center bolder" style="font-size:17px;letter-spacing:2px">COMPROBANTE DE PAGO</div>
+<div class="center bold" style="font-size:12px;letter-spacing:1px;margin-top:1px">Original</div>
+<div class="center small" style="margin-top:3px;font-weight:700">Fecha impresión: ${fmtNow()}</div>
+<hr class="divider-solid" style="margin:6px 0">
+<table>
+  <tr><td class="lbl">Ref:</td><td class="right val">${(v.id||'').slice(-12)}</td></tr>
+  <tr><td class="lbl">Fecha venta:</td><td class="right val">${fmtD(v.fecha)}</td></tr>
+  <tr><td class="lbl">Cliente:</td><td class="right val">${v.clienteNombre||'—'}</td></tr>
+  ${v.clienteTel ? `<tr><td class="lbl">Tel:</td><td class="right val">${v.clienteTel}</td></tr>` : ''}
+  ${v.vendedorNombre ? `<tr><td class="lbl">Vendedor:</td><td class="right val">${v.vendedorNombre}</td></tr>` : ''}
+</table>
+<hr class="divider" style="margin:5px 0">
+<div style="font-size:12px;font-weight:900;color:#000;margin-bottom:3px">DETALLE</div>
+<table>${filasItems}</table>
+<hr class="divider">
+<table>
+  ${envio > 0 ? `<tr><td class="lbl">Subtotal productos</td><td class="right val">${fmtL(subtotal)}</td></tr><tr><td class="lbl">Envío</td><td class="right val">${fmtL(envio)}</td></tr>` : ''}
+  ${v.descuento > 0 ? `<tr><td class="lbl">Descuento</td><td class="right val">- ${fmtL(v.descuento)}</td></tr>` : ''}
+  <tr><td class="lbl">Total Items</td><td class="right val">${totalItems}</td></tr>
+</table>
+<hr class="divider-solid" style="margin:4px 0">
+<table><tr class="gran-total"><td>TOTAL</td><td class="right">${fmtL(totalVenta)}</td></tr></table>
+${esParcial ? `<hr class="divider" style="margin:5px 0"><table>
+  <tr class="total-row"><td>Total Abonado</td><td class="right">${fmtL(totalAbonado)}</td></tr>
+  ${saldo > 0 ? `<tr class="saldo-row"><td>&#9888; SALDO PENDIENTE</td><td class="right">${fmtL(saldo)}</td></tr>` : ''}
+</table>` : ''}
+${v.metodoPagoLabel||v.metodoPago ? `<hr class="divider" style="margin:5px 0"><div class="bold" style="font-size:12px">Pago: <strong>${v.metodoPagoLabel||v.metodoPago}</strong></div>` : ''}
+${v.promesaPago && esParcial ? `<div class="bold" style="font-size:12px">Promesa de pago: <strong>${fmtD(v.promesaPago)}</strong></div>` : ''}
+<hr class="divider" style="margin:8px 0">
+<div class="center bold" style="font-size:12px">¡Gracias por su compra!</div>
+<div class="center bold" style="margin-top:2px;font-size:11px">${fmtNow()}</div>
+<hr class="divider" style="margin:8px 0">
+<div style="text-align:center;margin:4px 0"><svg id="barcode"></svg></div>
+<div class="center" style="font-size:10px;font-weight:700;margin-top:1px">${refId}</div>
+<br>
+<script>
+  if(typeof JsBarcode!=='undefined'){try{JsBarcode('#barcode','${refId}',{format:'CODE128',width:1.5,height:45,displayValue:false,margin:2,lineColor:'#000',background:'#fff'});}catch(e){}}
+<\/script>
+</body></html>`;
+  const win = window.open('', '_blank', 'width=320,height=650');
+  win.document.write(html);
+  win.document.close();
+  win.onload = () => { setTimeout(() => { win.focus(); win.print(); }, 500); };
 }
 
 /* ════════════════════════════════════════════
@@ -3197,15 +3297,10 @@ function imprimirCot(id) {
 
   const itemsHtml=(c.items||[]).map((it,i)=>{
     const lista    = _getListaPrice(it);
-    const isvPct   = it.isvPct || 0.15;
-    const isvLabel = it.llevaISV && it.isvPct > 0 ? 'SI' : 'NO';
-    const sinISVFactor = (it.llevaISV && isvPct > 0) ? 1/(1+isvPct) : 1;
-    const listaPriceSinISV  = (lista || it.precioFinal || 0) * sinISVFactor;
-    const precioFinalSinISV = (it.precioFinal || 0) * sinISVFactor;
     const tieneDto = lista > it.precioFinal + 0.01;
-    const descuentoSinISV = tieneDto ? +(listaPriceSinISV - precioFinalSinISV).toFixed(4) : 0;
-    const precioUnitShow  = tieneDto ? listaPriceSinISV : precioFinalSinISV;
-    const totalSinISV     = +(precioFinalSinISV * (it.cantidad||1)).toFixed(2);
+    const ahorroIt = tieneDto ? (lista - it.precioFinal) * (it.cantidad||1) : 0;
+    const pctDesc  = tieneDto ? Math.round((lista - it.precioFinal) / lista * 100) : 0;
+    const isvLabel = it.llevaISV && it.isvPct > 0 ? ((it.isvPct*100).toFixed(0)+'%') : '—';
     return `<tr style="${i%2===1?'background:#f8f8f8':''}">
     <td style="text-align:center;font-weight:700;color:#666">${i+1}</td>
     ${tieneImagenes?`<td style="text-align:center;padding:4px 6px">${it.imagen?`<img src="${it.imagen}" style="width:80px;height:80px;object-fit:contain;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;padding:3px" onerror="this.style.display='none'">`:'<span style="color:#ccc;font-size:24px">📦</span>'}</td>`:''}
@@ -3213,12 +3308,12 @@ function imprimirCot(id) {
     <td>
       <strong style="font-size:12px">${it.descripcion||it.nombre||'—'}</strong>
       ${it.notaItem?`<br><span style="font-size:10px;color:#555;font-style:italic">📝 ${it.notaItem}</span>`:''}
+      ${tieneDto?`<br><span style="font-size:10px;color:#c0392b;text-decoration:line-through">${fmtL(lista)}</span> <span style="font-size:10px;color:#2e7d32;font-weight:700">▼ ${pctDesc}% desc. — ahorrás ${fmtL(ahorroIt)}</span>`:''}
     </td>
     <td style="text-align:center;font-size:11px;color:${it.llevaISV?'#e65100':'#888'};font-weight:700">${isvLabel}</td>
     <td style="text-align:center">${it.cantidad||1}</td>
-    <td style="text-align:right">${fmtL(precioUnitShow)}</td>
-    <td style="text-align:right;color:${descuentoSinISV>0?'#c0392b':'#aaa'}">${descuentoSinISV>0?'− '+fmtL(descuentoSinISV):'—'}</td>
-    <td style="text-align:right;font-weight:700;color:#1a237e">${fmtL(totalSinISV)}</td>
+    <td style="text-align:right">${fmtL(it.precioFinal||0)}</td>
+    <td style="text-align:right;font-weight:700;color:#1a237e">${fmtL((it.precioFinal||0)*(it.cantidad||1))}</td>
   </tr>`;
   }).join('');
   const fv=c.fechaVencimiento?fmtHN(new Date(c.fechaVencimiento+'T12:00:00')):'15 días desde emisión';
@@ -3298,14 +3393,17 @@ td{padding:5px 8px;font-size:11.5px;border-bottom:1px solid #e8e8e8;vertical-ali
     <th>Descripción</th>
     <th style="width:38px;text-align:center">ISV</th>
     <th style="width:50px;text-align:center">Cant.</th>
-    <th style="width:90px;text-align:right">P. Unitario sin ISV</th>
-    <th style="width:90px;text-align:right">Desc. y Rebajas</th>
-    <th style="width:90px;text-align:right">Total</th>
+    <th style="width:90px;text-align:right">P. Unit.</th>
+    <th style="width:100px;text-align:right">Total</th>
   </tr></thead>
   <tbody>${itemsHtml}</tbody>
 </table>
 <div class="totals"><table>
-  <tr><td style="color:#555">Subtotal sin ISV</td><td style="text-align:right">${fmtL(subtotalSinISVOrig)}</td></tr>
+  <tr style="color:#888"><td>Precio lista (incluye ISV)</td><td style="text-align:right">${fmtL(subtotalLista)}</td></tr>
+  ${ahorroItems>0.01?`<tr style="color:#2e7d32"><td>− Ahorro en productos (${countDescItems} ítem/s)</td><td style="text-align:right;font-weight:700">− ${fmtL(ahorroItems)}</td></tr>`:''}
+  ${ahorroItems>0.01?`<tr style="border-top:1px solid #e0e0e0"><td style="font-weight:600">Subtotal después desc. ítem</td><td style="text-align:right;font-weight:700">${fmtL(subtotalItemsFinal)}</td></tr>`:''}
+  <tr><td colspan="2"><hr style="border:none;border-top:1px solid #ccc;margin:4px 0"></td></tr>
+  ${c.descuento>0?`<tr><td style="color:#555">Subtotal sin ISV</td><td style="text-align:right">${fmtL(subtotalSinISVOrig)}</td></tr>`:''}
   ${c.descuento>0?`<tr style="color:#2e7d32"><td>− Descuento global${c.descuentoTipo==='%'&&c.descuentoValor>0?' ('+c.descuentoValor+'%)':c.descuentoTipo==='L'?' (L fijos)':''}</td><td style="text-align:right;font-weight:700">− ${fmtL(ahorroGlobal)}</td></tr>`:''}
   <tr><td>Subtotal neto antes ISV</td><td style="text-align:right">${fmtL(subtotalSinISVFinal)}</td></tr>
   ${importeGravado>0?`<tr><td style="color:#888;padding-left:14px">↳ Importe Gravado 15%</td><td style="text-align:right;color:#888">${fmtL(importeGravado)}</td></tr>`:''}
@@ -3313,11 +3411,12 @@ td{padding:5px 8px;font-size:11.5px;border-bottom:1px solid #e8e8e8;vertical-ali
   <tr><td>ISV (15%)</td><td style="text-align:right">${fmtL(c.totalISV)}</td></tr>
   <tr class="tot-final"><td><strong>TOTAL</strong></td><td style="text-align:right;color:#1a237e"><strong>${fmtL(c.total)}</strong></td></tr>
 </table></div>
-${ahorroTotal>0.01?`<div style="display:flex;justify-content:flex-end;margin-top:6px">
-  <div style="font-size:10px;color:#777;border-top:1px dashed #c8e6c9;padding-top:4px">
-    Ahorro total del cliente:&nbsp;<span style="font-weight:700;color:#4caf50">${fmtL(ahorroTotal)}</span>
-    ${ahorroItems>0&&ahorroGlobal>0?`&nbsp;<span style="color:#aaa">(productos ${fmtL(ahorroItems)} + global ${fmtL(ahorroGlobal)})</span>`:''}
+${ahorroTotal>0.01?`<div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;padding:10px 16px;margin-top:10px;display:flex;justify-content:space-between;align-items:center">
+  <div>
+    <div style="font-size:10px;font-weight:700;color:#2e7d32;text-transform:uppercase;letter-spacing:.5px">🎉 Ahorro total del cliente</div>
+    ${ahorroItems>0&&ahorroGlobal>0?`<div style="font-size:10px;color:#555;margin-top:2px">Desc. en productos: ${fmtL(ahorroItems)} + Desc. global: ${fmtL(ahorroGlobal)}</div>`:''}
   </div>
+  <div style="font-size:20px;font-weight:900;color:#2e7d32">${fmtL(ahorroTotal)}</div>
 </div>`:''}
 <div class="validity">⏳ Esta cotización es válida hasta: <strong>${fv}</strong>. Precios sujetos a cambio sin previo aviso.</div>
 ${c.observaciones?`<div class="obs">📝 <strong>Observaciones:</strong> ${c.observaciones}</div>`:''}
