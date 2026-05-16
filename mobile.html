@@ -2303,83 +2303,85 @@ ${v.promesaPago && esParcial ? `<div class="bold" style="font-size:12px">Promesa
 function imprimirRawBT(id) {
   const v = ventas.find(x => x.id === id);
   if (!v) return;
-  const pad  = n  => String(n).padStart(2, '0');
-  const fmtL = n  => 'L ' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  const fmtD = s  => { if (!s) return '-'; const [y,m,d] = s.split('-'); return `${pad(d)}/${pad(m)}/${y}`; };
-  const ahora = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Tegucigalpa'}));
+  const pad  = n => String(n).padStart(2,'0');
+  const fmtL = n => 'L ' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  const fmtD = s => { if(!s) return '-'; const [y,m,d]=s.split('-'); return `${pad(d)}/${pad(m)}/${y}`; };
+  const ahora  = new Date(new Date().toLocaleString('en-US',{timeZone:'America/Tegucigalpa'}));
   const fmtNow = () => `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}`;
-  const items      = v.items || [];
-  const totalItems = items.reduce((s, it) => s + (it.cantidad || 1), 0);
-  const totalVenta   = v.total || 0;
-  const envio        = v.envio || 0;
-  const subtotal     = totalVenta - envio;
-  const abonos       = v.abonos || [];
-  const totalAbonado = abonos.reduce((s,a) => s+(a.monto||0), 0);
-  const saldo        = Math.max(0, totalVenta - totalAbonado);
-  const esParcial    = v.metodoPago === 'parcial';
+
+  // Ancho fijo para 80mm ~42 caracteres en monoespaciada
+  const W = 42;
+  const cen  = s => { const p=Math.max(0,Math.floor((W-s.length)/2)); return ' '.repeat(p)+s; };
+  const lr   = (l,r) => { const sp=Math.max(1,W-l.length-r.length); return l+' '.repeat(sp)+r; };
+  const lin  = (c='-') => c.repeat(W);
+
+  const items      = v.items||[];
+  const totalItems = items.reduce((s,it)=>s+(it.cantidad||1),0);
+  const totalVenta   = v.total||0;
+  const envio        = v.envio||0;
+  const subtotal     = totalVenta-envio;
+  const abonos       = v.abonos||[];
+  const totalAbonado = abonos.reduce((s,a)=>s+(a.monto||0),0);
+  const saldo        = Math.max(0,totalVenta-totalAbonado);
+  const esParcial    = v.metodoPago==='parcial';
   const refId        = (v.id||'').replace(/[^A-Za-z0-9]/g,'').slice(-16).toUpperCase();
 
-  // HTML optimizado para RawBT (sin JS externo, fuente monoespaciada, ancho fijo)
-  const filasItems = items.map(it => {
-    const nombre = (it.descripcion || it.nombre || 'Producto');
-    const qty    = it.cantidad || 1;
-    const precio = it.precioFinal || 0;
-    const sub    = precio * qty;
-    return `<tr><td colspan="2" style="font-weight:900;word-break:break-word;padding:2px 0 0">${nombre}</td></tr>
-<tr><td style="padding:0 0 5px;font-weight:700">${qty} x ${fmtL(precio)}</td><td style="text-align:right;font-weight:900;padding:0 0 5px">${fmtL(sub)}</td></tr>`;
-  }).join('');
+  // Líneas de productos
+  const lineasItems = items.map(it => {
+    const nombre = (it.descripcion||it.nombre||'Producto');
+    const qty    = it.cantidad||1;
+    const precio = it.precioFinal||0;
+    const sub    = fmtL(precio*qty);
+    const qxp    = `${qty} x ${fmtL(precio)}`;
+    // Partir nombre si es muy largo
+    const chunks = [];
+    for(let i=0;i<nombre.length;i+=W) chunks.push(nombre.slice(i,i+W));
+    return chunks.join('\n') + '\n' + lr(qxp, sub);
+  }).join('\n'+lin('.')+'\n');
 
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Courier New',monospace;font-size:13px;width:72mm;color:#000;background:#fff;padding:3mm}
-.c{text-align:center}.r{text-align:right}.b{font-weight:900}
-hr{border:none;border-top:1px dashed #000;margin:4px 0}
-hr.s{border-top:2px solid #000}
-table{width:100%;border-collapse:collapse}td{vertical-align:top}
-.gt td{font-size:17px;font-weight:900;padding-top:4px}
-.tr td{font-size:13px;font-weight:900;padding-top:3px}
-</style></head><body>
-<div class="c b" style="font-size:16px;letter-spacing:2px">COMPROBANTE DE PAGO</div>
-<div class="c" style="font-size:12px;font-weight:700">Original</div>
-<div class="c" style="font-size:11px;font-weight:700">Fecha: ${fmtNow()}</div>
-<hr class="s" style="margin:5px 0">
-<table>
-<tr><td style="font-size:11px;font-weight:700">Ref:</td><td class="r" style="font-size:11px;font-weight:900">${(v.id||'').slice(-12)}</td></tr>
-<tr><td style="font-size:11px;font-weight:700">Fecha venta:</td><td class="r" style="font-size:11px;font-weight:900">${fmtD(v.fecha)}</td></tr>
-<tr><td style="font-size:11px;font-weight:700">Cliente:</td><td class="r" style="font-size:11px;font-weight:900">${v.clienteNombre||'-'}</td></tr>
-${v.clienteTel?`<tr><td style="font-size:11px;font-weight:700">Tel:</td><td class="r" style="font-size:11px;font-weight:900">${v.clienteTel}</td></tr>`:''}
-${v.vendedorNombre?`<tr><td style="font-size:11px;font-weight:700">Vendedor:</td><td class="r" style="font-size:11px;font-weight:900">${v.vendedorNombre}</td></tr>`:''}
-</table>
-<hr style="margin:4px 0">
-<div style="font-size:12px;font-weight:900;margin-bottom:3px">DETALLE</div>
-<table>${filasItems}</table>
-<hr>
-<table>
-${envio>0?`<tr><td style="font-size:11px;font-weight:700">Subtotal</td><td class="r" style="font-size:11px;font-weight:900">${fmtL(subtotal)}</td></tr><tr><td style="font-size:11px;font-weight:700">Envio</td><td class="r" style="font-size:11px;font-weight:900">${fmtL(envio)}</td></tr>`:''}
-${v.descuento>0?`<tr><td style="font-size:11px;font-weight:700">Descuento</td><td class="r" style="font-size:11px;font-weight:900">- ${fmtL(v.descuento)}</td></tr>`:''}
-<tr><td style="font-size:11px;font-weight:700">Total Items</td><td class="r" style="font-size:11px;font-weight:900">${totalItems}</td></tr>
-</table>
-<hr class="s" style="margin:4px 0">
-<table><tr class="gt"><td>TOTAL</td><td class="r">${fmtL(totalVenta)}</td></tr></table>
-${esParcial?`<hr style="margin:4px 0"><table>
-<tr class="tr"><td>Total Abonado</td><td class="r">${fmtL(totalAbonado)}</td></tr>
-${saldo>0?`<tr class="tr"><td>SALDO PENDIENTE</td><td class="r">${fmtL(saldo)}</td></tr>`:''}</table>`:''}
-${v.metodoPagoLabel||v.metodoPago?`<hr style="margin:4px 0"><div style="font-size:12px;font-weight:700">Pago: ${v.metodoPagoLabel||v.metodoPago}</div>`:''}
-${v.promesaPago&&esParcial?`<div style="font-size:12px;font-weight:700">Promesa: ${fmtD(v.promesaPago)}</div>`:''}
-<hr style="margin:6px 0">
-<div class="c" style="font-size:12px;font-weight:700">Gracias por su compra!</div>
-<div class="c" style="font-size:11px;font-weight:700">${fmtNow()}</div>
-<hr style="margin:6px 0">
-<div class="c" style="font-size:10px;font-weight:700;margin-top:2px">${refId}</div>
-</body></html>`;
+  // Construir texto plano
+  const lineas = [
+    cen('COMPROBANTE DE PAGO'),
+    cen('Original'),
+    cen('Fecha: '+fmtNow()),
+    lin('='),
+    lr('Ref:', (v.id||'').slice(-12)),
+    lr('Fecha venta:', fmtD(v.fecha)),
+    lr('Cliente:', (v.clienteNombre||'-').slice(0,22)),
+    ...(v.clienteTel  ? [lr('Tel:', v.clienteTel)] : []),
+    ...(v.vendedorNombre ? [lr('Vendedor:', v.vendedorNombre.slice(0,22))] : []),
+    lin('-'),
+    'DETALLE',
+    lin('-'),
+    lineasItems,
+    lin('-'),
+    ...(envio>0 ? [lr('Subtotal productos:', fmtL(subtotal)), lr('Envio:', fmtL(envio))] : []),
+    ...(v.descuento>0 ? [lr('Descuento:', '-'+fmtL(v.descuento))] : []),
+    lr('Total Items:', String(totalItems)),
+    lin('='),
+    lr('TOTAL:', fmtL(totalVenta)),
+    ...(esParcial ? [
+      lin('-'),
+      lr('Total Abonado:', fmtL(totalAbonado)),
+      ...(saldo>0 ? [lr('SALDO PENDIENTE:', fmtL(saldo))] : []),
+    ] : []),
+    ...(v.metodoPagoLabel||v.metodoPago ? [lin('-'), 'Pago: '+(v.metodoPagoLabel||v.metodoPago)] : []),
+    ...(v.promesaPago&&esParcial ? ['Promesa: '+fmtD(v.promesaPago)] : []),
+    lin('-'),
+    cen('Gracias por su compra!'),
+    cen(fmtNow()),
+    lin('-'),
+    cen(refId),
+    '',''
+  ];
 
+  const texto = lineas.join('\n');
   try {
-    // Intentar abrir RawBT directamente con el contenido en base64
-    const b64 = btoa(unescape(encodeURIComponent(html)));
-    window.location.href = 'rawbt://print?url=data:text/html;charset=utf-8;base64,' + b64;
+    // RawBT espera texto plano — enviamos como data URI text/plain en base64
+    const b64 = btoa(unescape(encodeURIComponent(texto)));
+    window.location.href = 'rawbt://print?url=data:text/plain;charset=utf-8;base64,' + b64;
   } catch(e) {
-    alert('No se pudo abrir RawBT. Asegurate de que RawBT esté instalado.');
+    alert('No se pudo abrir RawBT. Asegurate de que este instalado.');
   }
 }
 
