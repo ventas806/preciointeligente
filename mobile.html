@@ -2376,12 +2376,17 @@ function imprimirRawBT(id) {
   ];
 
   const texto = lineas.join('\n');
+  // Opción 1: Web Share API — muestra menú de Android, usuario elige RawBT
+  if (navigator.share) {
+    navigator.share({ title: 'Comprobante de Pago', text: texto })
+      .catch(() => {});
+    return;
+  }
+  // Opción 2: rawbt: URL scheme directo con texto codificado
   try {
-    // RawBT espera texto plano — enviamos como data URI text/plain en base64
-    const b64 = btoa(unescape(encodeURIComponent(texto)));
-    window.location.href = 'rawbt://print?url=data:text/plain;charset=utf-8;base64,' + b64;
+    window.location.href = 'rawbt:' + encodeURIComponent(texto);
   } catch(e) {
-    alert('No se pudo abrir RawBT. Asegurate de que este instalado.');
+    alert('Instala RawBT para imprimir directamente por USB.');
   }
 }
 
