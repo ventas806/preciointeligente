@@ -1859,6 +1859,10 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 <div id="vComisionNota" style="display:none;margin-top:6px;font-size:11px;color:var(--gold);background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.2);border-radius:6px;padding:5px 8px">
                   ⏳ Se registrará en el mes en que se complete el pago
                 </div>
+                <div id="vSinCostoWarn" style="display:none;margin-top:7px;font-size:11px;color:#e65100;background:rgba(230,81,0,.09);border:1px solid rgba(230,81,0,.3);border-radius:6px;padding:6px 9px;cursor:pointer" onclick="vShowSub('nueva');document.getElementById('vProdBuscar')?.focus()">
+                  ⚠️ <strong>Producto(s) sin costo registrado</strong> — ROI no disponible.<br>
+                  <span style="font-size:10px;opacity:.85">Editá el producto en Inventario para agregar el costo.</span>
+                </div>
               </div>
 
               <div style="margin-bottom:12px">
@@ -7148,9 +7152,10 @@ function calcResumenVenta() {
   if (ahorroEl) ahorroEl.textContent = fmtLPS(ahorroTotal);
 
   // ROI = utilidad ajustada / costo real (costo no cambia por descuento)
-  const totalCostos = subtotalSinISV - utilidadBruta; // costo original de los productos
-  const roiVenta    = totalCostos > 0 ? utilidadAjustada / totalCostos : 0;
-  const roiCls      = roiVenta >= 0.3 ? 'var(--green)' : roiVenta >= 0.2 ? 'var(--gold)' : 'var(--red)';
+  const totalCostos  = subtotalSinISV - utilidadBruta; // costo original de los productos
+  const haySinCosto  = subtotalSinISV > 0 && vItemsActuales.some(it => !(it.costoLPS > 0));
+  const roiVenta     = totalCostos > 0 ? utilidadAjustada / totalCostos : 0;
+  const roiCls       = roiVenta >= 0.3 ? 'var(--green)' : roiVenta >= 0.2 ? 'var(--gold)' : 'var(--red)';
   const verRoiPanel = ['admin','gerencia'].includes(currentUser?.rol);
 
   const set = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
@@ -7185,6 +7190,8 @@ function calcResumenVenta() {
   if (roiEl) { roiEl.textContent = fmtPct(roiVenta); roiEl.style.color = roiCls; }
   const notaEl = document.getElementById('vComisionNota');
   if (notaEl) notaEl.style.display = (esParcial && saldoPend > 0) ? '' : 'none';
+  const sinCostoEl = document.getElementById('vSinCostoWarn');
+  if (sinCostoEl) sinCostoEl.style.display = haySinCosto ? '' : 'none';
 
   // Saldo Pendiente en resumen
   const saldoResRow = document.getElementById('vResSaldoRow');
@@ -7597,9 +7604,10 @@ function renderHistorialVentas() {
     </tr></thead>
     <tbody>
       ${lista.map(v => {
-        const costo  = v.subtotalSinISV - v.utilidadBruta - (v.descuento || 0);
-        const roi    = costo > 0 ? v.utilidadBruta / costo : 0;
-        const roiCls = roi >= 0.3 ? 'var(--green)' : roi >= 0.2 ? 'var(--gold)' : 'var(--red)';
+        const costo      = v.subtotalSinISV - v.utilidadBruta - (v.descuento || 0);
+        const roi        = costo > 0 ? v.utilidadBruta / costo : 0;
+        const roiCls     = roi >= 0.3 ? 'var(--green)' : roi >= 0.2 ? 'var(--gold)' : 'var(--red)';
+        const sinCostoHist = costo <= 0 && (v.subtotalSinISV || 0) > 0;
         const saldo  = v.saldoPendiente || 0;
         const fechaIng = v.fechaRegistro ? v.fechaRegistro.replace('T',' ').substring(0,16) : '';
 
@@ -7651,7 +7659,7 @@ function renderHistorialVentas() {
           <td>${v.metodoPago ? `<span style="font-size:11px;background:rgba(61,106,255,.1);border:1px solid rgba(61,106,255,.2);color:var(--accent);border-radius:10px;padding:2px 9px;white-space:nowrap">${v.metodoPagoLabel||v.metodoPago}</span>${v.promesaPago?`<div style="font-size:10px;color:var(--gold);margin-top:2px">📅 ${fmtFecha(v.promesaPago)}</div>`:''}` : '<span style="color:var(--text3);font-size:12px">—</span>'}</td>
           <td style="text-align:right;color:var(--green);font-weight:700">${fmtLPS(v.total)}</td>
           <td style="text-align:right">${v.metodoPago === 'parcial' && saldo > 0 ? `<span style="color:var(--red);font-weight:700">⚠️ ${fmtLPS(saldo)}</span>` : '<span style="color:var(--text3);font-size:12px">—</span>'}</td>
-          ${verRoi ? `<td style="text-align:right;font-weight:700;color:${roiCls}">${fmtPct(roi)}</td>` : ''}
+          ${verRoi ? `<td style="text-align:right;font-weight:700;color:${roiCls}">${sinCostoHist ? '<span title="Productos sin costo registrado" style="font-size:11px;background:rgba(230,81,0,.12);color:#e65100;border:1px solid rgba(230,81,0,.3);border-radius:4px;padding:1px 6px;cursor:default">⚠️ Sin costo</span>' : fmtPct(roi)}</td>` : ''}
           <td style="text-align:right;color:var(--accent3);font-weight:700">${fmtLPS(v.comision)}</td>
         </tr>`;
       }).join('')}
