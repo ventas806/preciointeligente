@@ -8568,12 +8568,20 @@ function renderReporteVendedores() {
   const roiGlobal    = totCosto > 0 ? totUtilidad / totCosto : 0;
   const roiGlobalCls = roiGlobal >= 0.3 ? 'stat-green' : roiGlobal >= 0.2 ? 'stat-gold' : 'stat-red';
   // Crédito pendiente: ventas parciales con saldo > 0 en el período
-  const totPorCobrar = lista.filter(v => v.metodoPago === 'parcial' && (v.saldoPendiente||0) > 0)
-                            .reduce((a,v)=>a+(v.saldoPendiente||0), 0);
-  const cntCredito   = lista.filter(v => v.metodoPago === 'parcial' && (v.saldoPendiente||0) > 0).length;
+  const ventasCredito = lista.filter(v => v.metodoPago === 'parcial' && (v.saldoPendiente||0) > 0);
+  const totPorCobrar  = ventasCredito.reduce((a,v)=>a+(v.saldoPendiente||0), 0);
+  const cntCredito    = ventasCredito.length;
+  // Total ya cobrado = total - saldo pendiente (lo que realmente entró a caja)
+  const totCobrado    = totVentas - totPorCobrar;
+  const cntCobrado    = lista.length - cntCredito;
 
   kpisEl.innerHTML = `
     <div class="stat-card"><div class="stat-label">Ventas Totales</div><div class="stat-value stat-green">${fmtLPS(totVentas)}</div><div class="stat-sub">${lista.length} transacción(es)</div></div>
+    <div class="stat-card" style="border-color:rgba(0,200,160,.3)">
+      <div class="stat-label" style="color:var(--accent2)">✅ Total Cobrado</div>
+      <div class="stat-value" style="color:var(--accent2)">${fmtLPS(totCobrado)}</div>
+      <div class="stat-sub" style="color:var(--text3)">sin créditos pendientes</div>
+    </div>
     <div class="stat-card" style="border-color:rgba(100,180,255,.25)"><div class="stat-label" style="color:#64b4ff">Total sin ISV</div><div class="stat-value" style="color:#64b4ff">${fmtLPS(totSinISV)}</div><div class="stat-sub" style="color:var(--text3)">ISV: ${fmtLPS(totISV)}</div></div>
     <div class="stat-card"><div class="stat-label">Utilidad Bruta</div><div class="stat-value stat-blue">${fmtLPS(totUtilidad)}</div></div>
     <div class="stat-card"><div class="stat-label">ROI Promedio</div><div class="stat-value ${roiGlobalCls}">${fmtPct(roiGlobal)}</div><div class="stat-sub">utilidad / costo</div></div>
