@@ -14136,11 +14136,11 @@ function renderReportesGastos() {
 
 
 // ═══════════════════════════════════════════════════════════════
-//  MÓDULO CALCULADORA DE PRECIOS
+//  MÓDULO CALCULADORA DE PRECIOS  (Supabase)
 // ═══════════════════════════════════════════════════════════════
-const CP_KEY = 'calcPrecios_v1';
-let   _cpEstado = 'Nuevo'; // 'Nuevo' | 'Usado'
-let   _cpEditId = null;    // id del cálculo que se está editando
+let   _cpEstado  = 'Nuevo'; // 'Nuevo' | 'Usado'
+let   _cpEditId  = null;    // uuid del cálculo en edición
+let   _cpLista   = [];      // cache local
 
 function cpShowSub(sub) {
   ['calc','guardados'].forEach(s => {
@@ -14149,7 +14149,7 @@ function cpShowSub(sub) {
     if (panel) panel.style.display = s === sub ? '' : 'none';
     if (btn)   { btn.classList.toggle('btn-primary', s === sub); btn.classList.toggle('btn-ghost', s !== sub); }
   });
-  if (sub === 'guardados') renderCpGuardados();
+  if (sub === 'guardados') cpCargarYRender();
 }
 
 function cpSetEstado(estado) {
@@ -14170,14 +14170,13 @@ function cpSetEstado(estado) {
 }
 
 function cpRecalcular() {
-  const costoUSD     = parseFloat(document.getElementById('cpCostoUSD')?.value) || 0;
-  const fleteL       = parseFloat(document.getElementById('cpFleteL')?.value)   || 0;
-  const nivel        = document.getElementById('cpNivel')?.value        || 'normal';
-  const overrideBanda= document.getElementById('cpOverrideBanda')?.value || '';
-  const ajustePct    = parseFloat(document.getElementById('cpAjuste')?.value) || 0;
+  const costoUSD      = parseFloat(document.getElementById('cpCostoUSD')?.value) || 0;
+  const fleteL        = parseFloat(document.getElementById('cpFleteL')?.value)   || 0;
+  const nivel         = document.getElementById('cpNivel')?.value        || 'normal';
+  const overrideBanda = document.getElementById('cpOverrideBanda')?.value || '';
+  const ajustePct     = parseFloat(document.getElementById('cpAjuste')?.value) || 0;
 
   if (!costoUSD && !fleteL) {
-    // Reset display
     ['cpRTC','cpRCostoUSD','cpRCostoLPS','cpRBandaAuto','cpRBandaEf',
      'cpRMargenBase','cpRMargenFinal','cpRPrecioNeto','cpRISV','cpRPrecioISV','cpRUtil','cpRROI','cpRROIRef']
      .forEach(id => { const el=document.getElementById(id); if(el) el.textContent='—'; });
@@ -14185,48 +14184,39 @@ function cpRecalcular() {
   }
 
   const r = calcProd({
-    costoUSD,
-    costoExtra: 0,
-    fleteL,
+    costoUSD, costoExtra: 0, fleteL,
     estado: _cpEstado,
-    nivel: nivel.charAt(0).toUpperCase() + nivel.slice(1), // capitalise: normal→Normal
+    nivel: nivel.charAt(0).toUpperCase() + nivel.slice(1),
     overrideBanda,
     ajusteManual: ajustePct / 100,
-    descuento: 0,
-    cantidad: 1
+    descuento: 0, cantidad: 1
   });
 
   const tc = parametros.tipoCambio || 25;
   const roiColor = r.roi >= 0.4 ? '#00c8a0' : r.roi >= 0.25 ? 'var(--gold)' : 'var(--red)';
-
   const setT = (id, txt) => { const el=document.getElementById(id); if(el) el.textContent=txt; };
   const setC = (id, col) => { const el=document.getElementById(id); if(el) el.style.color=col; };
 
-  setT('cpRTC',        'L ' + tc.toFixed(2) + ' / USD');
-  setT('cpRCostoUSD',  fmtUSD(r.costoTotalUSD));
-  setT('cpRCostoLPS',  fmtLPS(r.costoTotalLPS));
-  setT('cpRBandaAuto', r.bandaAuto);
-  setT('cpRBandaEf',   r.bandaEfectiva + (r.overrideBanda ? ' ⚠️ override' : ''));
+  setT('cpRTC',         'L ' + tc.toFixed(2) + ' / USD');
+  setT('cpRCostoUSD',   fmtUSD(r.costoTotalUSD));
+  setT('cpRCostoLPS',   fmtLPS(r.costoTotalLPS));
+  setT('cpRBandaAuto',  r.bandaAuto);
+  setT('cpRBandaEf',    r.bandaEfectiva + (r.overrideBanda ? ' ⚠️ override' : ''));
   setT('cpRMargenBase',  fmtPct(r.margenBase));
   setT('cpRMargenFinal', fmtPct(r.margenFinal));
   setT('cpRPrecioNeto',  fmtLPS(r.precioNeto));
-  const isvMonto = r.precioConISV - r.precioNeto;
-  setT('cpRISV',       _cpEstado === 'Nuevo' ? fmtLPS(isvMonto) : 'No aplica (Usado)');
-  setT('cpRPrecioISV', fmtLPS(r.precioConISV));
-  setT('cpRUtil',      fmtLPS(r.utilBrutaLPS));
-  setT('cpRROI',       fmtPct(r.roi));
-  setT('cpRROIRef',    'Ref. banda: ' + fmtPct(r.roiRef));
+  setT('cpRISV',        _cpEstado === 'Nuevo' ? fmtLPS(r.precioConISV - r.precioNeto) : 'No aplica (Usado)');
+  setT('cpRPrecioISV',  fmtLPS(r.precioConISV));
+  setT('cpRUtil',       fmtLPS(r.utilBrutaLPS));
+  setT('cpRROI',        fmtPct(r.roi));
+  setT('cpRROIRef',     'Ref. banda: ' + fmtPct(r.roiRef));
   setC('cpRROI', roiColor);
-
-  // Show/hide ISV row
   const filaISV = document.getElementById('cpRFilaISV');
   if (filaISV) filaISV.style.opacity = _cpEstado === 'Nuevo' ? '1' : '0.4';
-
-  // Store last result for saving
   window._cpLastResult = r;
 }
 
-function cpGuardar() {
+async function cpGuardar() {
   const nombre   = (document.getElementById('cpNombre')?.value || '').trim();
   const costoUSD = parseFloat(document.getElementById('cpCostoUSD')?.value) || 0;
   const fleteL   = parseFloat(document.getElementById('cpFleteL')?.value)   || 0;
@@ -14236,57 +14226,81 @@ function cpGuardar() {
   const r        = window._cpLastResult;
 
   if (!costoUSD && !fleteL) { showToast('⚠️ Ingresa al menos Costo USD o Flete', 'warn'); return; }
-  if (!r) { showToast('⚠️ Primero calcula un precio', 'warn'); return; }
+  if (!r) { showToast('⚠️ Primero ingresa valores para calcular', 'warn'); return; }
 
-  const lista = cpCargarLista();
-  const item = {
-    id:            _cpEditId || ('cp_' + Date.now()),
-    fecha:         new Date().toISOString().slice(0,10),
-    nombre:        nombre || 'Sin nombre',
-    costoUSD, fleteL,
-    nivel, overrideBanda: override, ajuste,
-    estado:        _cpEstado,
-    costoTotalUSD: r.costoTotalUSD,
-    costoTotalLPS: r.costoTotalLPS,
-    bandaEfectiva: r.bandaEfectiva,
-    margenFinal:   r.margenFinal,
-    precioNeto:    r.precioNeto,
-    precioConISV:  r.precioConISV,
-    utilBrutaLPS:  r.utilBrutaLPS,
-    roi:           r.roi
+  const row = {
+    fecha:          new Date().toISOString().slice(0,10),
+    nombre:         nombre || 'Sin nombre',
+    costo_usd:      costoUSD,
+    flete_l:        fleteL,
+    nivel:          nivel.charAt(0).toUpperCase() + nivel.slice(1),
+    override_banda: override,
+    ajuste:         ajuste,
+    estado:         _cpEstado,
+    costo_total_usd: r.costoTotalUSD,
+    costo_total_lps: r.costoTotalLPS,
+    banda_efectiva:  r.bandaEfectiva,
+    margen_final:    r.margenFinal,
+    precio_neto:     r.precioNeto,
+    precio_con_isv:  r.precioConISV,
+    util_bruta_lps:  r.utilBrutaLPS,
+    roi:             r.roi,
+    registrado_por:  currentUser?.nombre || currentUser?.user || '',
+    updated_at:      new Date().toISOString()
   };
 
-  if (_cpEditId) {
-    const idx = lista.findIndex(x => x.id === _cpEditId);
-    if (idx >= 0) lista[idx] = item; else lista.unshift(item);
-    _cpEditId = null;
-    showToast('✅ Cálculo actualizado', 'success');
-  } else {
-    lista.unshift(item);
-    showToast('✅ Cálculo guardado', 'success');
-  }
-
-  localStorage.setItem(CP_KEY, JSON.stringify(lista));
-  // Flash mensaje
-  const msg = document.getElementById('cpGuardadoMsg');
-  if (msg) { msg.style.display='block'; setTimeout(()=>msg.style.display='none', 2500); }
-  // Actualizar botón guardar
   const btn = document.querySelector('#cpPanelCalc button.btn-success');
-  if (btn) btn.textContent = '💾 Guardar Cálculo';
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+
+  try {
+    let err;
+    if (_cpEditId) {
+      ({ error: err } = await sb.from('calculadora_precios').update(row).eq('id', _cpEditId));
+    } else {
+      ({ error: err } = await sb.from('calculadora_precios').insert(row));
+    }
+    if (err) throw err;
+
+    showToast(_cpEditId ? '✅ Cálculo actualizado' : '✅ Cálculo guardado en Supabase', 'success');
+    _cpEditId = null;
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Guardar Cálculo'; }
+    const msg = document.getElementById('cpGuardadoMsg');
+    if (msg) { msg.style.display='block'; setTimeout(()=>msg.style.display='none', 2500); }
+    // Refrescar cache
+    await cpCargarYRender(false);
+  } catch(e) {
+    showToast('❌ Error al guardar: ' + e.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Guardar Cálculo'; }
+  }
 }
 
-function cpCargarLista() {
-  try { return JSON.parse(localStorage.getItem(CP_KEY) || '[]'); } catch(e) { return []; }
+async function cpCargarYRender(mostrarPanel = true) {
+  const body  = document.getElementById('cpGuardadosBody');
+  const count = document.getElementById('cpGuardadosCount');
+  if (body) body.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3)">⏳ Cargando...</td></tr>';
+
+  try {
+    const { data, error } = await sb.from('calculadora_precios')
+      .select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    _cpLista = data || [];
+  } catch(e) {
+    showToast('❌ Error cargando calculadora: ' + e.message, 'error');
+    _cpLista = [];
+  }
+  renderCpGuardados();
 }
 
 function renderCpGuardados() {
-  const lista  = cpCargarLista();
-  const buscar = (document.getElementById('cpGBuscar')?.value || '').toLowerCase();
-  const body   = document.getElementById('cpGuardadosBody');
-  const count  = document.getElementById('cpGuardadosCount');
+  const buscar  = (document.getElementById('cpGBuscar')?.value || '').toLowerCase();
+  const body    = document.getElementById('cpGuardadosBody');
+  const count   = document.getElementById('cpGuardadosCount');
   if (!body) return;
 
-  const filtrada = buscar ? lista.filter(x => (x.nombre||'').toLowerCase().includes(buscar)) : lista;
+  const filtrada = buscar
+    ? _cpLista.filter(x => (x.nombre||'').toLowerCase().includes(buscar))
+    : _cpLista;
+
   if (count) count.textContent = filtrada.length + ' cálculo' + (filtrada.length===1?'':'s') + ' guardado' + (filtrada.length===1?'':'s');
 
   if (!filtrada.length) {
@@ -14295,7 +14309,7 @@ function renderCpGuardados() {
   }
 
   const roiBadge = roi => {
-    const pct = (roi*100).toFixed(1)+'%';
+    const pct = (parseFloat(roi)*100).toFixed(1)+'%';
     const col  = roi>=0.4?'#00c8a0':roi>=0.25?'#f5c642':'var(--red)';
     return `<span style="font-weight:800;color:${col}">${pct}</span>`;
   };
@@ -14308,18 +14322,18 @@ function renderCpGuardados() {
       onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background=''">
       <td style="padding:8px 12px;font-size:12px;color:var(--text3);white-space:nowrap">${x.fecha}</td>
       <td style="padding:8px 12px;font-size:13px;font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${x.nombre}">${x.nombre}</td>
-      <td style="padding:8px 12px;font-size:13px;text-align:right">${fmtUSD(x.costoUSD)}</td>
-      <td style="padding:8px 12px;font-size:13px;text-align:right;color:var(--text2)">${fmtLPS(x.costoTotalLPS)}</td>
-      <td style="padding:8px 12px;font-size:12px;color:var(--gold);font-weight:700">${x.bandaEfectiva}</td>
+      <td style="padding:8px 12px;font-size:13px;text-align:right">${fmtUSD(x.costo_usd)}</td>
+      <td style="padding:8px 12px;font-size:13px;text-align:right;color:var(--text2)">${fmtLPS(x.costo_total_lps)}</td>
+      <td style="padding:8px 12px;font-size:12px;color:var(--gold);font-weight:700">${x.banda_efectiva}</td>
       <td style="padding:8px 12px">${estadoBadge(x.estado)}</td>
-      <td style="padding:8px 12px;font-size:13px;text-align:right;color:var(--text2)">${fmtLPS(x.precioNeto)}</td>
-      <td style="padding:8px 12px;font-size:14px;text-align:right;font-weight:800;color:#00c8a0">${fmtLPS(x.precioConISV)}</td>
+      <td style="padding:8px 12px;font-size:13px;text-align:right;color:var(--text2)">${fmtLPS(x.precio_neto)}</td>
+      <td style="padding:8px 12px;font-size:14px;text-align:right;font-weight:800;color:#00c8a0">${fmtLPS(x.precio_con_isv)}</td>
       <td style="padding:8px 12px;text-align:right">${roiBadge(x.roi)}</td>
       <td style="padding:6px 10px;white-space:nowrap;text-align:center">
         <button onclick="cpEditar('${x.id}')"
           style="padding:4px 9px;font-size:11px;border:none;border-radius:6px;cursor:pointer;background:rgba(61,106,255,.18);color:var(--accent);font-weight:700;margin-right:4px;transition:background .15s"
           onmouseenter="this.style.background='rgba(61,106,255,.35)'" onmouseleave="this.style.background='rgba(61,106,255,.18)'">✏️ Editar</button>
-        <button onclick="cpEliminar('${x.id}')"
+        <button onclick="cpEliminar('${x.id}', ${JSON.stringify(x.nombre)})"
           style="padding:4px 9px;font-size:11px;border:none;border-radius:6px;cursor:pointer;background:rgba(220,53,69,.15);color:var(--red);font-weight:700;transition:background .15s"
           onmouseenter="this.style.background='rgba(220,53,69,.3)'" onmouseleave="this.style.background='rgba(220,53,69,.15)'">🗑️</button>
       </td>
@@ -14327,41 +14341,42 @@ function renderCpGuardados() {
 }
 
 function cpEditar(id) {
-  const lista = cpCargarLista();
-  const x = lista.find(i => i.id === id);
+  const x = _cpLista.find(i => i.id === id);
   if (!x) return;
-  // Switch to calc panel
   cpShowSub('calc');
-  // Populate form
   const setV = (elId, val) => { const el=document.getElementById(elId); if(el) el.value=val; };
-  setV('cpNombre',       x.nombre);
-  setV('cpCostoUSD',     x.costoUSD);
-  setV('cpFleteL',       x.fleteL);
-  setV('cpNivel',        x.nivel);
-  setV('cpOverrideBanda',x.overrideBanda || '');
-  setV('cpAjuste',       (x.ajuste || 0));
+  setV('cpNombre',        x.nombre);
+  setV('cpCostoUSD',      x.costo_usd);
+  setV('cpFleteL',        x.flete_l);
+  setV('cpNivel',         (x.nivel||'Normal').toLowerCase());
+  setV('cpOverrideBanda', x.override_banda || '');
+  setV('cpAjuste',        x.ajuste || 0);
   cpSetEstado(x.estado || 'Nuevo');
   _cpEditId = id;
-  // Update save button label
   const btn = document.querySelector('#cpPanelCalc button.btn-success');
   if (btn) btn.textContent = '💾 Actualizar Cálculo';
   cpRecalcular();
   showToast('✏️ Editando: ' + x.nombre, 'info');
 }
 
-function cpEliminar(id) {
-  const lista = cpCargarLista();
-  const x = lista.find(i => i.id === id);
-  if (!x) return;
-  if (!confirm('¿Eliminar el cálculo "' + x.nombre + '"?')) return;
-  const nueva = lista.filter(i => i.id !== id);
-  localStorage.setItem(CP_KEY, JSON.stringify(nueva));
-  renderCpGuardados();
-  showToast('🗑️ Cálculo eliminado', 'info');
+async function cpEliminar(id, nombre) {
+  if (!confirm('¿Eliminar el cálculo "' + nombre + '"?')) return;
+  try {
+    const { error } = await sb.from('calculadora_precios').delete().eq('id', id);
+    if (error) throw error;
+    _cpLista = _cpLista.filter(i => i.id !== id);
+    renderCpGuardados();
+    showToast('🗑️ Cálculo eliminado', 'info');
+  } catch(e) {
+    showToast('❌ Error al eliminar: ' + e.message, 'error');
+  }
 }
 
 function initCalculadora() {
+  _cpEditId = null;
   cpSetEstado('Nuevo');
+  const btn = document.querySelector('#cpPanelCalc button.btn-success');
+  if (btn) btn.textContent = '💾 Guardar Cálculo';
 }
 
 </script>
