@@ -7903,13 +7903,16 @@ function renderHistorialVentas() {
     (v.clienteCiudad||'').toLowerCase().includes(q)
   );
 
-  // Ordenar
+  // Ordenar — usar timestamps numéricos para comparación robusta
   lista = [...lista];
-  if (orden === 'ingreso_desc') lista.sort((a,b) => (b.fechaRegistro||b.fecha||'') > (a.fechaRegistro||a.fecha||'') ? 1 : -1);
-  else if (orden === 'ingreso_asc') lista.sort((a,b) => (a.fechaRegistro||a.fecha||'') > (b.fechaRegistro||b.fecha||'') ? 1 : -1);
-  else if (orden === 'fecha_desc') lista.sort((a,b) => (b.fecha||'') > (a.fecha||'') ? 1 : -1);
-  else if (orden === 'fecha_asc')  lista.sort((a,b) => (a.fecha||'') > (b.fecha||'') ? 1 : -1);
-  else if (orden === 'total_desc') lista.sort((a,b) => b.total - a.total);
+  const _ts  = s => s ? new Date(s).getTime() : 0;
+  const _tsi = v => _ts(v.fechaRegistro) || _ts(v.fecha); // ingreso: timestamp real, o fecha venta como fallback
+  const _tsf = v => _ts(v.fecha);
+  if (orden === 'ingreso_desc') lista.sort((a,b) => _tsi(b) - _tsi(a));
+  else if (orden === 'ingreso_asc')  lista.sort((a,b) => _tsi(a) - _tsi(b));
+  else if (orden === 'fecha_desc')   lista.sort((a,b) => _tsf(b) - _tsf(a));
+  else if (orden === 'fecha_asc')    lista.sort((a,b) => _tsf(a) - _tsf(b));
+  else if (orden === 'total_desc')   lista.sort((a,b) => b.total - a.total);
 
   // Poblar selector de envíos (preservando selección)
   const envioSel = document.getElementById('vFiltEnvio');
