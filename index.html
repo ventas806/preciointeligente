@@ -1629,14 +1629,22 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
 
             <!-- Datos del cliente -->
             <div class="card" id="vCardCliente">
-              <div class="card-header" style="margin-bottom:14px">
+              <div class="card-header" style="margin-bottom:10px">
                 <div class="card-title">👤 Cliente</div>
-                <div style="display:flex;gap:8px">
-                  <input type="text" id="vClienteBuscar" placeholder="🔍 Buscar cliente existente..." style="padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none;min-width:220px" oninput="buscarCliente()">
-                  <button class="btn btn-ghost btn-sm" onclick="limpiarCliente()">Nuevo</button>
+                <div style="display:flex;gap:8px;flex:1;max-width:600px">
+                  <input type="text" id="vClienteBuscar" placeholder="🔍 Buscar por nombre o teléfono..." autocomplete="off"
+                    style="flex:1;padding:10px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:14px;outline:none;min-width:0"
+                    oninput="buscarCliente()">
+                  <button class="btn btn-ghost btn-sm" onclick="limpiarCliente()" title="Limpiar y crear nuevo cliente">➕ Nuevo</button>
                 </div>
               </div>
-              <div id="vClienteResultados" style="display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);max-height:160px;overflow-y:auto;margin-bottom:12px"></div>
+              <!-- Chip cliente seleccionado -->
+              <div id="vClienteChip" style="display:none;align-items:center;gap:10px;padding:8px 14px;background:rgba(0,200,160,.1);border:1px solid rgba(0,200,160,.35);border-radius:8px;margin-bottom:12px">
+                <span style="font-size:13px">✅ <strong id="vClienteChipNombre"></strong></span>
+                <span id="vClienteChipTel" style="font-size:12px;color:var(--text2)"></span>
+                <button onclick="limpiarCliente()" style="margin-left:auto;padding:3px 10px;font-size:12px;border:1px solid rgba(0,200,160,.4);background:transparent;color:#00c8a0;border-radius:6px;cursor:pointer;font-weight:700">✕ Cambiar</button>
+              </div>
+              <div id="vClienteResultados" style="display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);max-height:200px;overflow-y:auto;margin-bottom:12px;box-shadow:0 4px 16px rgba(0,0,0,.3)"></div>
               <div class="form-grid fg3">
                 <div class="form-field field-full">
                   <label>Nombre del Cliente *</label>
@@ -6406,23 +6414,54 @@ Nota: si tiene ventas asociadas, esas ventas se mantendrán.`)) return;
 }
 
 // ===== BÚSQUEDA DE CLIENTE =====
+const _VCLI_FIELDS = ['vClienteNombre','vClienteDireccion','vClienteCiudad','vClienteTel','vClienteTel2','vClienteEmail'];
+
+function _setClienteLocked(locked) {
+  _VCLI_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.disabled = locked;
+    el.style.opacity    = locked ? '0.65' : '1';
+    el.style.cursor     = locked ? 'not-allowed' : '';
+    el.style.background = locked ? 'var(--bg2)' : '';
+  });
+  // También el campo de Maps
+  const maps = document.getElementById('vMapsLink');
+  if (maps) { maps.disabled = locked; maps.style.opacity = locked ? '0.65' : '1'; maps.style.cursor = locked ? 'not-allowed' : ''; maps.style.background = locked ? 'var(--bg2)' : ''; }
+  // Chip visible sólo si bloqueado
+  const chip = document.getElementById('vClienteChip');
+  if (chip) chip.style.display = locked ? 'flex' : 'none';
+  // Buscador: ocultar cuando hay cliente seleccionado
+  const buscar = document.getElementById('vClienteBuscar');
+  if (buscar) buscar.style.display = locked ? 'none' : '';
+}
+
 function buscarCliente() {
   const q   = (document.getElementById('vClienteBuscar').value || '').toLowerCase().trim();
   const res = document.getElementById('vClienteResultados');
-  if (!q) { res.style.display = 'none'; return; }
+  if (!q || q.length < 2) { res.style.display = 'none'; return; }
   const encontrados = clientes.filter(c =>
     (c.nombre||'').toLowerCase().includes(q) ||
-    (c.tel||'').includes(q) ||
+    (c.tel||'').replace(/\D/g,'').includes(q.replace(/\D/g,'')) ||
+    (c.tel2||'').replace(/\D/g,'').includes(q.replace(/\D/g,'')) ||
     (c.email||'').toLowerCase().includes(q)
-  ).slice(0, 6);
-  if (!encontrados.length) { res.innerHTML = '<div style="padding:10px 14px;color:var(--text3);font-size:13px">Sin resultados — escribe los datos para crear nuevo cliente</div>'; res.style.display='block'; return; }
+  ).slice(0, 8);
+  if (!encontrados.length) {
+    res.innerHTML = `<div style="padding:12px 16px;color:var(--text3);font-size:13px">
+      Sin resultados — los campos están listos para registrar un cliente nuevo
+    </div>`;
+    res.style.display = 'block';
+    return;
+  }
   res.innerHTML = encontrados.map(c => `
-    <div onclick="seleccionarCliente('${c.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:12px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
+    <div onclick="seleccionarCliente('${c.id}')"
+      style="padding:11px 16px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px"
+      onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
       <div>
-        <div style="font-size:13px;font-weight:600">${c.nombre}</div>
-        <div style="font-size:11px;color:var(--text2)">${c.ciudad||''} · ${c.tel||''}</div>
+        <div style="font-size:13px;font-weight:700">${c.nombre}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px">${[c.ciudad, c.tel].filter(Boolean).join(' · ')}</div>
       </div>
-      <span style="font-size:11px;color:var(--accent);align-self:center">Seleccionar</span>
+      <span style="font-size:11px;font-weight:700;color:#00c8a0;white-space:nowrap">✔ Seleccionar</span>
     </div>`).join('');
   res.style.display = 'block';
 }
@@ -6437,18 +6476,30 @@ function seleccionarCliente(id) {
   document.getElementById('vClienteTel').value       = c.tel       || '';
   document.getElementById('vClienteTel2').value      = c.tel2      || '';
   document.getElementById('vClienteEmail').value     = c.email     || '';
+  // Maps
+  const mapsEl = document.getElementById('vMapsLink');
+  if (mapsEl) { mapsEl.value = c.maps || ''; onMapsLinkChange(); }
   document.getElementById('vClienteResultados').style.display = 'none';
   document.getElementById('vClienteBuscar').value = '';
-  showToast('✅ Cliente cargado: ' + c.nombre, 'success');
+  // Mostrar chip y bloquear campos
+  const chipNom = document.getElementById('vClienteChipNombre');
+  const chipTel = document.getElementById('vClienteChipTel');
+  if (chipNom) chipNom.textContent = c.nombre;
+  if (chipTel) chipTel.textContent = c.tel ? '📞 ' + c.tel : '';
+  _setClienteLocked(true);
+  showToast('✅ Cliente seleccionado: ' + c.nombre, 'success');
 }
 
 function limpiarCliente() {
   vClienteSelId = null;
-  ['vClienteNombre','vClienteDireccion','vClienteCiudad','vClienteTel','vClienteTel2','vClienteEmail'].forEach(id => {
+  _VCLI_FIELDS.forEach(id => {
     const el = document.getElementById(id); if(el) el.value = '';
   });
+  const mapsEl = document.getElementById('vMapsLink');
+  if (mapsEl) { mapsEl.value = ''; onMapsLinkChange(); }
   document.getElementById('vClienteBuscar').value = '';
   document.getElementById('vClienteResultados').style.display = 'none';
+  _setClienteLocked(false);
 }
 
 function onMapsLinkChange() {
@@ -8038,6 +8089,18 @@ function editarVenta(id, _modoAbono) {
   document.getElementById('vClienteTel').value       = v.clienteTel      || cli.tel       || '';
   document.getElementById('vClienteTel2').value      = cli.tel2           || '';
   document.getElementById('vClienteEmail').value     = cli.email          || '';
+  // Chip + lock si hay cliente existente vinculado
+  if (vClienteSelId) {
+    const nomEdit = v.clienteNombre || cli.nombre || '';
+    const telEdit = v.clienteTel   || cli.tel    || '';
+    const chipNom = document.getElementById('vClienteChipNombre');
+    const chipTel = document.getElementById('vClienteChipTel');
+    if (chipNom) chipNom.textContent = nomEdit;
+    if (chipTel) chipTel.textContent = telEdit ? '📞 ' + telEdit : '';
+    _setClienteLocked(true);
+  } else {
+    _setClienteLocked(false);
+  }
   document.getElementById('vFecha').value            = v.fecha            || '';
   document.getElementById('vObservaciones').value    = v.observaciones    || '';
   const mlEl = document.getElementById('vMapsLink'); if(mlEl) { mlEl.value = v.mapsLink || ''; onMapsLinkChange(); }
