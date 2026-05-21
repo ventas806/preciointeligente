@@ -1600,6 +1600,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
         <button class="btn btn-ghost" id="vSubNueva" onclick="vShowSub('nueva')">➕ Nueva Venta</button>
         <button class="btn btn-primary" id="vSubLista" onclick="vShowSub('lista')">📋 Historial de Ventas</button>
         <button class="btn btn-ghost" id="vSubReporte" onclick="vShowSub('reporte')">📊 Reporte Vendedores</button>
+        <button class="btn btn-ghost" id="vSubProductos" onclick="vShowSub('productos')">📦 Reporte por Producto</button>
         <button class="btn btn-ghost" id="vSubClientes" onclick="vShowSub('clientes')" style="margin-left:auto">👥 Clientes</button>
       </div>
 
@@ -1958,6 +1959,65 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
         <div id="vReporteGraficos" style="margin-bottom:20px"></div>
         <div id="vReporteTabla"></div>
         <div id="vReportePastel3D" style="margin-top:20px"></div>
+      </div>
+
+      <!-- ===== REPORTE POR PRODUCTO ===== -->
+      <div id="vPanelProductos" style="display:none">
+        <div class="card">
+          <div class="card-header" style="flex-wrap:wrap;gap:10px">
+            <div>
+              <div class="card-title">📦 Reporte de Productos Vendidos</div>
+              <div class="card-sub" id="vRPPResumen">Aplica filtros para ver el detalle</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="exportarReporteProductos()">📋 Copiar</button>
+          </div>
+          <!-- Filtros -->
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:0 0 16px">
+            <input type="date" id="vRPPDesde" onchange="renderReporteProductos()"
+              style="padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+            <span style="color:var(--text3);font-size:13px">→</span>
+            <input type="date" id="vRPPHasta" onchange="renderReporteProductos()"
+              style="padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+            <input type="text" id="vRPPBuscar" placeholder="🔍 SKU o nombre del producto..." oninput="renderReporteProductos()"
+              style="padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none;min-width:220px">
+            <select id="vRPPVendedor" onchange="renderReporteProductos()"
+              style="padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+              <option value="">Todos los vendedores</option>
+            </select>
+            <select id="vRPPPago" onchange="renderReporteProductos()"
+              style="padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+              <option value="">Todos los métodos de pago</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" onclick="vRPPSetPeriodo('mes')">Este mes</button>
+            <button class="btn btn-ghost btn-sm" onclick="vRPPSetPeriodo('semana')">Esta semana</button>
+            <button class="btn btn-ghost btn-sm" onclick="vRPPSetPeriodo('hoy')">Hoy</button>
+            <button class="btn btn-ghost btn-sm" onclick="vRPPSetPeriodo('todo')">Todo</button>
+          </div>
+          <!-- KPIs -->
+          <div id="vRPPKpi" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px"></div>
+          <!-- Tabla -->
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse" id="vRPPTabla">
+              <thead>
+                <tr style="border-bottom:2px solid var(--border)">
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:left;white-space:nowrap">FECHA VENTA</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:left">SKU</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:left">PRODUCTO</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:center">CANT.</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:right">P. UNIT.</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:right">SUBTOTAL</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:left">CLIENTE</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:left">VENDEDOR</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:left">MÉTODO PAGO</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:left">TIPO</th>
+                </tr>
+              </thead>
+              <tbody id="vRPPBody">
+                <tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text3)">Aplica filtros para ver resultados</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- ===== CLIENTES ===== -->
@@ -6320,15 +6380,20 @@ let _ventaSnapshot   = null;    // Snapshot de la venta original al entrar a edi
 
 function vShowSub(sub) {
   _ventasSubActivo = sub;
-  ['nueva','lista','reporte','clientes'].forEach(s => {
+  ['nueva','lista','reporte','productos','clientes'].forEach(s => {
     const panel = document.getElementById('vPanel' + s.charAt(0).toUpperCase() + s.slice(1));
     const btn   = document.getElementById('vSub'   + s.charAt(0).toUpperCase() + s.slice(1));
     if (panel) panel.style.display = s === sub ? '' : 'none';
     if (btn)   { btn.classList.toggle('btn-primary', s === sub); btn.classList.toggle('btn-ghost', s !== sub); }
   });
-  if (sub === 'lista')    renderHistorialVentas();
-  if (sub === 'reporte')  renderReporteVendedores();
-  if (sub === 'clientes') renderTablaClientes();
+  if (sub === 'lista')     renderHistorialVentas();
+  if (sub === 'reporte')   renderReporteVendedores();
+  if (sub === 'clientes')  renderTablaClientes();
+  if (sub === 'productos') {
+    poblarSelectorVendedor('vRPPVendedor');
+    poblarRPPPago();
+    renderReporteProductos();
+  }
 }
 
 // ===== MÓDULO ADMINISTRACIÓN DE CLIENTES =====
@@ -8772,6 +8837,167 @@ function _getNombresSeleccionados() {
   const chks = [...document.querySelectorAll('.chkVend')];
   if (!chks.length) return null; // tabla no renderizada → incluir todos
   return chks.filter(c => c.checked).map(c => decodeURIComponent(c.dataset.nombre));
+}
+
+// ===== REPORTE POR PRODUCTO =====
+
+function poblarRPPPago() {
+  const sel = document.getElementById('vRPPPago');
+  if (!sel) return;
+  const actual = sel.value;
+  // Collect unique methods from actual ventas
+  const metodos = [...new Set(ventas.map(v => v.metodoPago).filter(Boolean))].sort();
+  const labels = { efectivo:'Efectivo', tarjeta:'Tarjeta', transferencia:'Transferencia', parcial:'Crédito/Parcial', wix:'Wix', otro:'Otro' };
+  sel.innerHTML = '<option value="">Todos los métodos de pago</option>'
+    + metodos.map(m => `<option value="${m}" ${m===actual?'selected':''}>${labels[m]||m}</option>`).join('');
+}
+
+function vRPPSetPeriodo(periodo) {
+  const hoy    = new Date();
+  const pad    = n => String(n).padStart(2,'0');
+  const fmt    = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  let desde = '', hasta = fmt(hoy);
+  if (periodo === 'hoy') {
+    desde = fmt(hoy);
+  } else if (periodo === 'semana') {
+    const d = new Date(hoy); d.setDate(hoy.getDate() - hoy.getDay());
+    desde = fmt(d);
+  } else if (periodo === 'mes') {
+    desde = `${hoy.getFullYear()}-${pad(hoy.getMonth()+1)}-01`;
+  } else { // 'todo'
+    desde = ''; hasta = '';
+  }
+  const elD = document.getElementById('vRPPDesde');
+  const elH = document.getElementById('vRPPHasta');
+  if (elD) elD.value = desde;
+  if (elH) elH.value = hasta;
+  renderReporteProductos();
+}
+
+function renderReporteProductos() {
+  const body    = document.getElementById('vRPPBody');
+  const kpiEl   = document.getElementById('vRPPKpi');
+  const resDes  = document.getElementById('vRPPResumen');
+  if (!body) return;
+
+  const desde   = (document.getElementById('vRPPDesde')||{}).value  || '';
+  const hasta   = (document.getElementById('vRPPHasta')||{}).value  || '';
+  const buscar  = ((document.getElementById('vRPPBuscar')||{}).value || '').toLowerCase().trim();
+  const vendId  = (document.getElementById('vRPPVendedor')||{}).value || '';
+  const pago    = (document.getElementById('vRPPPago')||{}).value    || '';
+
+  // Flatten all ventas → items
+  let filas = [];
+  const lista = rentasPorRol(ventas);
+  lista.forEach(v => {
+    const fecha = (v.fecha || '').slice(0, 10);
+    if (desde && fecha < desde) return;
+    if (hasta && fecha > hasta) return;
+    if (vendId && String(v.vendedorId) !== String(vendId)) return;
+    if (pago   && v.metodoPago !== pago) return;
+    const items = v.items && v.items.length ? v.items : [];
+    if (items.length === 0) {
+      // venta sin líneas de detalle — mostrar como una sola fila
+      filas.push({
+        fecha, ventaId: v.id,
+        sku: '—', nombre: v.clienteNombre || 'Sin nombre',
+        cantidad: 1, precioUnit: v.total, subtotal: v.total,
+        cliente: v.clienteNombre || '—',
+        vendedor: v.vendedorNombre || '—',
+        metodoPago: v.metodoPago || '—',
+        tipo: v.tipoVenta || 'formal'
+      });
+    } else {
+      items.forEach(it => {
+        const nom = it.descripcion || it.nombre || '—';
+        const sku = it.sku || '—';
+        if (buscar && !sku.toLowerCase().includes(buscar) && !nom.toLowerCase().includes(buscar)) return;
+        const qty   = Number(it.cantidad  || 1);
+        const pUnit = Number(it.precioFinal || it.precioUnitario || 0);
+        const sub   = qty * pUnit;
+        filas.push({
+          fecha, ventaId: v.id,
+          sku, nombre: nom,
+          cantidad: qty, precioUnit: pUnit, subtotal: sub,
+          cliente:    v.clienteNombre  || '—',
+          vendedor:   v.vendedorNombre || '—',
+          metodoPago: v.metodoPago     || '—',
+          tipo: v.tipoVenta || 'formal'
+        });
+      });
+    }
+  });
+
+  // Apply buscar to single-line ventas too (when no items)
+  if (buscar) {
+    filas = filas.filter(f => f.sku.toLowerCase().includes(buscar) || f.nombre.toLowerCase().includes(buscar) || f.cliente.toLowerCase().includes(buscar));
+  }
+
+  // Sort by fecha desc then nombre
+  filas.sort((a,b) => b.fecha.localeCompare(a.fecha) || a.nombre.localeCompare(b.nombre));
+
+  // KPIs
+  const totUnidades  = filas.reduce((a,f) => a + f.cantidad, 0);
+  const totIngresos  = filas.reduce((a,f) => a + f.subtotal, 0);
+  const skusUnicos   = new Set(filas.map(f => f.sku === '—' ? f.nombre : f.sku)).size;
+  const clientesUniq = new Set(filas.map(f => f.cliente)).size;
+  const ventasUniq   = new Set(filas.map(f => f.ventaId)).size;
+
+  if (kpiEl) kpiEl.innerHTML = !filas.length ? '' : `
+    <div class="stat-card"><div class="stat-label">Líneas de Detalle</div><div class="stat-value stat-blue">${filas.length.toLocaleString()}</div><div class="stat-sub">${ventasUniq} venta(s)</div></div>
+    <div class="stat-card"><div class="stat-label">Unidades Vendidas</div><div class="stat-value stat-green">${totUnidades.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Ingresos</div><div class="stat-value stat-green">${fmtLPS(totIngresos)}</div></div>
+    <div class="stat-card"><div class="stat-label">Productos Únicos</div><div class="stat-value stat-gold">${skusUnicos}</div></div>
+    <div class="stat-card"><div class="stat-label">Clientes</div><div class="stat-value stat-teal">${clientesUniq}</div></div>
+  `;
+
+  if (resDes) {
+    if (!filas.length) {
+      resDes.textContent = 'Sin resultados para los filtros aplicados';
+    } else {
+      const rng = desde || hasta ? ` · ${desde||'…'} → ${hasta||'…'}` : '';
+      resDes.textContent = `${filas.length} línea(s) · ${totUnidades} unidad(es) · ${fmtLPS(totIngresos)}${rng}`;
+    }
+  }
+
+  if (!filas.length) {
+    body.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text3)">Sin resultados para los filtros aplicados</td></tr>';
+    return;
+  }
+
+  const tipoBadge = t => t === 'informal'
+    ? `<span style="background:rgba(243,156,18,.18);color:#f39c12;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700">🤝 Informal</span>`
+    : `<span style="background:rgba(61,106,255,.15);color:var(--accent);padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700">🧾 Formal</span>`;
+  const pagoIcon = { efectivo:'💵', tarjeta:'💳', transferencia:'🏦', parcial:'📆', wix:'🛍️', otro:'💱' };
+
+  body.innerHTML = filas.map(f => `
+    <tr style="border-bottom:1px solid var(--border2);transition:background .12s" onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background=''">
+      <td style="padding:8px 12px;font-size:12px;color:var(--text3);white-space:nowrap">${f.fecha}</td>
+      <td style="padding:8px 12px;font-size:12px;font-family:monospace;color:var(--text2)">${f.sku}</td>
+      <td style="padding:8px 12px;font-size:13px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${f.nombre}">${f.nombre}</td>
+      <td style="padding:8px 12px;font-size:13px;text-align:right;font-weight:700">${f.cantidad}</td>
+      <td style="padding:8px 12px;font-size:13px;text-align:right;color:var(--text2)">${fmtLPS(f.precioUnit)}</td>
+      <td style="padding:8px 12px;font-size:13px;text-align:right;font-weight:800;color:var(--accent2)">${fmtLPS(f.subtotal)}</td>
+      <td style="padding:8px 12px;font-size:12px;color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${f.cliente}">${f.cliente}</td>
+      <td style="padding:8px 12px;font-size:12px;color:var(--text2)">${f.vendedor}</td>
+      <td style="padding:8px 12px;font-size:12px;white-space:nowrap">${(pagoIcon[f.metodoPago]||'💱')} ${f.metodoPago}</td>
+      <td style="padding:8px 12px;white-space:nowrap">${tipoBadge(f.tipo)}</td>
+    </tr>`).join('');
+}
+
+function exportarReporteProductos() {
+  const body = document.getElementById('vRPPBody');
+  if (!body) return;
+  const filas = [...body.querySelectorAll('tr')];
+  if (!filas.length || filas[0].querySelector('td[colspan]')) {
+    showToast('⚠️ No hay datos para copiar','warn'); return;
+  }
+  const header = 'FECHA\tSKU\tPRODUCTO\tCANT.\tP. UNIT.\tSUBTOTAL\tCLIENTE\tVENDEDOR\tMÉT. PAGO\tTIPO';
+  const rows   = filas.map(tr => [...tr.querySelectorAll('td')].map(td => td.textContent.replace(/\t|\n/g,' ').trim()).join('\t'));
+  const texto  = [header, ...rows].join('\n');
+  navigator.clipboard.writeText(texto)
+    .then(()  => showToast('📋 Datos copiados al portapapeles','success'))
+    .catch(()  => showToast('❌ No se pudo copiar','error'));
 }
 
 // ===== PDF REPORTE VENDEDORES =====
