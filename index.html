@@ -2010,10 +2010,11 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                   <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:left">VENDEDOR</th>
                   <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:left">MÉTODO PAGO</th>
                   <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:left">TIPO</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:center">ACCIONES</th>
                 </tr>
               </thead>
               <tbody id="vRPPBody">
-                <tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text3)">Aplica filtros para ver resultados</td></tr>
+                <tr><td colspan="11" style="text-align:center;padding:32px;color:var(--text3)">Aplica filtros para ver resultados</td></tr>
               </tbody>
             </table>
           </div>
@@ -8961,7 +8962,7 @@ function renderReporteProductos() {
   }
 
   if (!filas.length) {
-    body.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text3)">Sin resultados para los filtros aplicados</td></tr>';
+    body.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:32px;color:var(--text3)">Sin resultados para los filtros aplicados</td></tr>';
     return;
   }
 
@@ -8969,6 +8970,7 @@ function renderReporteProductos() {
     ? `<span style="background:rgba(243,156,18,.18);color:#f39c12;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700">🤝 Informal</span>`
     : `<span style="background:rgba(61,106,255,.15);color:var(--accent);padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700">🧾 Formal</span>`;
   const pagoIcon = { efectivo:'💵', tarjeta:'💳', transferencia:'🏦', parcial:'📆', wix:'🛍️', otro:'💱' };
+  const puedeEditar = ['admin','gerencia'].includes(currentUser?.rol);
 
   body.innerHTML = filas.map(f => `
     <tr style="border-bottom:1px solid var(--border2);transition:background .12s" onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background=''">
@@ -8982,6 +8984,16 @@ function renderReporteProductos() {
       <td style="padding:8px 12px;font-size:12px;color:var(--text2)">${f.vendedor}</td>
       <td style="padding:8px 12px;font-size:12px;white-space:nowrap">${(pagoIcon[f.metodoPago]||'💱')} ${f.metodoPago}</td>
       <td style="padding:8px 12px;white-space:nowrap">${tipoBadge(f.tipo)}</td>
+      <td style="padding:6px 10px;white-space:nowrap;text-align:center">
+        <button onclick="verDetalleVenta('${f.ventaId}')"
+          style="padding:4px 9px;font-size:11px;border:none;border-radius:6px;cursor:pointer;background:rgba(61,106,255,.18);color:var(--accent);font-weight:700;margin-right:4px;transition:background .15s"
+          onmouseenter="this.style.background='rgba(61,106,255,.35)'" onmouseleave="this.style.background='rgba(61,106,255,.18)'"
+          title="Ver detalle de la venta">👁 Ver</button>
+        ${puedeEditar ? `<button onclick="editarVenta('${f.ventaId}')"
+          style="padding:4px 9px;font-size:11px;border:none;border-radius:6px;cursor:pointer;background:rgba(0,200,160,.15);color:#00c8a0;font-weight:700;transition:background .15s"
+          onmouseenter="this.style.background='rgba(0,200,160,.3)'" onmouseleave="this.style.background='rgba(0,200,160,.15)'"
+          title="Editar venta">✏️ Editar</button>` : ''}
+      </td>
     </tr>`).join('');
 }
 
@@ -8993,7 +9005,11 @@ function exportarReporteProductos() {
     showToast('⚠️ No hay datos para copiar','warn'); return;
   }
   const header = 'FECHA\tSKU\tPRODUCTO\tCANT.\tP. UNIT.\tSUBTOTAL\tCLIENTE\tVENDEDOR\tMÉT. PAGO\tTIPO';
-  const rows   = filas.map(tr => [...tr.querySelectorAll('td')].map(td => td.textContent.replace(/\t|\n/g,' ').trim()).join('\t'));
+  // Exclude last column (acciones / buttons)
+  const rows   = filas.map(tr => {
+    const celdas = [...tr.querySelectorAll('td')];
+    return celdas.slice(0, celdas.length - 1).map(td => td.textContent.replace(/\t|\n/g,' ').trim()).join('\t');
+  });
   const texto  = [header, ...rows].join('\n');
   navigator.clipboard.writeText(texto)
     .then(()  => showToast('📋 Datos copiados al portapapeles','success'))
