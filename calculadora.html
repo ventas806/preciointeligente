@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Calculadora">
+<meta name="theme-color" content="#0d0f14">
+<link rel="manifest" href="calculadora-manifest.json">
+<title>🧮 Calculadora Focus</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+  :root{
+    --bg:#0d0f14;--bg2:#13161e;--bg3:#1a1e28;--bg4:#212638;
+    --border:#2a2f3d;--border2:#333a4f;
+    --text:#e8eaf0;--text2:#a0a8c0;--text3:#606880;
+    --accent:#3d6aff;--gold:#f5c642;--green:#00c8a0;--red:#e05260;
+    --radius:14px;--radius2:10px;
+    --safe-top:env(safe-area-inset-top,0px);
+    --safe-bot:env(safe-area-inset-bottom,0px);
+  }
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}
+
+  /* ── Layout ── */
+  #app{display:flex;flex-direction:column;height:100%;padding-top:var(--safe-top)}
+  #header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 18px 10px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+  #header h1{font-size:17px;font-weight:800;flex:1}
+  #header .sub{font-size:11px;color:var(--text3);margin-top:1px}
+  #content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(68px + var(--safe-bot))}
+  #bottomNav{position:fixed;bottom:0;left:0;right:0;height:calc(60px + var(--safe-bot));background:var(--bg2);border-top:1px solid var(--border);display:flex;padding-bottom:var(--safe-bot)}
+  .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10px;font-weight:700;color:var(--text3);border:none;background:none;cursor:pointer;transition:color .15s;padding-bottom:2px}
+  .nav-btn.active{color:var(--accent)}
+  .nav-btn .icon{font-size:22px;line-height:1}
+
+  /* ── Screens ── */
+  .screen{display:none;padding:16px}
+  .screen.active{display:block}
+
+  /* ── Login ── */
+  #loginWrap{display:flex;align-items:center;justify-content:center;min-height:100%;padding:32px 20px}
+  .login-box{width:100%;max-width:340px}
+  .login-logo{text-align:center;font-size:56px;margin-bottom:8px}
+  .login-title{text-align:center;font-size:20px;font-weight:800;margin-bottom:4px}
+  .login-sub{text-align:center;font-size:13px;color:var(--text3);margin-bottom:32px}
+
+  /* ── Cards ── */
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+  .card-title{font-size:13px;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px}
+
+  /* ── Form elements ── */
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+  .field input,.field select{
+    width:100%;padding:14px 16px;
+    background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);
+    color:var(--text);font-size:16px;outline:none;
+    -webkit-appearance:none;appearance:none;
+    transition:border-color .15s
+  }
+  .field input:focus,.field select:focus{border-color:var(--accent)}
+  .field .prefix-wrap{position:relative}
+  .field .prefix-wrap .pfx{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:15px;pointer-events:none}
+  .field .prefix-wrap input{padding-left:32px}
+
+  /* ── Buttons ── */
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;border-radius:var(--radius2);border:none;font-size:15px;font-weight:800;cursor:pointer;transition:opacity .15s;min-height:52px}
+  .btn:active{opacity:.75}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-success{background:var(--green);color:#000}
+  .btn-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+  .btn-danger{background:rgba(224,82,96,.15);color:var(--red);border:1px solid rgba(224,82,96,.3)}
+  .btn-sm{padding:10px 14px;font-size:13px;min-height:38px;width:auto}
+
+  /* ── Estado toggle ── */
+  .estado-toggle{display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:4px;gap:4px;margin-bottom:14px}
+  .estado-btn{flex:1;padding:11px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;background:transparent;color:var(--text3)}
+  .estado-btn.active-nuevo{background:var(--accent);color:#fff}
+  .estado-btn.active-usado{background:var(--gold);color:#000}
+
+  /* ── Result rows ── */
+  .result-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+  .result-row:last-child{border-bottom:none}
+  .result-row .lbl{font-size:13px;color:var(--text2)}
+  .result-row .val{font-size:14px;font-weight:700;color:var(--text)}
+  .result-big{display:flex;justify-content:space-between;align-items:center;padding:14px 0 4px}
+  .result-big .lbl{font-size:14px;font-weight:700;color:var(--green)}
+  .result-big .val{font-size:26px;font-weight:900;color:var(--green)}
+
+  /* ── Saved list ── */
+  .saved-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;position:relative}
+  .saved-item .item-nombre{font-size:15px;font-weight:700;margin-bottom:6px;padding-right:70px}
+  .saved-item .item-meta{font-size:12px;color:var(--text3);margin-bottom:10px}
+  .saved-item .item-prices{display:flex;gap:12px;margin-bottom:10px}
+  .saved-item .item-price-box{flex:1;background:var(--bg3);border-radius:8px;padding:8px 10px;text-align:center}
+  .saved-item .item-price-lbl{font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:3px}
+  .saved-item .item-price-val{font-size:14px;font-weight:800}
+  .saved-item .item-actions{display:flex;gap:8px}
+  .saved-item .badge-estado{position:absolute;top:14px;right:14px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px}
+  .badge-nuevo{background:rgba(61,106,255,.15);color:var(--accent)}
+  .badge-usado{background:rgba(245,198,66,.15);color:var(--gold)}
+  .roi-green{color:var(--green)}
+  .roi-gold{color:var(--gold)}
+  .roi-red{color:var(--red)}
+
+  /* ── Search ── */
+  .search-wrap{position:relative;margin-bottom:14px}
+  .search-wrap input{width:100%;padding:13px 16px 13px 42px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:16px;outline:none;-webkit-appearance:none}
+  .search-wrap input:focus{border-color:var(--accent)}
+  .search-wrap .search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none}
+
+  /* ── Empty state ── */
+  .empty{text-align:center;padding:48px 20px;color:var(--text3)}
+  .empty .empty-icon{font-size:48px;margin-bottom:12px}
+  .empty .empty-text{font-size:14px}
+
+  /* ── Toast ── */
+  #toast{position:fixed;bottom:calc(72px + var(--safe-bot));left:50%;transform:translateX(-50%) translateY(20px);background:#1e2233;border:1px solid var(--border2);border-radius:12px;padding:12px 20px;font-size:13px;font-weight:600;white-space:nowrap;opacity:0;transition:all .25s;z-index:9999;pointer-events:none;max-width:calc(100vw - 32px);text-align:center}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* ── Loader ── */
+  #loader{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:9998}
+  #loader .spin{width:40px;height:40px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+  #loader p{font-size:13px;color:var(--text3)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ── Divider ── */
+  .divider{height:1px;background:var(--border);margin:14px 0}
+
+  /* ── Banda chip ── */
+  .banda-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(245,198,66,.12);color:var(--gold)}
+
+  /* ── Animations ── */
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .fade-in{animation:fadeIn .2s ease both}
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="spin"></div>
+  <p>Conectando...</p>
+</div>
+
+<!-- ════════════ LOGIN ════════════ -->
+<div id="loginScreen" style="display:none;height:100%;overflow-y:auto;background:var(--bg)">
+  <div id="loginWrap">
+    <div class="login-box fade-in">
+      <div class="login-logo">🧮</div>
+      <div class="login-title">Calculadora Focus</div>
+      <div class="login-sub">Inicia sesión para continuar</div>
+
+      <div class="field">
+        <label>Usuario</label>
+        <input type="text" id="lUser" placeholder="tu usuario" autocomplete="username" autocapitalize="none">
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input type="password" id="lPass" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div id="lError" style="display:none;background:rgba(224,82,96,.12);border:1px solid rgba(224,82,96,.3);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--red);margin-bottom:16px;text-align:center"></div>
+      <button class="btn btn-primary" id="lBtn" onclick="doLogin()">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ APP ════════════ -->
+<div id="app" style="display:none">
+
+  <div id="header">
+    <div>
+      <div id="header-title" style="font-size:17px;font-weight:800">🧮 Calcular Precio</div>
+      <div id="header-user" style="font-size:11px;color:var(--text3);margin-top:1px"></div>
+    </div>
+    <button onclick="doLogout()" style="background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;padding:4px">⏏</button>
+  </div>
+
+  <div id="content">
+
+    <!-- ── Pantalla: Calcular ── -->
+    <div id="screenCalc" class="screen active" style="padding-bottom:0">
+
+      <!-- Estado toggle -->
+      <div style="padding:16px 16px 0">
+        <div class="estado-toggle">
+          <button class="estado-btn active-nuevo" id="eBtnNuevo" onclick="setEstado('Nuevo')">📦 Nuevo</button>
+          <button class="estado-btn" id="eBtnUsado" onclick="setEstado('Usado')">🔄 Usado</button>
+        </div>
+        <div id="eHint" style="font-size:11px;color:var(--text3);text-align:center;margin-bottom:14px;margin-top:-6px">Aplica ISV 15%</div>
+      </div>
+
+      <!-- Formulario -->
+      <div style="padding:0 16px">
+        <div class="card">
+          <div class="card-title">📋 Datos del Producto</div>
+
+          <div class="field">
+            <label>Nombre del Producto</label>
+            <input type="text" id="cNombre" placeholder="Ej. NEEWER Filtro ND 49mm" oninput="recalc()">
+          </div>
+          <div class="field">
+            <label>Costo USD</label>
+            <div class="prefix-wrap">
+              <span class="pfx">$</span>
+              <input type="number" id="cCostoUSD" placeholder="0.00" step="0.01" min="0" inputmode="decimal" oninput="recalc()">
+            </div>
+          </div>
+          <div class="field">
+            <label>Flete en L</label>
+            <div class="prefix-wrap">
+              <span class="pfx">L</span>
+              <input type="number" id="cFleteL" placeholder="0.00" step="0.01" min="0" inputmode="decimal" oninput="recalc()">
+            </div>
+          </div>
+          <div class="field">
+            <label>Nivel de Compra</label>
+            <select id="cNivel" onchange="recalc()">
+              <option value="excelente">⭐ Excelente (mayor margen)</option>
+              <option value="normal" selected>✅ Normal</option>
+              <option value="alto">🔺 Alto (menor margen)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Override Banda <span style="color:var(--text3);font-weight:400;font-size:10px">(opcional)</span></label>
+            <select id="cOverride" onchange="recalc()">
+              <option value="">🤖 Automático</option>
+              <option value="Bajo">Bajo (USD 0–30)</option>
+              <option value="Medio">Medio (USD 30–400)</option>
+              <option value="Alto">Alto (USD 400–1,000)</option>
+              <option value="Premium">Premium (USD 1,000+)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Ajuste Manual %</label>
+            <div class="prefix-wrap">
+              <span class="pfx" style="left:auto;right:14px">%</span>
+              <input type="number" id="cAjuste" placeholder="0" step="0.1" inputmode="decimal" oninput="recalc()" style="padding-left:16px;padding-right:36px">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resultados -->
+      <div id="resultPanel" style="padding:0 16px;display:none" class="fade-in">
+
+        <div class="card" style="border-left:3px solid var(--accent)">
+          <div class="card-title">📦 Costo Total</div>
+          <div class="result-row">
+            <span class="lbl">Tipo de cambio</span>
+            <span class="val" id="rTC">—</span>
+          </div>
+          <div class="result-row">
+            <span class="lbl">Costo USD total</span>
+            <span class="val" id="rCostoUSD">—</span>
+          </div>
+          <div class="result-row" style="border-bottom:none">
+            <span class="lbl" style="font-weight:700;color:var(--text)">Costo en L</span>
+            <span class="val" style="font-size:18px" id="rCostoLPS">—</span>
+          </div>
+        </div>
+
+        <div class="card" style="border-left:3px solid var(--gold)">
+          <div class="card-title">📊 Banda y Margen</div>
+          <div class="result-row">
+            <span class="lbl">Banda auto</span>
+            <span class="val" id="rBandaAuto">—</span>
+          </div>
+          <div class="result-row">
+            <span class="lbl">Banda efectiva</span>
+            <span class="val" id="rBandaEf" style="color:var(--gold)">—</span>
+          </div>
+          <div class="result-row">
+            <span class="lbl">Margen base</span>
+            <span class="val" id="rMargenBase">—</span>
+          </div>
+          <div class="result-row" style="border-bottom:none">
+            <span class="lbl" style="font-weight:700;color:var(--text)">Margen final</span>
+            <span class="val" style="font-size:18px;color:var(--gold)" id="rMargenFinal">—</span>
+          </div>
+        </div>
+
+        <div class="card" style="border-left:3px solid var(--green)">
+          <div class="card-title">💰 Precios Sugeridos</div>
+          <div class="result-row">
+            <span class="lbl">Precio Neto (sin ISV)</span>
+            <span class="val" id="rPrecioNeto">—</span>
+          </div>
+          <div class="result-row" id="rFilaISV">
+            <span class="lbl">ISV (15%)</span>
+            <span class="val" id="rISV" style="color:var(--text3)">—</span>
+          </div>
+          <div class="result-big">
+            <span class="lbl">Precio Final</span>
+            <span class="val" id="rPrecioFinal">—</span>
+          </div>
+        </div>
+
+        <div class="card" style="border-left:3px solid var(--accent)">
+          <div class="card-title">📈 Rentabilidad</div>
+          <div class="result-row">
+            <span class="lbl">Utilidad bruta</span>
+            <span class="val" id="rUtil">—</span>
+          </div>
+          <div class="result-row" style="border-bottom:none">
+            <span class="lbl" style="font-weight:700;color:var(--text)">ROI / Costo %</span>
+            <span style="font-size:28px;font-weight:900" id="rROI">—</span>
+          </div>
+          <div style="font-size:11px;color:var(--text3);text-align:right;margin-top:4px" id="rROIRef"></div>
+        </div>
+
+        <button class="btn btn-success" id="btnGuardar" onclick="guardar()" style="margin-bottom:8px">
+          💾 Guardar Cálculo
+        </button>
+        <button class="btn btn-ghost" id="btnCancelarEdit" style="display:none;margin-bottom:8px" onclick="cancelarEdit()">
+          ✕ Cancelar Edición
+        </button>
+        <div style="height:8px"></div>
+      </div>
+
+      <div id="noDataHint" style="text-align:center;padding:20px;color:var(--text3);font-size:13px">
+        Ingresa el Costo USD o Flete para ver resultados
+      </div>
+    </div>
+
+    <!-- ── Pantalla: Guardados ── -->
+    <div id="screenGuardados" class="screen">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="gBuscar" placeholder="Buscar producto..." oninput="filtrarGuardados()" inputmode="search">
+      </div>
+      <div id="gCount" style="font-size:12px;color:var(--text3);margin-bottom:12px;text-align:center"></div>
+      <div id="gLista"></div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- Bottom nav -->
+  <nav id="bottomNav">
+    <button class="nav-btn active" id="navCalc" onclick="showScreen('calc')">
+      <span class="icon">🧮</span>
+      Calcular
+    </button>
+    <button class="nav-btn" id="navGuardados" onclick="showScreen('guardados')">
+      <span class="icon">📋</span>
+      Guardados
+    </button>
+  </nav>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════
+const SB_URL = 'https://uzhjnedhmbvgfqqssuov.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6aGpuZWRobWJ2Z2ZxcXNzdW92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMjA1MTgsImV4cCI6MjA5MDg5NjUxOH0.w8oomn73rEZWqKv4RA56uCrBwv1z4VYnks7fyhafqz8';
+const { createClient } = supabase;
+const sb = createClient(SB_URL, SB_KEY);
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let currentUser  = null;
+let _estado      = 'Nuevo';
+let _editId      = null;
+let _lista       = [];
+let _lastResult  = null;
+let _params      = {
+  tipoCambio: 27,
+  isvNuevo: 0.15,
+  isvUsado: 0,
+  bandas: [
+    { banda:'Bajo',    excelente:.60, normal:.56, alto:.52, desde:0,      hasta:30     },
+    { banda:'Medio',   excelente:.46, normal:.42, alto:.38, desde:30.01,  hasta:400    },
+    { banda:'Alto',    excelente:.34, normal:.30, alto:.26, desde:400.01, hasta:1000   },
+    { banda:'Premium', excelente:.22, normal:.18, alto:.14, desde:1001,   hasta:999999 }
+  ],
+  roiRef: [
+    { banda:'Bajo',    excelente:.60, normal:.56, alto:.52 },
+    { banda:'Medio',   excelente:.46, normal:.42, alto:.38 },
+    { banda:'Alto',    excelente:.34, normal:.30, alto:.26 },
+    { banda:'Premium', excelente:.22, normal:.18, alto:.14 }
+  ]
+};
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+window.addEventListener('load', async () => {
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('calculadora-sw.js').catch(() => {});
+  }
+
+  // Restore session
+  const saved = localStorage.getItem('calc_user');
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+      await loadParams();
+      showApp();
+    } catch(e) {
+      showLogin();
+    }
+  } else {
+    showLogin();
+  }
+});
+
+function showLogin() {
+  document.getElementById('loader').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'block';
+  document.getElementById('app').style.display = 'none';
+  setTimeout(() => document.getElementById('lUser').focus(), 300);
+}
+
+function showApp() {
+  document.getElementById('loader').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('header-user').textContent = currentUser.nombre || currentUser.user || '';
+  setEstado('Nuevo');
+}
+
+// ═══════════════════════════════════════════════
+//  LOGIN
+// ═══════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('loginScreen').style.display !== 'none') doLogin();
+});
+
+async function doLogin() {
+  const user = document.getElementById('lUser').value.trim();
+  const pass = document.getElementById('lPass').value;
+  const errEl = document.getElementById('lError');
+  const btn   = document.getElementById('lBtn');
+  errEl.style.display = 'none';
+  if (!user || !pass) { showErr('Completa usuario y contraseña'); return; }
+  btn.disabled = true; btn.textContent = 'Ingresando...';
+  try {
+    const { data, error } = await sb.rpc('login_usuario', { p_user: user, p_pass: pass });
+    if (error || !data) throw new Error(error?.message || 'Sin respuesta');
+    const u = Array.isArray(data) ? data[0] : data;
+    if (!u || u.error) throw new Error(u?.error || 'Credenciales incorrectas');
+    currentUser = u;
+    localStorage.setItem('calc_user', JSON.stringify(u));
+    await loadParams();
+    showApp();
+  } catch(e) {
+    showErr(e.message || 'Error de conexión');
+  }
+  btn.disabled = false; btn.textContent = 'Entrar';
+}
+
+function showErr(msg) {
+  const el = document.getElementById('lError');
+  el.textContent = '❌ ' + msg;
+  el.style.display = 'block';
+}
+
+function doLogout() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  localStorage.removeItem('calc_user');
+  currentUser = null;
+  showLogin();
+}
+
+// ═══════════════════════════════════════════════
+//  PARAMS desde Supabase
+// ═══════════════════════════════════════════════
+async function loadParams() {
+  try {
+    const { data } = await sb.from('parametros').select('clave,valor');
+    if (!data) return;
+    data.forEach(row => {
+      if (row.clave === 'tipoCambio') _params.tipoCambio = parseFloat(row.valor) || 27;
+      if (row.clave === 'bandas')     _params.bandas     = row.valor;
+      if (row.clave === 'roiRef')     _params.roiRef     = row.valor;
+      if (row.clave === 'isvNuevo')   _params.isvNuevo   = parseFloat(row.valor) || 0.15;
+      if (row.clave === 'isvUsado')   _params.isvUsado   = parseFloat(row.valor) || 0;
+    });
+  } catch(e) { /* usar defaults */ }
+}
+
+// ═══════════════════════════════════════════════
+//  NAVEGACIÓN
+// ═══════════════════════════════════════════════
+function showScreen(name) {
+  ['calc','guardados'].forEach(s => {
+    document.getElementById('screen' + cap(s)).classList.toggle('active', s === name);
+    document.getElementById('nav' + cap(s)).classList.toggle('active', s === name);
+  });
+  const titles = { calc:'🧮 Calcular Precio', guardados:'📋 Cálculos Guardados' };
+  document.getElementById('header-title').textContent = titles[name] || '';
+  if (name === 'guardados') cargarGuardados();
+}
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+// ═══════════════════════════════════════════════
+//  CALCULADORA
+// ═══════════════════════════════════════════════
+function setEstado(estado) {
+  _estado = estado;
+  const bN = document.getElementById('eBtnNuevo');
+  const bU = document.getElementById('eBtnUsado');
+  const hint = document.getElementById('eHint');
+  bN.className = 'estado-btn' + (estado === 'Nuevo' ? ' active-nuevo' : '');
+  bU.className = 'estado-btn' + (estado === 'Usado' ? ' active-usado' : '');
+  hint.textContent = estado === 'Nuevo' ? 'Aplica ISV 15%' : 'Sin ISV — producto usado';
+  recalc();
+}
+
+function calcPrecio(costoUSD, costoExtra, fleteL, estado, nivel, overrideBanda, ajusteManual) {
+  const tc = _params.tipoCambio;
+  const fleteUSD      = fleteL / tc;
+  const costoTotalUSD = costoUSD + costoExtra + fleteUSD;
+  const costoTotalLPS = costoTotalUSD * tc;
+  const isv = estado === 'Nuevo' ? _params.isvNuevo : _params.isvUsado;
+
+  let bandaAuto = 'Bajo';
+  for (const b of _params.bandas) {
+    if (costoTotalUSD >= b.desde && costoTotalUSD <= b.hasta) { bandaAuto = b.banda; break; }
+  }
+  const bandaEfectiva = overrideBanda || bandaAuto;
+  const nivelKey = nivel.toLowerCase();
+  const bandaRow  = _params.bandas.find(b => b.banda === bandaEfectiva) || _params.bandas[0];
+  const margenBase  = bandaRow[nivelKey] || bandaRow.normal || 0.40;
+  const margenFinal = margenBase + ajusteManual;
+  const precioNeto  = costoTotalLPS * (1 + margenFinal);
+  const precioConISV = estado === 'Nuevo' ? precioNeto * (1 + isv) : precioNeto;
+  const precioFinalSinISV = estado === 'Nuevo' ? precioConISV / (1 + isv) : precioConISV;
+  const utilBrutaLPS = precioFinalSinISV - costoTotalLPS;
+  const roi = costoTotalLPS > 0 ? utilBrutaLPS / costoTotalLPS : 0;
+  const roiRefRow = _params.roiRef.find(b => b.banda === bandaEfectiva) || _params.roiRef[0];
+  const roiRef    = roiRefRow[nivelKey] || roiRefRow.normal || 0.20;
+
+  return { costoTotalUSD, costoTotalLPS, bandaAuto, bandaEfectiva, overrideBanda,
+    margenBase, margenFinal, precioNeto, precioConISV, utilBrutaLPS, roi, roiRef };
+}
+
+function recalc() {
+  const costoUSD = parseFloat(document.getElementById('cCostoUSD').value) || 0;
+  const fleteL   = parseFloat(document.getElementById('cFleteL').value)   || 0;
+  const nivel    = document.getElementById('cNivel').value || 'normal';
+  const override = document.getElementById('cOverride').value || '';
+  const ajuste   = (parseFloat(document.getElementById('cAjuste').value) || 0) / 100;
+
+  const hint = document.getElementById('noDataHint');
+  const panel = document.getElementById('resultPanel');
+
+  if (!costoUSD && !fleteL) {
+    hint.style.display = 'block'; panel.style.display = 'none'; return;
+  }
+  hint.style.display = 'none'; panel.style.display = 'block';
+
+  const r = calcPrecio(costoUSD, 0, fleteL, _estado,
+    nivel.charAt(0).toUpperCase() + nivel.slice(1), override, ajuste);
+  _lastResult = r;
+
+  const fmtL = v => 'L ' + parseFloat(v||0).toLocaleString('es-HN',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmtU = v => '$ ' + parseFloat(v||0).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmtP = v => (parseFloat(v||0)*100).toFixed(1)+'%';
+  const st   = (id, t) => { const e=document.getElementById(id); if(e) e.textContent=t; };
+  const sc   = (id, c) => { const e=document.getElementById(id); if(e) e.style.color=c; };
+
+  const tc = _params.tipoCambio;
+  st('rTC',         'L ' + tc.toFixed(2) + ' / USD');
+  st('rCostoUSD',   fmtU(r.costoTotalUSD));
+  st('rCostoLPS',   fmtL(r.costoTotalLPS));
+  st('rBandaAuto',  r.bandaAuto);
+  st('rBandaEf',    r.bandaEfectiva + (r.overrideBanda ? ' ⚠️' : ''));
+  st('rMargenBase',  fmtP(r.margenBase));
+  st('rMargenFinal', fmtP(r.margenFinal));
+  st('rPrecioNeto',  fmtL(r.precioNeto));
+  st('rISV',        _estado==='Nuevo' ? fmtL(r.precioConISV - r.precioNeto) : 'No aplica');
+  st('rPrecioFinal', fmtL(r.precioConISV));
+  st('rUtil',       fmtL(r.utilBrutaLPS));
+  st('rROI',        fmtP(r.roi));
+  st('rROIRef',     'Ref. banda: ' + fmtP(r.roiRef));
+
+  const roiColor = r.roi>=0.4 ? 'var(--green)' : r.roi>=0.25 ? 'var(--gold)' : 'var(--red)';
+  sc('rROI', roiColor);
+  const filaISV = document.getElementById('rFilaISV');
+  if (filaISV) filaISV.style.opacity = _estado==='Nuevo' ? '1' : '0.45';
+}
+
+// ═══════════════════════════════════════════════
+//  GUARDAR / EDITAR
+// ═══════════════════════════════════════════════
+async function guardar() {
+  const r = _lastResult;
+  if (!r) { toast('⚠️ Calcula primero', 'warn'); return; }
+  const nombre   = (document.getElementById('cNombre').value||'').trim() || 'Sin nombre';
+  const costoUSD = parseFloat(document.getElementById('cCostoUSD').value)||0;
+  const fleteL   = parseFloat(document.getElementById('cFleteL').value)||0;
+  const nivel    = document.getElementById('cNivel').value||'normal';
+  const override = document.getElementById('cOverride').value||'';
+  const ajuste   = parseFloat(document.getElementById('cAjuste').value)||0;
+
+  const row = {
+    fecha: new Date().toISOString().slice(0,10),
+    nombre, costo_usd: costoUSD, flete_l: fleteL,
+    nivel: nivel.charAt(0).toUpperCase() + nivel.slice(1),
+    override_banda: override, ajuste, estado: _estado,
+    costo_total_usd: r.costoTotalUSD, costo_total_lps: r.costoTotalLPS,
+    banda_efectiva: r.bandaEfectiva, margen_final: r.margenFinal,
+    precio_neto: r.precioNeto, precio_con_isv: r.precioConISV,
+    util_bruta_lps: r.utilBrutaLPS, roi: r.roi,
+    registrado_por: currentUser?.nombre || currentUser?.user || '',
+    updated_at: new Date().toISOString()
+  };
+
+  const btn = document.getElementById('btnGuardar');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  try {
+    let err;
+    if (_editId) {
+      ({ error: err } = await sb.from('calculadora_precios').update(row).eq('id', _editId));
+    } else {
+      ({ error: err } = await sb.from('calculadora_precios').insert(row));
+    }
+    if (err) throw err;
+    toast(_editId ? '✅ Actualizado' : '✅ Guardado en Supabase');
+    cancelarEdit();
+  } catch(e) {
+    toast('❌ ' + e.message, 'error');
+  }
+  btn.disabled = false; btn.textContent = '💾 Guardar Cálculo';
+}
+
+function cancelarEdit() {
+  _editId = null;
+  document.getElementById('btnGuardar').textContent = '💾 Guardar Cálculo';
+  document.getElementById('btnCancelarEdit').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════
+//  GUARDADOS
+// ═══════════════════════════════════════════════
+async function cargarGuardados() {
+  const lista = document.getElementById('gLista');
+  lista.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">Cargando...</div></div>';
+  try {
+    const { data, error } = await sb.from('calculadora_precios')
+      .select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    _lista = data || [];
+  } catch(e) {
+    toast('❌ Error: ' + e.message, 'error');
+    _lista = [];
+  }
+  filtrarGuardados();
+}
+
+function filtrarGuardados() {
+  const q = (document.getElementById('gBuscar')?.value||'').toLowerCase();
+  const filtrada = q ? _lista.filter(x => (x.nombre||'').toLowerCase().includes(q)) : _lista;
+  const count = document.getElementById('gCount');
+  count.textContent = filtrada.length + ' cálculo' + (filtrada.length===1?'':'s');
+  renderGuardados(filtrada);
+}
+
+function renderGuardados(lista) {
+  const el = document.getElementById('gLista');
+  if (!lista.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🧮</div><div class="empty-text">No hay cálculos guardados</div></div>';
+    return;
+  }
+
+  const fmtL = v => 'L ' + parseFloat(v||0).toLocaleString('es-HN',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmtP = v => (parseFloat(v||0)*100).toFixed(1)+'%';
+  const roiCls = r => r>=0.4?'roi-green':r>=0.25?'roi-gold':'roi-red';
+
+  el.innerHTML = lista.map(x => `
+    <div class="saved-item fade-in">
+      <div class="badge-estado ${x.estado==='Nuevo'?'badge-nuevo':'badge-usado'}">${x.estado==='Nuevo'?'📦 Nuevo':'🔄 Usado'}</div>
+      <div class="item-nombre">${x.nombre}</div>
+      <div class="item-meta">${x.fecha} · Banda: <strong style="color:var(--gold)">${x.banda_efectiva}</strong> · por ${x.registrado_por||'—'}</div>
+      <div class="item-prices">
+        <div class="item-price-box">
+          <div class="item-price-lbl">Costo USD</div>
+          <div class="item-price-val">$${parseFloat(x.costo_usd).toFixed(2)}</div>
+        </div>
+        <div class="item-price-box">
+          <div class="item-price-lbl">Precio Final</div>
+          <div class="item-price-val" style="color:var(--green)">${fmtL(x.precio_con_isv)}</div>
+        </div>
+        <div class="item-price-box">
+          <div class="item-price-lbl">ROI</div>
+          <div class="item-price-val ${roiCls(x.roi)}">${fmtP(x.roi)}</div>
+        </div>
+      </div>
+      <div class="item-actions">
+        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="editarItem('${x.id}')">✏️ Editar</button>
+        <button class="btn btn-danger btn-sm" style="flex:1" onclick="eliminarItem('${x.id}', ${JSON.stringify(x.nombre)})">🗑️ Eliminar</button>
+      </div>
+    </div>`).join('');
+}
+
+function editarItem(id) {
+  const x = _lista.find(i => i.id === id);
+  if (!x) return;
+  showScreen('calc');
+  const sv = (elId, val) => { const e=document.getElementById(elId); if(e) e.value=val; };
+  sv('cNombre',  x.nombre);
+  sv('cCostoUSD', x.costo_usd);
+  sv('cFleteL',   x.flete_l);
+  sv('cNivel',    (x.nivel||'Normal').toLowerCase());
+  sv('cOverride', x.override_banda||'');
+  sv('cAjuste',   x.ajuste||0);
+  setEstado(x.estado||'Nuevo');
+  _editId = id;
+  document.getElementById('btnGuardar').textContent = '💾 Actualizar Cálculo';
+  document.getElementById('btnCancelarEdit').style.display = '';
+  recalc();
+  toast('✏️ Editando: ' + x.nombre, 'info');
+  document.getElementById('content').scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function eliminarItem(id, nombre) {
+  if (!confirm('¿Eliminar "' + nombre + '"?')) return;
+  try {
+    const { error } = await sb.from('calculadora_precios').delete().eq('id', id);
+    if (error) throw error;
+    _lista = _lista.filter(i => i.id !== id);
+    filtrarGuardados();
+    toast('🗑️ Eliminado');
+  } catch(e) {
+    toast('❌ ' + e.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
+let _toastTimer;
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.borderColor = type==='error' ? 'rgba(224,82,96,.4)' : type==='warn' ? 'rgba(245,198,66,.4)' : 'var(--border2)';
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
