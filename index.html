@@ -625,6 +625,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
       <button class="nav-tab" onclick="showTab('inventario')" id="tabInventario">📊 Inventario</button>
       <button class="nav-tab" onclick="showTab('liquidacion')" id="tabLiquidacion">💳 Liquidación</button>
       <button class="nav-tab" onclick="showTab('gastos')" id="tabGastos">💸 Gastos</button>
+      <button class="nav-tab" onclick="showTab('calculadora')" id="tabCalculadora">🧮 Calculadora</button>
       <button class="nav-tab" onclick="showTab('parametros')" id="tabParametros">⚙️ Parámetros</button>
       <button class="nav-tab" onclick="showTab('historial')" id="tabHistorial">🕓 Historial</button>
       <button class="nav-tab" onclick="showTab('aprobacion')" id="tabAprobacion">🔔 Aprobaciones <span id="badgePendientes" style="display:none;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
@@ -1511,6 +1512,226 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
       <!-- Panel de Reportes (oculto por defecto) -->
       <div id="gastosReportes" style="display:none;margin-top:20px"></div>
     </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- CALCULADORA DE PRECIOS                                    -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div class="tab-content" id="tab-calculadora">
+
+      <!-- Sub-nav -->
+      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="cpSubCalc"      onclick="cpShowSub('calc')">🧮 Calcular Precio</button>
+        <button class="btn btn-ghost"   id="cpSubGuardados" onclick="cpShowSub('guardados')">📋 Guardados</button>
+      </div>
+
+      <!-- ── Panel Calcular ── -->
+      <div id="cpPanelCalc">
+        <div style="display:grid;grid-template-columns:1fr 400px;gap:20px;align-items:start">
+
+          <!-- Formulario -->
+          <div class="card">
+            <div class="card-header" style="margin-bottom:16px">
+              <div class="card-title">🧮 Calculadora de Precios</div>
+              <div class="card-sub">Calcula el precio sugerido usando las bandas de margen configuradas</div>
+            </div>
+
+            <!-- Estado Nuevo / Usado -->
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px">
+              <span style="font-size:13px;font-weight:700;color:var(--text2)">Estado del Producto:</span>
+              <div style="display:flex;gap:6px">
+                <button id="cpBtnNuevo" onclick="cpSetEstado('Nuevo')"
+                  style="padding:7px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:var(--accent);color:#fff;transition:all .2s">📦 Nuevo</button>
+                <button id="cpBtnUsado" onclick="cpSetEstado('Usado')"
+                  style="padding:7px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text2);transition:all .2s">🔄 Usado</button>
+              </div>
+              <span id="cpEstadoHint" style="font-size:11px;color:var(--text3)">Producto nuevo — aplica ISV 15%</span>
+            </div>
+
+            <div class="form-grid fg3">
+              <div class="form-field field-full">
+                <label>NOMBRE DEL PRODUCTO</label>
+                <input type="text" id="cpNombre" placeholder="Ej. NEEWER 49mm Filtro ND..." oninput="cpRecalcular()">
+              </div>
+              <div class="form-field">
+                <label>COSTO USD <span style="color:var(--text3);font-weight:400">(proveedor)</span></label>
+                <div style="position:relative">
+                  <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px">$</span>
+                  <input type="number" id="cpCostoUSD" placeholder="0.00" min="0" step="0.01"
+                    oninput="cpRecalcular()"
+                    style="padding-left:28px;width:100%;padding-top:9px;padding-bottom:9px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:14px;outline:none">
+                </div>
+              </div>
+              <div class="form-field">
+                <label>FLETE EN L <span style="color:var(--text3);font-weight:400">(envío / aduana)</span></label>
+                <div style="position:relative">
+                  <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px">L</span>
+                  <input type="number" id="cpFleteL" placeholder="0.00" min="0" step="0.01"
+                    oninput="cpRecalcular()"
+                    style="padding-left:28px;width:100%;padding-top:9px;padding-bottom:9px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:14px;outline:none">
+                </div>
+              </div>
+              <div class="form-field">
+                <label>NIVEL DE COMPRA</label>
+                <select id="cpNivel" onchange="cpRecalcular()"
+                  style="width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+                  <option value="excelente">⭐ Excelente (mayor margen)</option>
+                  <option value="normal" selected>✅ Normal</option>
+                  <option value="alto">🔺 Alto (menor margen)</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>OVERRIDE BANDA <span style="color:var(--text3);font-weight:400">(opcional)</span></label>
+                <select id="cpOverrideBanda" onchange="cpRecalcular()"
+                  style="width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+                  <option value="">🤖 Automático (por rango USD)</option>
+                  <option value="Bajo">Bajo (USD 0 – 30)</option>
+                  <option value="Medio">Medio (USD 30 – 400)</option>
+                  <option value="Alto">Alto (USD 400 – 1,000)</option>
+                  <option value="Premium">Premium (USD 1,000+)</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>AJUSTE MANUAL % <span style="color:var(--text3);font-weight:400">(ej. -3 ó +5)</span></label>
+                <div style="position:relative">
+                  <input type="number" id="cpAjuste" placeholder="0" step="0.1"
+                    oninput="cpRecalcular()"
+                    style="width:100%;padding:9px 32px 9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:14px;outline:none">
+                  <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px">%</span>
+                </div>
+              </div>
+            </div>
+
+            <button onclick="cpGuardar()" class="btn btn-success" style="width:100%;margin-top:20px;padding:12px;font-size:15px;font-weight:800">
+              💾 Guardar Cálculo
+            </button>
+            <div id="cpGuardadoMsg" style="display:none;text-align:center;color:#00c8a0;font-size:13px;margin-top:8px;font-weight:600">✅ Cálculo guardado</div>
+          </div>
+
+          <!-- Panel de resultados -->
+          <div id="cpResultados" style="display:flex;flex-direction:column;gap:14px">
+
+            <!-- Resumen de costos -->
+            <div class="card" style="border-left:4px solid var(--accent)">
+              <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">📦 Resumen de Costos</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;justify-content:space-between;font-size:13px">
+                  <span style="color:var(--text2)">Tipo de cambio</span>
+                  <span id="cpRTC" style="font-weight:600">—</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px">
+                  <span style="color:var(--text2)">Costo en USD total</span>
+                  <span id="cpRCostoUSD" style="font-weight:600;color:var(--text)">—</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;border-top:1px solid var(--border);padding-top:8px">
+                  <span style="color:var(--text2);font-weight:700">Costo total en L</span>
+                  <span id="cpRCostoLPS" style="font-weight:800;color:var(--text)">—</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Banda y margen -->
+            <div class="card" style="border-left:4px solid var(--gold)">
+              <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">📊 Banda y Margen</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;justify-content:space-between;font-size:13px">
+                  <span style="color:var(--text2)">Banda automática</span>
+                  <span id="cpRBandaAuto" style="font-weight:600">—</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px">
+                  <span style="color:var(--text2)">Banda efectiva</span>
+                  <span id="cpRBandaEf" style="font-weight:700;color:var(--gold)">—</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px">
+                  <span style="color:var(--text2)">Margen base</span>
+                  <span id="cpRMargenBase" style="font-weight:600">—</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;border-top:1px solid var(--border);padding-top:8px">
+                  <span style="color:var(--text2);font-weight:700">Margen final</span>
+                  <span id="cpRMargenFinal" style="font-weight:800;color:var(--gold)">—</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Precio final -->
+            <div class="card" style="border-left:4px solid #00c8a0">
+              <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">💰 Precios Sugeridos</div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span style="font-size:13px;color:var(--text2)">Precio Neto (sin ISV)</span>
+                  <span id="cpRPrecioNeto" style="font-size:16px;font-weight:800;color:var(--text)">—</span>
+                </div>
+                <div id="cpRFilaISV" style="display:flex;justify-content:space-between;align-items:center">
+                  <span style="font-size:13px;color:var(--text2)">ISV (15%)</span>
+                  <span id="cpRISV" style="font-size:14px;font-weight:700;color:var(--text3)">—</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;border-top:2px solid var(--border);padding-top:10px">
+                  <span style="font-size:14px;font-weight:700;color:#00c8a0">Precio Final (con ISV)</span>
+                  <span id="cpRPrecioISV" style="font-size:22px;font-weight:900;color:#00c8a0">—</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ROI -->
+            <div class="card" style="border-left:4px solid var(--accent2)">
+              <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">📈 Rentabilidad</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;justify-content:space-between;font-size:13px">
+                  <span style="color:var(--text2)">Utilidad bruta</span>
+                  <span id="cpRUtil" style="font-weight:700">—</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:14px;border-top:1px solid var(--border);padding-top:8px">
+                  <span style="color:var(--text2);font-weight:700">ROI / Costo %</span>
+                  <span id="cpRROI" style="font-size:20px;font-weight:900">—</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px">
+                  <span style="color:var(--text3)">ROI de referencia</span>
+                  <span id="cpRROIRef" style="color:var(--text3)">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Panel Guardados ── -->
+      <div id="cpPanelGuardados" style="display:none">
+        <div class="card">
+          <div class="card-header" style="flex-wrap:wrap;gap:10px">
+            <div>
+              <div class="card-title">📋 Cálculos Guardados</div>
+              <div class="card-sub" id="cpGuardadosCount">0 cálculos guardados</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="cpGBuscar" placeholder="🔍 Buscar..." oninput="renderCpGuardados()"
+                style="padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none;min-width:200px">
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse">
+              <thead>
+                <tr style="border-bottom:2px solid var(--border)">
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:left;white-space:nowrap">FECHA</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:left">PRODUCTO</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:right">COSTO USD</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:right">COSTO L</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:left">BANDA</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:left">ESTADO</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:right">PRECIO NETO</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:right">PRECIO + ISV</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:right">ROI %</th>
+                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:center">ACCIONES</th>
+                </tr>
+              </thead>
+              <tbody id="cpGuardadosBody">
+                <tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text3)">No hay cálculos guardados</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- FIN CALCULADORA -->
 
     <!-- EXPORTAR BLOC DE NOTAS -->
     <div class="tab-content" id="tab-exportar">
@@ -3189,8 +3410,8 @@ function fmtFecha(v) {
 
 // ===== LOGIN =====
 const PERMS = {
-  admin:    {verCostos:true, verUtilidad:true, editarPrecios:true, aprobarDescuentos:true, cambiarFormulas:true, adminUsuarios:true, verHistorial:true, borrarHistorial:true, puedePendiente:false, puedeAprobar:true, tabs:['dashboard','productos','ingresar','aprobacion','resumen','exportar','etiquetas','combos','ventas','cotizaciones','cobros','parametros','historial','usuarios','inventario','liquidacion','gastos']},
-  gerencia: {verCostos:true, verUtilidad:true, editarPrecios:true, aprobarDescuentos:true, cambiarFormulas:false, adminUsuarios:false, verHistorial:true, borrarHistorial:false, puedePendiente:true, puedeAprobar:true, tabs:['dashboard','productos','ingresar','aprobacion','resumen','exportar','etiquetas','combos','ventas','cotizaciones','cobros','parametros','historial','inventario','liquidacion','gastos']},
+  admin:    {verCostos:true, verUtilidad:true, editarPrecios:true, aprobarDescuentos:true, cambiarFormulas:true, adminUsuarios:true, verHistorial:true, borrarHistorial:true, puedePendiente:false, puedeAprobar:true, tabs:['dashboard','productos','ingresar','aprobacion','resumen','exportar','etiquetas','combos','ventas','cotizaciones','cobros','parametros','historial','usuarios','inventario','liquidacion','gastos','calculadora']},
+  gerencia: {verCostos:true, verUtilidad:true, editarPrecios:true, aprobarDescuentos:true, cambiarFormulas:false, adminUsuarios:false, verHistorial:true, borrarHistorial:false, puedePendiente:true, puedeAprobar:true, tabs:['dashboard','productos','ingresar','aprobacion','resumen','exportar','etiquetas','combos','ventas','cotizaciones','cobros','parametros','historial','inventario','liquidacion','gastos','calculadora']},
   ventas:   {verCostos:false, verUtilidad:false, editarPrecios:false, aprobarDescuentos:false, cambiarFormulas:false, adminUsuarios:false, verHistorial:false, borrarHistorial:false, puedePendiente:false, puedeAprobar:false, tabs:['dashboard','productos','resumen','exportar','etiquetas','combos','ventas','cotizaciones','cobros']},
   bodega:   {verCostos:false, verUtilidad:false, editarPrecios:false, aprobarDescuentos:false, cambiarFormulas:false, adminUsuarios:false, verHistorial:false, borrarHistorial:false, puedePendiente:false, puedeAprobar:false, tabs:['dashboard','productos','etiquetas']},
   externo:  {verCostos:false, verUtilidad:false, editarPrecios:false, aprobarDescuentos:false, cambiarFormulas:false, adminUsuarios:false, verHistorial:false, borrarHistorial:false, puedePendiente:false, puedeAprobar:false, tabs:['productos']}
@@ -3614,7 +3835,8 @@ function showTab(name) {
   if(name==='cotizaciones') { initCotizaciones(); }
   if(name==='inventario')  { initInventario(); }
   if(name==='liquidacion') { initLiquidacion(); }
-  if(name==='gastos')      { cargarGastos(); }
+  if(name==='gastos')       { cargarGastos(); }
+  if(name==='calculadora')  { initCalculadora(); }
 }
 
 // ===== DASHBOARD =====
@@ -13912,6 +14134,235 @@ function renderReportesGastos() {
   panel.style.display = 'block';
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+//  MÓDULO CALCULADORA DE PRECIOS
+// ═══════════════════════════════════════════════════════════════
+const CP_KEY = 'calcPrecios_v1';
+let   _cpEstado = 'Nuevo'; // 'Nuevo' | 'Usado'
+let   _cpEditId = null;    // id del cálculo que se está editando
+
+function cpShowSub(sub) {
+  ['calc','guardados'].forEach(s => {
+    const panel = document.getElementById('cpPanel' + s.charAt(0).toUpperCase() + s.slice(1));
+    const btn   = document.getElementById('cpSub'   + s.charAt(0).toUpperCase() + s.slice(1));
+    if (panel) panel.style.display = s === sub ? '' : 'none';
+    if (btn)   { btn.classList.toggle('btn-primary', s === sub); btn.classList.toggle('btn-ghost', s !== sub); }
+  });
+  if (sub === 'guardados') renderCpGuardados();
+}
+
+function cpSetEstado(estado) {
+  _cpEstado = estado;
+  const bN = document.getElementById('cpBtnNuevo');
+  const bU = document.getElementById('cpBtnUsado');
+  const hint = document.getElementById('cpEstadoHint');
+  if (estado === 'Nuevo') {
+    bN.style.background = 'var(--accent)'; bN.style.color = '#fff'; bN.style.border = 'none';
+    bU.style.background = 'transparent';   bU.style.color = 'var(--text2)'; bU.style.border = '1px solid var(--border)';
+    if (hint) hint.textContent = 'Producto nuevo — aplica ISV 15%';
+  } else {
+    bU.style.background = '#f39c12'; bU.style.color = '#000'; bU.style.border = 'none';
+    bN.style.background = 'transparent'; bN.style.color = 'var(--text2)'; bN.style.border = '1px solid var(--border)';
+    if (hint) hint.textContent = 'Producto usado — sin ISV';
+  }
+  cpRecalcular();
+}
+
+function cpRecalcular() {
+  const costoUSD     = parseFloat(document.getElementById('cpCostoUSD')?.value) || 0;
+  const fleteL       = parseFloat(document.getElementById('cpFleteL')?.value)   || 0;
+  const nivel        = document.getElementById('cpNivel')?.value        || 'normal';
+  const overrideBanda= document.getElementById('cpOverrideBanda')?.value || '';
+  const ajustePct    = parseFloat(document.getElementById('cpAjuste')?.value) || 0;
+
+  if (!costoUSD && !fleteL) {
+    // Reset display
+    ['cpRTC','cpRCostoUSD','cpRCostoLPS','cpRBandaAuto','cpRBandaEf',
+     'cpRMargenBase','cpRMargenFinal','cpRPrecioNeto','cpRISV','cpRPrecioISV','cpRUtil','cpRROI','cpRROIRef']
+     .forEach(id => { const el=document.getElementById(id); if(el) el.textContent='—'; });
+    return;
+  }
+
+  const r = calcProd({
+    costoUSD,
+    costoExtra: 0,
+    fleteL,
+    estado: _cpEstado,
+    nivel: nivel.charAt(0).toUpperCase() + nivel.slice(1), // capitalise: normal→Normal
+    overrideBanda,
+    ajusteManual: ajustePct / 100,
+    descuento: 0,
+    cantidad: 1
+  });
+
+  const tc = parametros.tipoCambio || 25;
+  const roiColor = r.roi >= 0.4 ? '#00c8a0' : r.roi >= 0.25 ? 'var(--gold)' : 'var(--red)';
+
+  const setT = (id, txt) => { const el=document.getElementById(id); if(el) el.textContent=txt; };
+  const setC = (id, col) => { const el=document.getElementById(id); if(el) el.style.color=col; };
+
+  setT('cpRTC',        'L ' + tc.toFixed(2) + ' / USD');
+  setT('cpRCostoUSD',  fmtUSD(r.costoTotalUSD));
+  setT('cpRCostoLPS',  fmtLPS(r.costoTotalLPS));
+  setT('cpRBandaAuto', r.bandaAuto);
+  setT('cpRBandaEf',   r.bandaEfectiva + (r.overrideBanda ? ' ⚠️ override' : ''));
+  setT('cpRMargenBase',  fmtPct(r.margenBase));
+  setT('cpRMargenFinal', fmtPct(r.margenFinal));
+  setT('cpRPrecioNeto',  fmtLPS(r.precioNeto));
+  const isvMonto = r.precioConISV - r.precioNeto;
+  setT('cpRISV',       _cpEstado === 'Nuevo' ? fmtLPS(isvMonto) : 'No aplica (Usado)');
+  setT('cpRPrecioISV', fmtLPS(r.precioConISV));
+  setT('cpRUtil',      fmtLPS(r.utilBrutaLPS));
+  setT('cpRROI',       fmtPct(r.roi));
+  setT('cpRROIRef',    'Ref. banda: ' + fmtPct(r.roiRef));
+  setC('cpRROI', roiColor);
+
+  // Show/hide ISV row
+  const filaISV = document.getElementById('cpRFilaISV');
+  if (filaISV) filaISV.style.opacity = _cpEstado === 'Nuevo' ? '1' : '0.4';
+
+  // Store last result for saving
+  window._cpLastResult = r;
+}
+
+function cpGuardar() {
+  const nombre   = (document.getElementById('cpNombre')?.value || '').trim();
+  const costoUSD = parseFloat(document.getElementById('cpCostoUSD')?.value) || 0;
+  const fleteL   = parseFloat(document.getElementById('cpFleteL')?.value)   || 0;
+  const nivel    = document.getElementById('cpNivel')?.value        || 'normal';
+  const override = document.getElementById('cpOverrideBanda')?.value || '';
+  const ajuste   = parseFloat(document.getElementById('cpAjuste')?.value) || 0;
+  const r        = window._cpLastResult;
+
+  if (!costoUSD && !fleteL) { showToast('⚠️ Ingresa al menos Costo USD o Flete', 'warn'); return; }
+  if (!r) { showToast('⚠️ Primero calcula un precio', 'warn'); return; }
+
+  const lista = cpCargarLista();
+  const item = {
+    id:            _cpEditId || ('cp_' + Date.now()),
+    fecha:         new Date().toISOString().slice(0,10),
+    nombre:        nombre || 'Sin nombre',
+    costoUSD, fleteL,
+    nivel, overrideBanda: override, ajuste,
+    estado:        _cpEstado,
+    costoTotalUSD: r.costoTotalUSD,
+    costoTotalLPS: r.costoTotalLPS,
+    bandaEfectiva: r.bandaEfectiva,
+    margenFinal:   r.margenFinal,
+    precioNeto:    r.precioNeto,
+    precioConISV:  r.precioConISV,
+    utilBrutaLPS:  r.utilBrutaLPS,
+    roi:           r.roi
+  };
+
+  if (_cpEditId) {
+    const idx = lista.findIndex(x => x.id === _cpEditId);
+    if (idx >= 0) lista[idx] = item; else lista.unshift(item);
+    _cpEditId = null;
+    showToast('✅ Cálculo actualizado', 'success');
+  } else {
+    lista.unshift(item);
+    showToast('✅ Cálculo guardado', 'success');
+  }
+
+  localStorage.setItem(CP_KEY, JSON.stringify(lista));
+  // Flash mensaje
+  const msg = document.getElementById('cpGuardadoMsg');
+  if (msg) { msg.style.display='block'; setTimeout(()=>msg.style.display='none', 2500); }
+  // Actualizar botón guardar
+  const btn = document.querySelector('#cpPanelCalc button.btn-success');
+  if (btn) btn.textContent = '💾 Guardar Cálculo';
+}
+
+function cpCargarLista() {
+  try { return JSON.parse(localStorage.getItem(CP_KEY) || '[]'); } catch(e) { return []; }
+}
+
+function renderCpGuardados() {
+  const lista  = cpCargarLista();
+  const buscar = (document.getElementById('cpGBuscar')?.value || '').toLowerCase();
+  const body   = document.getElementById('cpGuardadosBody');
+  const count  = document.getElementById('cpGuardadosCount');
+  if (!body) return;
+
+  const filtrada = buscar ? lista.filter(x => (x.nombre||'').toLowerCase().includes(buscar)) : lista;
+  if (count) count.textContent = filtrada.length + ' cálculo' + (filtrada.length===1?'':'s') + ' guardado' + (filtrada.length===1?'':'s');
+
+  if (!filtrada.length) {
+    body.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text3)">No hay cálculos guardados</td></tr>';
+    return;
+  }
+
+  const roiBadge = roi => {
+    const pct = (roi*100).toFixed(1)+'%';
+    const col  = roi>=0.4?'#00c8a0':roi>=0.25?'#f5c642':'var(--red)';
+    return `<span style="font-weight:800;color:${col}">${pct}</span>`;
+  };
+  const estadoBadge = e => e === 'Nuevo'
+    ? `<span style="background:rgba(61,106,255,.15);color:var(--accent);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">📦 Nuevo</span>`
+    : `<span style="background:rgba(243,156,18,.15);color:#f39c12;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">🔄 Usado</span>`;
+
+  body.innerHTML = filtrada.map(x => `
+    <tr style="border-bottom:1px solid var(--border2);transition:background .12s"
+      onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background=''">
+      <td style="padding:8px 12px;font-size:12px;color:var(--text3);white-space:nowrap">${x.fecha}</td>
+      <td style="padding:8px 12px;font-size:13px;font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${x.nombre}">${x.nombre}</td>
+      <td style="padding:8px 12px;font-size:13px;text-align:right">${fmtUSD(x.costoUSD)}</td>
+      <td style="padding:8px 12px;font-size:13px;text-align:right;color:var(--text2)">${fmtLPS(x.costoTotalLPS)}</td>
+      <td style="padding:8px 12px;font-size:12px;color:var(--gold);font-weight:700">${x.bandaEfectiva}</td>
+      <td style="padding:8px 12px">${estadoBadge(x.estado)}</td>
+      <td style="padding:8px 12px;font-size:13px;text-align:right;color:var(--text2)">${fmtLPS(x.precioNeto)}</td>
+      <td style="padding:8px 12px;font-size:14px;text-align:right;font-weight:800;color:#00c8a0">${fmtLPS(x.precioConISV)}</td>
+      <td style="padding:8px 12px;text-align:right">${roiBadge(x.roi)}</td>
+      <td style="padding:6px 10px;white-space:nowrap;text-align:center">
+        <button onclick="cpEditar('${x.id}')"
+          style="padding:4px 9px;font-size:11px;border:none;border-radius:6px;cursor:pointer;background:rgba(61,106,255,.18);color:var(--accent);font-weight:700;margin-right:4px;transition:background .15s"
+          onmouseenter="this.style.background='rgba(61,106,255,.35)'" onmouseleave="this.style.background='rgba(61,106,255,.18)'">✏️ Editar</button>
+        <button onclick="cpEliminar('${x.id}')"
+          style="padding:4px 9px;font-size:11px;border:none;border-radius:6px;cursor:pointer;background:rgba(220,53,69,.15);color:var(--red);font-weight:700;transition:background .15s"
+          onmouseenter="this.style.background='rgba(220,53,69,.3)'" onmouseleave="this.style.background='rgba(220,53,69,.15)'">🗑️</button>
+      </td>
+    </tr>`).join('');
+}
+
+function cpEditar(id) {
+  const lista = cpCargarLista();
+  const x = lista.find(i => i.id === id);
+  if (!x) return;
+  // Switch to calc panel
+  cpShowSub('calc');
+  // Populate form
+  const setV = (elId, val) => { const el=document.getElementById(elId); if(el) el.value=val; };
+  setV('cpNombre',       x.nombre);
+  setV('cpCostoUSD',     x.costoUSD);
+  setV('cpFleteL',       x.fleteL);
+  setV('cpNivel',        x.nivel);
+  setV('cpOverrideBanda',x.overrideBanda || '');
+  setV('cpAjuste',       (x.ajuste || 0));
+  cpSetEstado(x.estado || 'Nuevo');
+  _cpEditId = id;
+  // Update save button label
+  const btn = document.querySelector('#cpPanelCalc button.btn-success');
+  if (btn) btn.textContent = '💾 Actualizar Cálculo';
+  cpRecalcular();
+  showToast('✏️ Editando: ' + x.nombre, 'info');
+}
+
+function cpEliminar(id) {
+  const lista = cpCargarLista();
+  const x = lista.find(i => i.id === id);
+  if (!x) return;
+  if (!confirm('¿Eliminar el cálculo "' + x.nombre + '"?')) return;
+  const nueva = lista.filter(i => i.id !== id);
+  localStorage.setItem(CP_KEY, JSON.stringify(nueva));
+  renderCpGuardados();
+  showToast('🗑️ Cálculo eliminado', 'info');
+}
+
+function initCalculadora() {
+  cpSetEstado('Nuevo');
+}
 
 </script>
 
