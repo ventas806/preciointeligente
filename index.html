@@ -3944,11 +3944,7 @@ async function iniciarNotificacionesClientes() {
 
 async function _notifCargar() {
   try {
-    const { data, error } = await sb.from('notificaciones')
-      .select('*')
-      .gt('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false })
-      .limit(50);
+    const { data, error } = await sb.rpc('get_notificaciones');
     if (error) {
       console.warn('Notificaciones error:', error);
       _notifMostrarError(error.message);
@@ -4085,7 +4081,7 @@ async function notifMarcarLeida(nId) {
   const n = _notifData.find(x => x.id === nId);
   if (!n || n.leida) return;
   n.leida = true;
-  await sb.from('notificaciones').update({ leida: true }).eq('id', nId);
+  await sb.rpc('marcar_notif_leida', { p_id: nId });
   _notifRenderPanel();
   _notifUpdateBadge();
 }
@@ -4094,7 +4090,7 @@ async function marcarTodasLeidas() {
   const noLeidas = _notifData.filter(n => !n.leida).map(n => n.id);
   if (!noLeidas.length) return;
   _notifData.forEach(n => n.leida = true);
-  await sb.from('notificaciones').update({ leida: true }).in('id', noLeidas);
+  await sb.rpc('marcar_todas_notif_leidas');
   _notifRenderPanel();
   _notifUpdateBadge();
 }
