@@ -606,13 +606,16 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
         style="position:relative;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 11px;cursor:pointer;font-size:16px;transition:background .2s;color:var(--text)"
         onmouseover="this.style.background='var(--bg4)'" onmouseleave="this.style.background='var(--bg3)'">
         🔔
-        <span id="notifCount" style="display:none;position:absolute;top:-5px;right:-5px;background:#ff4d6a;color:#fff;border-radius:50%;min-width:18px;height:18px;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 3px;line-height:1;border:2px solid var(--bg)"></span>
+        <span id="notifCount" style="display:none;position:absolute;top:-5px;right:-5px;background:#ff4d6a;color:#fff;border-radius:50%;min-width:18px;height:18px;font-size:10px;font-weight:800;align-items:center;justify-content:center;padding:0 3px;line-height:1;border:2px solid var(--bg)"></span>
       </button>
       <!-- Panel de notificaciones -->
       <div id="notifPanel" style="display:none;position:absolute;right:0;top:calc(100% + 8px);width:360px;max-height:480px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.5);z-index:9999;overflow:hidden;flex-direction:column">
         <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
           <div style="font-size:14px;font-weight:800;color:var(--text)">🔔 Notificaciones</div>
-          <button onclick="marcarTodasLeidas()" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;font-weight:600;font-family:var(--font)">Marcar todas leídas</button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button onclick="_notifCargar()" title="Recargar" style="background:none;border:none;color:var(--text3);font-size:13px;cursor:pointer;padding:2px 4px">🔄</button>
+            <button onclick="marcarTodasLeidas()" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;font-weight:600;font-family:var(--font)">Marcar todas leídas</button>
+          </div>
         </div>
         <div id="notifLista" style="overflow-y:auto;max-height:400px"></div>
       </div>
@@ -3941,15 +3944,31 @@ async function iniciarNotificacionesClientes() {
 
 async function _notifCargar() {
   try {
-    const { data } = await sb.from('notificaciones')
+    const { data, error } = await sb.from('notificaciones')
       .select('*')
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
       .limit(50);
+    if (error) {
+      console.warn('Notificaciones error:', error);
+      _notifMostrarError(error.message);
+      return;
+    }
     _notifData = data || [];
     _notifRenderPanel();
     _notifUpdateBadge();
-  } catch(e) { console.warn('Notificaciones no cargadas:', e); }
+  } catch(e) {
+    console.warn('Notificaciones no cargadas:', e);
+    _notifMostrarError(e.message);
+  }
+}
+
+function _notifMostrarError(msg) {
+  const lista = document.getElementById('notifLista');
+  if (lista) lista.innerHTML = `<div style="padding:20px 16px;text-align:center;color:var(--text3);font-size:12px">
+    ⚠️ Error al cargar notificaciones<br><span style="font-size:11px;opacity:.7">${msg||''}</span><br>
+    <button onclick="_notifCargar()" style="margin-top:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 12px;cursor:pointer;font-family:var(--font);font-size:12px">🔄 Reintentar</button>
+  </div>`;
 }
 
 function _notifUpdateBadge() {
