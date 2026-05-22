@@ -2,7 +2,7 @@
   "name": "Calculadora Focus Store",
   "short_name": "Calculadora",
   "description": "Calculadora de precios Focus Store",
-  "start_url": "/calculadora.html",
+  "start_url": "/preciointeligente/calculadora.html",
   "display": "standalone",
   "background_color": "#0d0f14",
   "theme_color": "#0d0f14",

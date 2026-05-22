@@ -1,6 +1,6 @@
-const CACHE = 'focus-calc-v2';
+const CACHE = 'focus-calc-v1';
 const ASSETS = [
-  '/calculadora.html',
+  '/preciointeligente/calculadora.html',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js'
 ];
 
