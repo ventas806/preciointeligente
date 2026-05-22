@@ -2290,6 +2290,12 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
           </div>
           <div class="filters-row" style="margin-bottom:14px">
             <input type="text" placeholder="🔍 Buscar por nombre, teléfono, ciudad..." id="cliFiltBuscar" oninput="renderTablaClientes()" style="min-width:280px">
+            <select id="cliFiltOrden" onchange="renderTablaClientes()" style="font-size:13px">
+              <option value="ingreso">📅 Fecha ingreso</option>
+              <option value="modificacion">🕐 Última modificación</option>
+              <option value="az">🔤 A → Z</option>
+              <option value="za">🔤 Z → A</option>
+            </select>
             <div class="filter-spacer"></div>
             <span id="cliCount" style="font-size:13px;color:var(--text2)"></span>
           </div>
@@ -6621,6 +6627,7 @@ async function cargarVentasYClientes() {
         email:             r.email             || '',
         observaciones:     r.observaciones     || '',
         fechaCreado:       r.fecha_creado      || '',
+        updatedAt:         r.updated_at        || '',
         direccionCasa:     r.direccion_casa    || '',
         mapsCasa:          r.maps_casa         || '',
         direccionTrabajo:  r.direccion_trabajo || '',
@@ -6767,11 +6774,16 @@ function renderTablaClientes() {
   const dupGroups = _detectarDuplicadosClientes(filtrados);
   const dupIds = new Set(dupGroups.flatMap(g=>g.clientes.map(c=>c.id)));
 
-  // Ordenar: duplicados primero, luego alfabético
+  // Ordenar: duplicados primero, luego según filtro seleccionado
+  const orden = (document.getElementById('cliFiltOrden')||{}).value || 'ingreso';
   filtrados.sort((a,b) => {
     const ad = dupIds.has(a.id), bd = dupIds.has(b.id);
     if (ad !== bd) return ad ? -1 : 1;
-    return (a.nombre||'').localeCompare(b.nombre||'');
+    if (orden === 'az')          return (a.nombre||'').localeCompare(b.nombre||'', 'es', {sensitivity:'base'});
+    if (orden === 'za')          return (b.nombre||'').localeCompare(a.nombre||'', 'es', {sensitivity:'base'});
+    if (orden === 'modificacion') return new Date(b.updatedAt||b.fechaCreado||0) - new Date(a.updatedAt||a.fechaCreado||0);
+    // ingreso (default): más reciente primero
+    return new Date(b.fechaCreado||0) - new Date(a.fechaCreado||0);
   });
 
   const count = document.getElementById('cliCount');
