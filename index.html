@@ -2309,10 +2309,35 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 <label>Email</label>
                 <input type="email" id="cliEmail" placeholder="correo@ejemplo.com">
               </div>
-              <div class="form-field field-full">
-                <label>Dirección</label>
-                <input type="text" id="cliDireccion" placeholder="Calle, colonia, número de casa...">
+              <!-- Addresses: tabs Casa / Trabajo -->
+              <div class="form-field field-full" style="margin-bottom:0">
+                <div style="display:flex;gap:8px;margin-bottom:10px">
+                  <button type="button" id="cliTabCasa"
+                    style="flex:1;padding:8px 0;background:rgba(61,106,255,.12);border:1.5px solid var(--accent);border-radius:var(--radius2);color:var(--accent);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font)"
+                    onclick="cliSwitchAddr('casa')">🏠 Casa</button>
+                  <button type="button" id="cliTabTrabajo"
+                    style="flex:1;padding:8px 0;background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--radius2);color:var(--muted,#7b82a0);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font)"
+                    onclick="cliSwitchAddr('trabajo')">🏢 Trabajo</button>
+                </div>
               </div>
+              <div class="form-field field-full" id="cliPanelCasa">
+                <label>Dirección Casa</label>
+                <input type="text" id="cliDirCasa" placeholder="Colonia, calle, número de casa, referencias...">
+                <div style="margin-top:6px;display:flex;gap:6px;align-items:center">
+                  <input type="url" id="cliMapsCasa" placeholder="📍 Link Google Maps casa (opcional)"
+                         style="flex:1;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:12px;outline:none;font-family:var(--font)">
+                </div>
+              </div>
+              <div class="form-field field-full" id="cliPanelTrabajo" style="display:none">
+                <label>Dirección Trabajo</label>
+                <input type="text" id="cliDirTrabajo" placeholder="Edificio, piso, colonia, referencias...">
+                <div style="margin-top:6px;display:flex;gap:6px;align-items:center">
+                  <input type="url" id="cliMapsTrabajo" placeholder="📍 Link Google Maps trabajo (opcional)"
+                         style="flex:1;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:12px;outline:none;font-family:var(--font)">
+                </div>
+              </div>
+              <!-- Legacy campo dirección (oculto, kept for compat) -->
+              <input type="hidden" id="cliDireccion">
               <div class="form-field field-full">
                 <label>Observaciones <span style="color:var(--text3);font-weight:400;font-size:11px">(instrucciones de entrega, referencias, etc.)</span></label>
                 <textarea id="cliObservaciones" placeholder="Ej: Tocar timbre, preguntar por…" style="min-height:55px;width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:var(--font)"></textarea>
@@ -3176,15 +3201,19 @@ async function sbGetCotizaciones() {
 // Guardar cliente
 async function sbSaveCliente(c) {
   const row = {
-    id:          c.id,
-    nombre:      c.nombre    || '',
-    direccion:   c.direccion || '',
-    ciudad:      c.ciudad    || '',
-    tel:         c.tel       || '',
-    tel2:         c.tel2         || '',
-    email:        c.email        || '',
-    observaciones:c.observaciones|| '',
-    fecha_creado: c.fechaCreado  || new Date().toISOString()
+    id:                c.id,
+    nombre:            c.nombre            || '',
+    direccion:         c.direccion         || '',
+    ciudad:            c.ciudad            || '',
+    tel:               c.tel               || '',
+    tel2:              c.tel2              || '',
+    email:             c.email             || '',
+    observaciones:     c.observaciones     || '',
+    fecha_creado:      c.fechaCreado       || new Date().toISOString(),
+    direccion_casa:    c.direccionCasa     || null,
+    maps_casa:         c.mapsCasa          || null,
+    direccion_trabajo: c.direccionTrabajo  || null,
+    maps_trabajo:      c.mapsTrabajo       || null,
   };
   const { error } = await sb.rpc('upsert_cliente', {
     p_user: currentUser?.user || '',
@@ -6337,15 +6366,19 @@ async function cargarVentasYClientes() {
       console.log('✅ Ventas cargadas:', ventas.length);
 
       clientes = (data.clientes || []).map(r => ({
-        id:          r.id,
-        nombre:      r.nombre    || '',
-        direccion:   r.direccion || '',
-        ciudad:      r.ciudad    || '',
-        tel:         r.tel       || '',
-        tel2:        r.tel2      || '',
-        email:         r.email         || '',
-        observaciones: r.observaciones || '',
-        fechaCreado:   r.fecha_creado  || ''
+        id:                r.id,
+        nombre:            r.nombre            || '',
+        direccion:         r.direccion         || '',
+        ciudad:            r.ciudad            || '',
+        tel:               r.tel               || '',
+        tel2:              r.tel2              || '',
+        email:             r.email             || '',
+        observaciones:     r.observaciones     || '',
+        fechaCreado:       r.fecha_creado      || '',
+        direccionCasa:     r.direccion_casa    || '',
+        mapsCasa:          r.maps_casa         || '',
+        direccionTrabajo:  r.direccion_trabajo || '',
+        mapsTrabajo:       r.maps_trabajo      || '',
       }));
       console.log('✅ Clientes cargados:', clientes.length);
     }
@@ -6554,7 +6587,11 @@ function renderTablaClientes() {
       <td style="font-family:monospace;font-size:12px">${c.tel||'—'}</td>
       <td style="font-family:monospace;font-size:12px;color:var(--text2)">${c.tel2||'—'}</td>
       <td style="color:var(--text2);font-size:12px">${c.email||'—'}</td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2);font-size:12px" title="${c.direccion||''}">${c.direccion||'—'}</td>
+      <td style="max-width:220px;font-size:12px;color:var(--text2)">
+        ${c.direccionCasa    ? `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="🏠 ${c.direccionCasa}">🏠 ${c.direccionCasa}${c.mapsCasa?` <a href="${c.mapsCasa}" target="_blank" style="color:var(--accent2);font-size:11px;text-decoration:none">📍</a>`:''}</div>` : (c.direccion ? `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.direccion}">${c.direccion}</div>` : '')}
+        ${c.direccionTrabajo ? `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text3)" title="🏢 ${c.direccionTrabajo}">🏢 ${c.direccionTrabajo}${c.mapsTrabajo?` <a href="${c.mapsTrabajo}" target="_blank" style="color:var(--accent2);font-size:11px;text-decoration:none">📍</a>`:''}</div>` : ''}
+        ${!c.direccionCasa && !c.direccionTrabajo && !c.direccion ? '—' : ''}
+      </td>
       <td onclick="event.stopPropagation()" style="white-space:nowrap">
         <button class="btn btn-ghost btn-sm" onclick="abrirModalCliente('${c.id}')" title="Editar">✏️</button>
         <button class="btn btn-ghost btn-sm" onclick="imprimirEtiquetaCliente('${c.id}')" title="Imprimir etiqueta cliente" style="background:rgba(61,106,255,.12);border:1px solid rgba(61,106,255,.3);color:var(--accent)">🖨️</button>
@@ -6562,6 +6599,26 @@ function renderTablaClientes() {
       </td>
     </tr>`;
   }).join('');
+}
+
+function cliSwitchAddr(tab) {
+  const isCasa = tab === 'casa';
+  document.getElementById('cliPanelCasa').style.display    = isCasa ? '' : 'none';
+  document.getElementById('cliPanelTrabajo').style.display = isCasa ? 'none' : '';
+  const tabCasa    = document.getElementById('cliTabCasa');
+  const tabTrabajo = document.getElementById('cliTabTrabajo');
+  if (tabCasa) {
+    tabCasa.style.background   = isCasa ? 'rgba(61,106,255,.12)' : 'var(--bg3)';
+    tabCasa.style.borderColor  = isCasa ? 'var(--accent)' : 'var(--border)';
+    tabCasa.style.color        = isCasa ? 'var(--accent)' : 'var(--muted,#7b82a0)';
+    tabCasa.style.fontWeight   = isCasa ? '700' : '600';
+  }
+  if (tabTrabajo) {
+    tabTrabajo.style.background  = !isCasa ? 'rgba(61,106,255,.12)' : 'var(--bg3)';
+    tabTrabajo.style.borderColor = !isCasa ? 'var(--accent)' : 'var(--border)';
+    tabTrabajo.style.color       = !isCasa ? 'var(--accent)' : 'var(--muted,#7b82a0)';
+    tabTrabajo.style.fontWeight  = !isCasa ? '700' : '600';
+  }
 }
 
 function abrirModalCliente(id) {
@@ -6573,8 +6630,14 @@ function abrirModalCliente(id) {
   document.getElementById('cliTel').value       = c?.tel       || '';
   document.getElementById('cliTel2').value      = c?.tel2      || '';
   document.getElementById('cliEmail').value     = c?.email     || '';
-  document.getElementById('cliDireccion').value     = c?.direccion     || '';
+  // Dual addresses
+  document.getElementById('cliDirCasa').value      = c?.direccionCasa    || c?.direccion || '';
+  document.getElementById('cliMapsCasa').value     = c?.mapsCasa         || '';
+  document.getElementById('cliDirTrabajo').value   = c?.direccionTrabajo || '';
+  document.getElementById('cliMapsTrabajo').value  = c?.mapsTrabajo      || '';
+  document.getElementById('cliDireccion').value    = c?.direccion        || '';
   document.getElementById('cliObservaciones').value = c?.observaciones || '';
+  cliSwitchAddr('casa');
   document.getElementById('modalCliente').classList.add('open');
   setTimeout(() => document.getElementById('cliNombre').focus(), 100);
 }
@@ -6587,12 +6650,18 @@ async function guardarCliente() {
   const clienteObj = {
     id,
     nombre,
-    ciudad:    document.getElementById('cliCiudad').value.trim(),
-    tel:       document.getElementById('cliTel').value.trim(),
-    tel2:      document.getElementById('cliTel2').value.trim(),
-    email:     document.getElementById('cliEmail').value.trim(),
-    direccion:     document.getElementById('cliDireccion').value.trim(),
-    observaciones: document.getElementById('cliObservaciones').value.trim(),
+    ciudad:            document.getElementById('cliCiudad').value.trim(),
+    tel:               document.getElementById('cliTel').value.trim(),
+    tel2:              document.getElementById('cliTel2').value.trim(),
+    email:             document.getElementById('cliEmail').value.trim(),
+    direccionCasa:     document.getElementById('cliDirCasa').value.trim(),
+    mapsCasa:          document.getElementById('cliMapsCasa').value.trim(),
+    direccionTrabajo:  document.getElementById('cliDirTrabajo').value.trim(),
+    mapsTrabajo:       document.getElementById('cliMapsTrabajo').value.trim(),
+    // Keep legacy field as first available address
+    direccion:         document.getElementById('cliDirCasa').value.trim() ||
+                       document.getElementById('cliDirTrabajo').value.trim(),
+    observaciones:     document.getElementById('cliObservaciones').value.trim(),
     fechaCreado: cliEditandoId
       ? (clientes.find(c=>c.id===cliEditandoId)?.fechaCreado || new Date().toISOString())
       : new Date().toISOString()
