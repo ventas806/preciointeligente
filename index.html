@@ -6947,14 +6947,15 @@ function seleccionarCliente(id) {
   if (!c) return;
   vClienteSelId = id;
   document.getElementById('vClienteNombre').value    = c.nombre    || '';
-  document.getElementById('vClienteDireccion').value = c.direccion || '';
+  // Prefer direccionCasa (new field) then legacy direccion
+  document.getElementById('vClienteDireccion').value = c.direccionCasa || c.direccion || '';
   document.getElementById('vClienteCiudad').value    = c.ciudad    || '';
   document.getElementById('vClienteTel').value       = c.tel       || '';
   document.getElementById('vClienteTel2').value      = c.tel2      || '';
   document.getElementById('vClienteEmail').value     = c.email     || '';
-  // Maps
+  // Maps: prefer casa, then trabajo
   const mapsEl = document.getElementById('vMapsLink');
-  if (mapsEl) { mapsEl.value = c.maps || ''; onMapsLinkChange(); }
+  if (mapsEl) { mapsEl.value = c.mapsCasa || c.mapsTrabajo || ''; onMapsLinkChange(); }
   document.getElementById('vClienteResultados').style.display = 'none';
   document.getElementById('vClienteBuscar').value = '';
   // Mostrar chip y bloquear campos
