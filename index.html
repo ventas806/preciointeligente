@@ -1553,6 +1553,18 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 <label>NOMBRE DEL PRODUCTO</label>
                 <input type="text" id="cpNombre" placeholder="Ej. NEEWER 49mm Filtro ND..." oninput="cpRecalcular()">
               </div>
+              <div class="form-field field-full">
+                <label>🔗 LINK DE COTIZACIÓN <span style="color:var(--text3);font-weight:400">(donde se cotiza el producto)</span></label>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <input type="url" id="cpLinkCotizacion" placeholder="Ej. https://amazon.com/dp/... o https://alibaba.com/..."
+                    oninput="_cpUpdateLinkBtn()"
+                    style="flex:1;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+                  <a id="cpLinkBtn" href="#" target="_blank" rel="noopener"
+                    onclick="return openCpLink()"
+                    title="Abrir link"
+                    style="display:none;padding:8px 12px;background:rgba(61,106,255,.15);border:1px solid rgba(61,106,255,.3);border-radius:var(--radius2);color:var(--accent);font-size:13px;text-decoration:none;white-space:nowrap">↗ Abrir</a>
+                </div>
+              </div>
               <div class="form-field">
                 <label>COSTO USD <span style="color:var(--text3);font-weight:400">(proveedor)</span></label>
                 <div style="position:relative">
@@ -14904,6 +14916,23 @@ function cpRecalcular() {
   window._cpLastResult = r;
 }
 
+function _cpUpdateLinkBtn() {
+  const val = (document.getElementById('cpLinkCotizacion')?.value || '').trim();
+  const btn = document.getElementById('cpLinkBtn');
+  if (!btn) return;
+  if (val && /^https?:\/\//i.test(val)) {
+    btn.href = val;
+    btn.style.display = 'inline-block';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+function openCpLink() {
+  const val = (document.getElementById('cpLinkCotizacion')?.value || '').trim();
+  if (val) window.open(val, '_blank', 'noopener');
+  return false;
+}
+
 async function cpGuardar() {
   const nombre   = (document.getElementById('cpNombre')?.value || '').trim();
   const costoUSD = parseFloat(document.getElementById('cpCostoUSD')?.value) || 0;
@@ -14911,30 +14940,32 @@ async function cpGuardar() {
   const nivel    = document.getElementById('cpNivel')?.value        || 'normal';
   const override = document.getElementById('cpOverrideBanda')?.value || '';
   const ajuste   = parseFloat(document.getElementById('cpAjuste')?.value) || 0;
+  const linkCot  = (document.getElementById('cpLinkCotizacion')?.value || '').trim();
   const r        = window._cpLastResult;
 
   if (!costoUSD && !fleteL) { showToast('⚠️ Ingresa al menos Costo USD o Flete', 'warn'); return; }
   if (!r) { showToast('⚠️ Primero ingresa valores para calcular', 'warn'); return; }
 
   const row = {
-    fecha:          new Date().toISOString().slice(0,10),
-    nombre:         nombre || 'Sin nombre',
-    costo_usd:      costoUSD,
-    flete_l:        fleteL,
-    nivel:          nivel.charAt(0).toUpperCase() + nivel.slice(1),
-    override_banda: override,
-    ajuste:         ajuste,
-    estado:         _cpEstado,
-    costo_total_usd: r.costoTotalUSD,
-    costo_total_lps: r.costoTotalLPS,
-    banda_efectiva:  r.bandaEfectiva,
-    margen_final:    r.margenFinal,
-    precio_neto:     r.precioNeto,
-    precio_con_isv:  r.precioConISV,
-    util_bruta_lps:  r.utilBrutaLPS,
-    roi:             r.roi,
-    registrado_por:  currentUser?.nombre || currentUser?.user || '',
-    updated_at:      new Date().toISOString()
+    fecha:            new Date().toISOString().slice(0,10),
+    nombre:           nombre || 'Sin nombre',
+    costo_usd:        costoUSD,
+    flete_l:          fleteL,
+    nivel:            nivel.charAt(0).toUpperCase() + nivel.slice(1),
+    override_banda:   override,
+    ajuste:           ajuste,
+    estado:           _cpEstado,
+    costo_total_usd:  r.costoTotalUSD,
+    costo_total_lps:  r.costoTotalLPS,
+    banda_efectiva:   r.bandaEfectiva,
+    margen_final:     r.margenFinal,
+    precio_neto:      r.precioNeto,
+    precio_con_isv:   r.precioConISV,
+    util_bruta_lps:   r.utilBrutaLPS,
+    roi:              r.roi,
+    link_cotizacion:  linkCot || null,
+    registrado_por:   currentUser?.nombre || currentUser?.user || '',
+    updated_at:       new Date().toISOString()
   };
 
   const btn = document.querySelector('#cpPanelCalc button.btn-success');
@@ -15009,7 +15040,10 @@ function renderCpGuardados() {
     <tr style="border-bottom:1px solid var(--border2);transition:background .12s"
       onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background=''">
       <td style="padding:8px 12px;font-size:12px;color:var(--text3);white-space:nowrap">${x.fecha}</td>
-      <td style="padding:8px 12px;font-size:13px;font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${x.nombre}">${x.nombre}</td>
+      <td style="padding:8px 12px;font-size:13px;font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${x.nombre}">
+        ${x.nombre}
+        ${x.link_cotizacion ? `<a href="${x.link_cotizacion}" target="_blank" rel="noopener" title="Abrir cotización" style="margin-left:5px;font-size:11px;color:var(--accent);text-decoration:none;vertical-align:middle">🔗</a>` : ''}
+      </td>
       <td style="padding:8px 12px;font-size:13px;text-align:right">${fmtUSD(x.costo_usd)}</td>
       <td style="padding:8px 12px;font-size:13px;text-align:right;color:var(--text2)">${fmtLPS(x.costo_total_lps)}</td>
       <td style="padding:8px 12px;font-size:12px;color:var(--gold);font-weight:700">${x.banda_efectiva}</td>
@@ -15033,12 +15067,14 @@ function cpEditar(id) {
   if (!x) return;
   cpShowSub('calc');
   const setV = (elId, val) => { const el=document.getElementById(elId); if(el) el.value=val; };
-  setV('cpNombre',        x.nombre);
-  setV('cpCostoUSD',      x.costo_usd);
-  setV('cpFleteL',        x.flete_l);
-  setV('cpNivel',         (x.nivel||'Normal').toLowerCase());
-  setV('cpOverrideBanda', x.override_banda || '');
-  setV('cpAjuste',        x.ajuste || 0);
+  setV('cpNombre',          x.nombre);
+  setV('cpCostoUSD',        x.costo_usd);
+  setV('cpFleteL',          x.flete_l);
+  setV('cpNivel',           (x.nivel||'Normal').toLowerCase());
+  setV('cpOverrideBanda',   x.override_banda || '');
+  setV('cpAjuste',          x.ajuste || 0);
+  setV('cpLinkCotizacion',  x.link_cotizacion || '');
+  _cpUpdateLinkBtn();
   cpSetEstado(x.estado || 'Nuevo');
   _cpEditId = id;
   const btn = document.querySelector('#cpPanelCalc button.btn-success');
