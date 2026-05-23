@@ -7174,12 +7174,17 @@ function buscarCliente() {
   const q   = (document.getElementById('vClienteBuscar').value || '').toLowerCase().trim();
   const res = document.getElementById('vClienteResultados');
   if (!q || q.length < 2) { res.style.display = 'none'; return; }
-  const encontrados = clientes.filter(c =>
-    (c.nombre||'').toLowerCase().includes(q) ||
-    (c.tel||'').replace(/\D/g,'').includes(q.replace(/\D/g,'')) ||
-    (c.tel2||'').replace(/\D/g,'').includes(q.replace(/\D/g,'')) ||
-    (c.email||'').toLowerCase().includes(q)
-  ).slice(0, 8);
+  const qDigits = q.replace(/\D/g,'');
+  const encontrados = clientes.filter(c => {
+    if ((c.nombre||'').toLowerCase().includes(q))  return true;
+    if ((c.ciudad||'').toLowerCase().includes(q))  return true;
+    if ((c.email||'').toLowerCase().includes(q))   return true;
+    if (qDigits.length >= 2) {
+      if ((c.tel||'').replace(/\D/g,'').includes(qDigits))  return true;
+      if ((c.tel2||'').replace(/\D/g,'').includes(qDigits)) return true;
+    }
+    return false;
+  }).slice(0, 10);
   if (!encontrados.length) {
     res.innerHTML = `<div style="padding:12px 16px;color:var(--text3);font-size:13px">
       Sin resultados — los campos están listos para registrar un cliente nuevo
