@@ -10365,8 +10365,9 @@ async function renderCombos() {
     if (stockDisp === Infinity) stockDisp = 0;
     const incompleto = itemsConProblema.length > 0;
     const stockColor = incompleto || stockDisp === 0 ? 'var(--red)' : stockDisp <= 2 ? 'var(--gold)' : 'var(--green)';
-    const cardBorder = incompleto ? '1px solid rgba(255,71,87,.4)' : '1px solid transparent';
-    const cardBg = incompleto ? 'rgba(255,71,87,.04)' : 'transparent';
+    const precioMayor = combo.totalIndividual > 0 && combo.precioFinal > combo.totalIndividual;
+    const cardBorder = (incompleto || precioMayor) ? '1px solid rgba(255,71,87,.4)' : '1px solid transparent';
+    const cardBg = (incompleto || precioMayor) ? 'rgba(255,71,87,.04)' : 'transparent';
 
     // Tooltip con detalle de ítems con problema
     const tooltipItems = itemsConProblema.map(i =>
@@ -10388,6 +10389,15 @@ async function renderCombos() {
             ).join('')}
             ${itemsConProblema.length > 3 ? `<span style="font-size:10px;color:var(--red);padding:2px 4px">+${itemsConProblema.length-3} más</span>` : ''}
           </div>
+        </div>` : ''}
+        ${precioMayor ? `
+        <div style="display:flex;align-items:center;gap:8px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.4);border-radius:7px;padding:8px 12px;margin-bottom:12px">
+          <span style="font-size:15px">💸</span>
+          <div style="flex:1">
+            <span style="font-size:12px;font-weight:700;color:var(--gold);letter-spacing:.3px">PRECIO MÁS CARO QUE INDIVIDUAL</span>
+            <span style="font-size:11px;color:var(--text2);margin-left:8px">— el combo cuesta ${fmtLPS(combo.precioFinal - combo.totalIndividual)} más que comprar por separado</span>
+          </div>
+          <button onclick="editarCombo('${combo.id}')" style="font-size:11px;font-weight:700;background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.4);border-radius:6px;padding:4px 10px;color:var(--gold);cursor:pointer;white-space:nowrap;font-family:var(--font)">✏️ Corregir</button>
         </div>` : ''}
         <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
           ${combo.imagenUrl ? `<img src="${combo.imagenUrl}" style="width:72px;height:72px;object-fit:contain;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);flex-shrink:0" onerror="this.style.display='none'">` : ''}
@@ -10413,9 +10423,10 @@ async function renderCombos() {
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:160px">
             <div style="text-align:right">
               <div style="font-size:11px;color:var(--text3)">PRECIO COMBO</div>
-              <div style="font-size:20px;font-weight:800;color:var(--green)">${fmtLPS(combo.precioFinal)}</div>
+              <div style="font-size:20px;font-weight:800;color:${precioMayor ? 'var(--gold)' : 'var(--green)'}">${fmtLPS(combo.precioFinal)}</div>
             </div>
             ${ahorro > 0 ? `<div style="font-size:12px;color:var(--accent3);font-weight:600">Ahorro ${fmtLPS(ahorro)} (${pct}%)</div>` : ''}
+            ${precioMayor ? `<div style="font-size:12px;color:var(--gold);font-weight:600">⬆ ${fmtLPS(combo.precioFinal - combo.totalIndividual)} más caro</div>` : ''}
             <div style="font-size:12px;color:var(--text2)">Suma ind.: ${fmtLPS(combo.totalIndividual)}</div>
             <div style="font-size:12px">Combos armables: <strong style="color:${stockColor}">${incompleto ? '⚠️ 0 — Sin stock completo' : stockDisp === 0 ? 'Sin stock' : stockDisp + ' combo(s)'}</strong></div>
             <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
