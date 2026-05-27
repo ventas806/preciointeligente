@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Técnico · Focus Store Soporte</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#0a0c10; --bg2:#12161f; --bg3:#1a1f2e;
+      --border:#2a2f3f; --text:#e8eaf0; --muted:#8892a4;
+      --accent:#3d6aff; --green:#2ed573; --red:#ff4757; --gold:#f5c842; --orange:#ff9f43;
+    }
+    body { background:var(--bg); color:var(--text);
+      font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height:100vh; }
+
+    /* Topbar */
+    .topbar { background:var(--bg2); border-bottom:1px solid var(--border);
+      padding:13px 20px; display:flex; align-items:center; gap:12px;
+      position:sticky; top:0; z-index:20; }
+    .brand { display:flex; align-items:center; gap:10px; }
+    .brand-icon { width:34px; height:34px; background:linear-gradient(135deg,var(--accent),#6a3dff);
+      border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:17px; }
+    .brand h1 { font-size:14px; font-weight:700; }
+    .brand p  { font-size:10px; color:var(--muted); }
+    .topbar-spacer { flex:1; }
+    .user-chip { display:flex; align-items:center; gap:8px; background:var(--bg3);
+      border:1px solid var(--border); border-radius:20px; padding:5px 12px; cursor:pointer; }
+    .user-av { width:26px; height:26px; border-radius:50%; display:flex; align-items:center;
+      justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; }
+    .user-chip span { font-size:12px; font-weight:600; }
+    .btn-logout { background:none; border:none; color:var(--muted); font-size:14px;
+      cursor:pointer; padding:2px 6px; border-radius:6px; }
+    .btn-logout:hover { color:var(--red); }
+
+    /* Page */
+    .page { max-width:800px; margin:0 auto; padding:18px 16px; }
+
+    /* Privacy notice */
+    .privacy-notice {
+      display:flex; align-items:center; gap:10px;
+      background:rgba(46,213,115,.07); border:1px solid rgba(46,213,115,.2);
+      border-radius:10px; padding:10px 14px; margin-bottom:16px;
+    }
+    .privacy-notice .ic { font-size:18px; }
+    .privacy-notice p { font-size:12px; color:#5ae08a; }
+
+    /* Stats */
+    .stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:18px; }
+    .stat { background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer; transition:border-color .2s; }
+    .stat:hover { border-color:var(--accent); }
+    .stat.active { border-color:var(--accent); background:rgba(61,106,255,.07); }
+    .stat-n  { font-size:26px; font-weight:800; }
+    .stat-l  { font-size:11px; color:var(--muted); margin-top:3px; }
+    .stat.blue   .stat-n { color:var(--accent); }
+    .stat.gold   .stat-n { color:var(--gold); }
+    .stat.green  .stat-n { color:var(--green); }
+
+    /* Ticket cards */
+    .ticket-card {
+      background:var(--bg2); border:1px solid var(--border); border-radius:14px;
+      margin-bottom:10px; overflow:hidden; cursor:pointer;
+      transition:border-color .2s, background .2s;
+    }
+    .ticket-card:hover { border-color:var(--accent); }
+    .ticket-card.expanded { border-color:var(--accent); }
+
+    .tc-header {
+      display:flex; align-items:center; gap:12px; padding:13px 16px;
+    }
+    .tc-num { font-size:13px; font-weight:800; font-family:'SF Mono','Fira Code',monospace; color:var(--accent); flex-shrink:0; }
+    .tc-equip { flex:1; min-width:0; }
+    .tc-equip h4 { font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .tc-equip p  { font-size:11px; color:var(--muted); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .tc-status .chip {
+      display:inline-flex; align-items:center; gap:4px;
+      padding:4px 10px; border-radius:16px; font-size:11px; font-weight:600; white-space:nowrap;
+    }
+    .chip-azul    { background:rgba(61,106,255,.12); color:#7090ff; }
+    .chip-verde   { background:rgba(46,213,115,.12); color:var(--green); }
+    .chip-dorado  { background:rgba(245,200,66,.12); color:var(--gold); }
+    .chip-naranja { background:rgba(255,159,67,.12); color:var(--orange); }
+    .chip-gris    { background:rgba(136,146,164,.1); color:var(--muted); }
+    .tc-days { font-size:11px; color:var(--muted); flex-shrink:0; }
+    .tc-days.warn  { color:var(--gold); }
+    .tc-days.alert { color:var(--red); }
+    .tc-expand { color:var(--muted); font-size:16px; transition:transform .2s; flex-shrink:0; }
+    .ticket-card.expanded .tc-expand { transform:rotate(180deg); }
+
+    /* Expanded body */
+    .tc-body { display:none; border-top:1px solid var(--border); padding:16px; }
+    .ticket-card.expanded .tc-body { display:block; }
+
+    .fault-box {
+      background:var(--bg3); border-radius:8px; padding:12px 14px;
+      font-size:13px; line-height:1.6; margin-bottom:14px;
+    }
+    .fault-box .lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px; }
+
+    .eq-details { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+    .eq-detail .dl { font-size:11px; color:var(--muted); }
+    .eq-detail .dv { font-size:13px; font-weight:500; margin-top:1px; }
+
+    /* Actions within card */
+    .tc-actions { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+    select.sm { background:var(--bg3); border:1px solid var(--border); border-radius:8px;
+      color:var(--text); font-size:13px; padding:8px 28px 8px 10px; outline:none;
+      font-family:inherit; cursor:pointer; appearance:none;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238892a4' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:right 8px center; flex:1; }
+    select option { background:var(--bg3); }
+    .btn-sm {
+      padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600;
+      border:none; cursor:pointer; font-family:inherit; transition:all .2s; white-space:nowrap;
+    }
+    .btn-primary { background:var(--accent); color:white; }
+    .btn-primary:hover { background:#5278ff; }
+    .btn-ghost { background:var(--bg3); border:1px solid var(--border); color:var(--muted); }
+    .btn-ghost:hover { color:var(--text); border-color:var(--muted); }
+
+    textarea.sm {
+      width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:8px;
+      color:var(--text); font-size:13px; padding:10px 12px; outline:none;
+      font-family:inherit; resize:vertical; min-height:65px; transition:border-color .2s;
+    }
+    textarea.sm:focus { border-color:var(--accent); }
+
+    .note-row { margin-bottom:10px; }
+    .note-existing { background:var(--bg3); border-left:3px solid var(--gold); border-radius:0 8px 8px 0;
+      padding:8px 12px; margin-bottom:6px; }
+    .note-existing p  { font-size:12px; line-height:1.5; }
+    .note-existing .nm { font-size:10px; color:var(--muted); margin-top:3px; }
+
+    /* Empty state */
+    .empty { text-align:center; padding:60px 20px; }
+    .empty .ei { font-size:48px; margin-bottom:12px; }
+    .empty p { font-size:14px; color:var(--muted); }
+
+    .spinner { width:36px; height:36px; border:3px solid var(--border);
+      border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; margin:0 auto 12px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* Filter */
+    .filter-row { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+    .filter-row select.sm { max-width:200px; }
+    .search-inp {
+      flex:1; min-width:160px; background:var(--bg2); border:1px solid var(--border);
+      border-radius:8px; color:var(--text); font-size:13px; padding:8px 14px;
+      outline:none; font-family:inherit;
+    }
+    .search-inp:focus { border-color:var(--accent); }
+
+    /* Toast */
+    .toast { position:fixed; bottom:20px; left:50%;
+      transform:translateX(-50%) translateY(80px);
+      background:var(--bg3); border:1px solid var(--border); border-radius:10px;
+      padding:10px 18px; font-size:13px; color:var(--green); transition:transform .3s;
+      pointer-events:none; z-index:200; white-space:nowrap; }
+    .toast.show { transform:translateX(-50%) translateY(0); }
+
+    @media (max-width:500px) {
+      .stats-row { grid-template-columns:1fr 1fr 1fr; }
+      .eq-details { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">🔧</div>
+    <div><h1>Focus Store</h1><p>Panel del Técnico</p></div>
+  </div>
+  <div class="topbar-spacer"></div>
+  <a href="../recepcion/index.html" style="font-size:13px;color:var(--muted);text-decoration:none">← Recepción</a>
+  <div class="user-chip" id="userChip">
+    <div class="user-av" id="userAv">?</div>
+    <span id="userName">—</span>
+  </div>
+  <button class="btn-logout" onclick="logout()" title="Salir">⏻</button>
+</div>
+
+<div class="page">
+
+  <!-- Privacy notice -->
+  <div class="privacy-notice">
+    <span class="ic">🔒</span>
+    <p>Vista técnica — los datos personales del cliente no están disponibles en esta vista.</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat blue" id="statMy" onclick="filterView('mine')">
+      <div class="stat-n" id="statMyN">—</div>
+      <div class="stat-l">Mis tickets activos</div>
+    </div>
+    <div class="stat gold" id="statUnassigned" onclick="filterView('unassigned')">
+      <div class="stat-n" id="statUnN">—</div>
+      <div class="stat-l">Sin asignar</div>
+    </div>
+    <div class="stat green" id="statDiag" onclick="filterView('diag')">
+      <div class="stat-n" id="statDiagN">—</div>
+      <div class="stat-l">En diagnóstico</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-row">
+    <input class="search-inp" type="text" id="searchInp" placeholder="🔍 Buscar por ticket, equipo…" oninput="applyFilter()">
+    <select class="sm" id="viewFilter" onchange="applyFilter()">
+      <option value="mine">Mis tickets</option>
+      <option value="unassigned">Sin asignar</option>
+      <option value="all">Todos los activos</option>
+      <option value="diag">En diagnóstico</option>
+    </select>
+  </div>
+
+  <!-- Ticket list -->
+  <div id="ticketList">
+    <div class="empty">
+      <div class="spinner"></div>
+      <p>Cargando tickets…</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+const SUPABASE_URL = 'https://uzhjnedhmbvgfqqssuov.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6aGpuZWRobWJ2Z2ZxcXNzdW92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMjA1MTgsImV4cCI6MjA5MDg5NjUxOH0.w8oomn73rEZWqKv4RA56uCrBwv1z4VYnks7fyhafqz8';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const STATUS_MAP = {
+  equipo_recibido:      { label:'📬 Equipo recibido', chip:'chip-verde' },
+  en_diagnostico:       { label:'🔍 Diagnóstico',    chip:'chip-azul' },
+  esperando_aprobacion: { label:'⚡ Cotización',     chip:'chip-dorado' },
+  aprobado_reparacion:  { label:'✅ Aprobado',       chip:'chip-verde' },
+  esperando_repuesto:   { label:'📦 Repuesto',       chip:'chip-naranja' },
+  en_reparacion:        { label:'🔧 Reparando',      chip:'chip-azul' },
+  en_pruebas:           { label:'🧪 Pruebas',        chip:'chip-azul' },
+  listo_para_entrega:   { label:'🎉 Listo retiro',   chip:'chip-verde' },
+  solicitud_recibida:   { label:'📝 Solicitud',      chip:'chip-gris' },
+  equipo_en_camino:     { label:'🚚 En camino',      chip:'chip-dorado' }
+};
+
+const TECH_STATUSES = [
+  { v:'equipo_recibido',      l:'📬 Equipo recibido' },
+  { v:'en_diagnostico',       l:'🔍 En diagnóstico' },
+  { v:'esperando_aprobacion', l:'⚡ Esperando aprobación' },
+  { v:'aprobado_reparacion',  l:'✅ Reparación aprobada' },
+  { v:'esperando_repuesto',   l:'📦 Esperando repuesto' },
+  { v:'en_reparacion',        l:'🔧 En reparación' },
+  { v:'en_pruebas',           l:'🧪 En pruebas' },
+  { v:'listo_para_entrega',   l:'🎉 Listo para entrega' },
+  { v:'irreparable',          l:'⛔ No reparable' }
+];
+
+const CAT_ICONS = {camara:'📷',lente:'🔭',flash:'⚡',luz:'💡',audio:'🎙',gimbal:'🎬',drone:'🚁',computadora:'💻',monitor:'🖥',tripode:'📸',otro:'🔧'};
+
+let session    = null;
+let allTickets = [];
+let notesCache = {};
+
+window.addEventListener('DOMContentLoaded', async () => {
+  session = getSession();
+  if (!session) { location.href = '../login.html'; return; }
+
+  // Render user chip
+  const av = document.getElementById('userAv');
+  av.textContent      = session.avatar || session.full_name[0];
+  av.style.background = (session.color || '#3d6aff') + '33';
+  av.style.color      = session.color || '#3d6aff';
+  document.getElementById('userName').textContent = session.full_name.split(' ')[0];
+
+  await loadTickets();
+});
+
+function getSession() {
+  try {
+    const s = JSON.parse(localStorage.getItem('sp_session') || 'null');
+    if (!s) return null;
+    if (Date.now() - s.logged_in_at > 12 * 3600 * 1000) { localStorage.removeItem('sp_session'); return null; }
+    return s;
+  } catch (_) { return null; }
+}
+
+/* ── Load tickets (uses sp_ticket_tecnico_view — NO customer data) ── */
+async function loadTickets() {
+  try {
+    // Use the technician view (no customer personal data)
+    const { data, error } = await sb
+      .from('sp_ticket_tecnico_view')
+      .select('*')
+      .not('status', 'in', '(cerrado,entregado,cancelado,abandonado,irreparable)')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) throw error;
+    allTickets = data || [];
+
+    updateStats();
+    applyFilter();
+
+  } catch (ex) {
+    console.error(ex);
+    document.getElementById('ticketList').innerHTML =
+      `<div class="empty"><p>⚠️ Error al cargar. <a href="#" onclick="loadTickets()" style="color:var(--accent)">Reintentar</a></p></div>`;
+  }
+}
+
+function updateStats() {
+  const mine       = allTickets.filter(t => t.assigned_to === session.id).length;
+  const unassigned = allTickets.filter(t => !t.assigned_to).length;
+  const diag       = allTickets.filter(t => t.status === 'en_diagnostico').length;
+  document.getElementById('statMyN').textContent   = mine;
+  document.getElementById('statUnN').textContent   = unassigned;
+  document.getElementById('statDiagN').textContent = diag;
+}
+
+function filterView(v) {
+  document.getElementById('viewFilter').value = v;
+  applyFilter();
+}
+
+function applyFilter() {
+  const view   = document.getElementById('viewFilter').value;
+  const search = document.getElementById('searchInp').value.toLowerCase();
+
+  document.querySelectorAll('.stat').forEach(s => s.classList.remove('active'));
+  if (view === 'mine')       document.getElementById('statMy').classList.add('active');
+  if (view === 'unassigned') document.getElementById('statUnassigned').classList.add('active');
+  if (view === 'diag')       document.getElementById('statDiag').classList.add('active');
+
+  let filtered = allTickets;
+
+  if (view === 'mine')       filtered = filtered.filter(t => t.assigned_to === session.id);
+  if (view === 'unassigned') filtered = filtered.filter(t => !t.assigned_to);
+  if (view === 'diag')       filtered = filtered.filter(t => t.status === 'en_diagnostico');
+
+  if (search) {
+    filtered = filtered.filter(t =>
+      t.ticket_number.toLowerCase().includes(search) ||
+      `${t.brand} ${t.model}`.toLowerCase().includes(search) ||
+      t.category?.includes(search)
+    );
+  }
+
+  renderTickets(filtered);
+}
+
+function renderTickets(tickets) {
+  const list = document.getElementById('ticketList');
+  if (!tickets.length) {
+    list.innerHTML = `<div class="empty"><div class="ei">🔧</div><p>No hay tickets que coincidan.</p></div>`;
+    return;
+  }
+
+  list.innerHTML = tickets.map(t => {
+    const st   = STATUS_MAP[t.status] || { label: t.status, chip:'chip-gris' };
+    const days = Math.floor((Date.now() - new Date(t.created_at)) / 86400000);
+    const dc   = days > 20 ? 'alert' : days > 10 ? 'warn' : '';
+
+    const statusOpts = TECH_STATUSES.map(s =>
+      `<option value="${s.v}" ${s.v === t.status ? 'selected' : ''}>${s.l}</option>`
+    ).join('');
+
+    return `
+    <div class="ticket-card" id="tc-${t.id}">
+      <div class="tc-header" onclick="toggleCard('${t.id}')">
+        <div class="tc-num">${t.ticket_number}</div>
+        <div class="tc-equip">
+          <h4>${CAT_ICONS[t.category]||'🔧'} ${t.brand} ${t.model}</h4>
+          <p>${t.category || '—'} ${t.serial_number ? '· SN: ' + t.serial_number : ''}</p>
+        </div>
+        <div class="tc-status"><span class="chip ${st.chip}">${st.label}</span></div>
+        <div class="tc-days ${dc}">${days}d</div>
+        <div class="tc-expand">▼</div>
+      </div>
+
+      <div class="tc-body" id="body-${t.id}">
+
+        <!-- Equipment details -->
+        <div class="eq-details">
+          <div class="eq-detail"><div class="dl">Categoría</div><div class="dv">${t.category||'—'}</div></div>
+          <div class="eq-detail"><div class="dl">Condición</div><div class="dv">${t.physical_condition||'—'}</div></div>
+          ${t.serial_number ? `<div class="eq-detail"><div class="dl">N° de serie</div><div class="dv" style="font-family:monospace">${t.serial_number}</div></div>` : ''}
+          ${t.accessories?.length ? `<div class="eq-detail" style="grid-column:1/-1"><div class="dl">Accesorios</div><div class="dv" style="font-size:12px">${t.accessories.join(', ')}</div></div>` : ''}
+          ${t.accessories_notes ? `<div class="eq-detail" style="grid-column:1/-1"><div class="dl">Notas de accesorios</div><div class="dv" style="font-size:12px;color:var(--muted)">${t.accessories_notes}</div></div>` : ''}
+        </div>
+
+        <!-- Fault reported -->
+        <div class="fault-box">
+          <div class="lbl">Falla reportada</div>
+          ${esc(t.reported_fault)}
+        </div>
+        ${t.client_notes ? `<div class="fault-box" style="border-left:3px solid var(--accent)"><div class="lbl">Notas del cliente</div>${esc(t.client_notes)}</div>` : ''}
+
+        <!-- Change status -->
+        <div class="tc-actions">
+          <select class="sm" id="st-${t.id}">${statusOpts}</select>
+          <button class="btn-sm btn-primary" onclick="changeStatus('${t.id}','${t.status}')">Actualizar estado</button>
+          ${!t.assigned_to || t.assigned_to !== session.id
+            ? `<button class="btn-sm btn-ghost" onclick="takeTicket('${t.id}')">📌 Tomar ticket</button>` : ''}
+        </div>
+
+        <!-- Technical note -->
+        <div class="note-row">
+          <div id="notes-${t.id}" style="margin-bottom:8px"></div>
+          <textarea class="sm" id="note-${t.id}" placeholder="Notas técnicas del diagnóstico o reparación…" rows="2"></textarea>
+          <div style="margin-top:6px">
+            <button class="btn-sm btn-ghost" onclick="addNote('${t.id}')">+ Agregar nota técnica</button>
+          </div>
+        </div>
+
+      </div>
+    </div>`;
+  }).join('');
+
+  // Load notes for expanded cards (pre-load none, load on expand)
+}
+
+function toggleCard(id) {
+  const card = document.getElementById(`tc-${id}`);
+  const wasOpen = card.classList.contains('expanded');
+  card.classList.toggle('expanded');
+  if (!wasOpen) loadNotes(id);
+}
+
+async function loadNotes(ticketId) {
+  if (notesCache[ticketId]) { renderNotes(ticketId, notesCache[ticketId]); return; }
+  try {
+    const { data } = await sb.from('sp_ticket_internal_notes')
+      .select('content,created_at,note_type')
+      .eq('ticket_id', ticketId)
+      .eq('note_type', 'tecnico')
+      .order('created_at');
+    notesCache[ticketId] = data || [];
+    renderNotes(ticketId, data || []);
+  } catch (_) {}
+}
+
+function renderNotes(ticketId, notes) {
+  const el = document.getElementById(`notes-${ticketId}`);
+  if (!el) return;
+  el.innerHTML = notes.map(n => `
+    <div class="note-existing">
+      <p>${esc(n.content)}</p>
+      <div class="nm">🔧 Técnico · ${fmtDT(n.created_at)}</div>
+    </div>`).join('');
+}
+
+/* ── Actions ────────────────────────────────────────────────── */
+async function changeStatus(ticketId, currentStatus) {
+  const newStatus = document.getElementById(`st-${ticketId}`).value;
+  if (!newStatus || newStatus === currentStatus) { showToast('⚠️ Seleccione un estado diferente.'); return; }
+
+  try {
+    const { error } = await sb.from('sp_tickets').update({ status: newStatus }).eq('id', ticketId);
+    if (error) throw error;
+    showToast('✅ Estado actualizado');
+    setTimeout(() => loadTickets(), 800);
+  } catch (ex) { showToast('⚠️ Error: ' + ex.message); }
+}
+
+async function takeTicket(ticketId) {
+  try {
+    const { error } = await sb.from('sp_tickets').update({ assigned_to: session.id }).eq('id', ticketId);
+    if (error) throw error;
+    showToast('✅ Ticket asignado a ti');
+    setTimeout(() => loadTickets(), 800);
+  } catch (ex) { showToast('⚠️ Error: ' + ex.message); }
+}
+
+async function addNote(ticketId) {
+  const content = document.getElementById(`note-${ticketId}`)?.value?.trim();
+  if (!content) { showToast('⚠️ Escriba la nota.'); return; }
+
+  try {
+    const { error } = await sb.from('sp_ticket_internal_notes').insert({
+      ticket_id: ticketId, note_type: 'tecnico',
+      author_id: session.id, content
+    });
+    if (error) throw error;
+    document.getElementById(`note-${ticketId}`).value = '';
+    delete notesCache[ticketId];
+    await loadNotes(ticketId);
+    showToast('✅ Nota guardada');
+  } catch (ex) { showToast('⚠️ Error: ' + ex.message); }
+}
+
+function logout() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  localStorage.removeItem('sp_session');
+  location.href = '../login.html';
+}
+
+/* ── Helpers ─────────────────────────────────────────────────── */
+function esc(s) { return s?.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') || ''; }
+function fmtDT(iso) { return new Date(iso).toLocaleString('es-HN',{ day:'numeric',month:'short',hour:'2-digit',minute:'2-digit' }); }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ticket · Focus Store Soporte</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #0a0c10;
+      --bg2:    #12161f;
+      --bg3:    #1a1f2e;
+      --border: #2a2f3f;
+      --text:   #e8eaf0;
+      --muted:  #8892a4;
+      --accent: #3d6aff;
+      --green:  #2ed573;
+      --red:    #ff4757;
+      --gold:   #f5c842;
+      --orange: #ff9f43;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Topbar ─────────────────────────────────────────────── */
+    .topbar {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky; top: 0; z-index: 20;
+    }
+    .btn-back {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      padding: 7px 14px;
+      cursor: pointer;
+      font-family: inherit;
+      text-decoration: none;
+      transition: all .2s;
+    }
+    .btn-back:hover { color: var(--text); border-color: var(--muted); }
+    .topbar-title { font-size: 16px; font-weight: 700; flex: 1; }
+    .topbar-num {
+      font-size: 13px;
+      color: var(--accent);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-weight: 700;
+    }
+
+    /* ── Layout ─────────────────────────────────────────────── */
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px 16px;
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 16px;
+    }
+    @media (max-width: 720px) {
+      .page { grid-template-columns: 1fr; }
+    }
+
+    /* ── Card ───────────────────────────────────────────────── */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+    .card-header {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-header h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+    .card-body { padding: 16px 18px; }
+
+    /* ── Status header ──────────────────────────────────────── */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+    .big-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .pill-azul    { background: rgba(61,106,255,.15);  color: #7090ff; border: 1px solid rgba(61,106,255,.3); }
+    .pill-verde   { background: rgba(46,213,115,.15);  color: var(--green); border: 1px solid rgba(46,213,115,.3); }
+    .pill-dorado  { background: rgba(245,200,66,.15);  color: var(--gold);  border: 1px solid rgba(245,200,66,.3); }
+    .pill-naranja { background: rgba(255,159,67,.15);  color: var(--orange); border: 1px solid rgba(255,159,67,.3); }
+    .pill-rojo    { background: rgba(255,71,87,.15);   color: var(--red);   border: 1px solid rgba(255,71,87,.3); }
+    .pill-gris    { background: rgba(136,146,164,.1);  color: var(--muted); border: 1px solid rgba(136,146,164,.25); }
+
+    /* ── Info rows ──────────────────────────────────────────── */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 500px) { .info-grid { grid-template-columns: 1fr; } }
+
+    .info-item { }
+    .info-item .lbl { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+    .info-item .val { font-size: 14px; font-weight: 500; }
+    .info-item .val.mono { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; }
+
+    .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+    /* ── Timeline ───────────────────────────────────────────── */
+    .tl { padding: 12px 0; }
+    .tl-item {
+      display: flex;
+      gap: 12px;
+      padding-bottom: 14px;
+      position: relative;
+    }
+    .tl-item:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 9px; top: 22px;
+      width: 2px; bottom: 0;
+      background: var(--border);
+    }
+    .tl-dot {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      font-size: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      position: relative; z-index: 1;
+    }
+    .tl-dot.done    { background: var(--green); color: #0a0c10; }
+    .tl-dot.current { background: var(--accent); color: white; box-shadow: 0 0 0 3px rgba(61,106,255,.2); }
+    .tl-dot.pending { background: var(--border); color: var(--muted); }
+    .tl-content h4  { font-size: 13px; font-weight: 600; }
+    .tl-content p   { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    /* ── Messages ───────────────────────────────────────────── */
+    .messages { padding: 10px 4px; display: flex; flex-direction: column; gap: 10px; }
+    .msg {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      max-width: 90%;
+    }
+    .msg.staff  { align-self: flex-start; }
+    .msg.client { align-self: flex-end; }
+    .msg-bubble {
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .msg.staff  .msg-bubble { background: var(--bg3); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+    .msg.client .msg-bubble { background: rgba(61,106,255,.12); border: 1px solid rgba(61,106,255,.2); border-bottom-right-radius: 4px; }
+    .msg.system .msg-bubble { background: var(--bg3); border: 1px dashed var(--border); font-style: italic; color: var(--muted); font-size: 12px; }
+    .msg-meta { font-size: 10px; color: var(--muted); }
+    .msg.client .msg-meta { text-align: right; }
+
+    /* ── Notes (internal) ───────────────────────────────────── */
+    .note-item {
+      background: var(--bg3);
+      border-left: 3px solid var(--gold);
+      border-radius: 0 8px 8px 0;
+      padding: 10px 14px;
+      margin-bottom: 8px;
+    }
+    .note-item p   { font-size: 13px; line-height: 1.5; }
+    .note-item .nm { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+    /* ── Action selects / buttons ───────────────────────────── */
+    .action-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+    select, input[type="text"], textarea {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 13px;
+      padding: 9px 12px;
+      outline: none;
+      font-family: inherit;
+      transition: border-color .2s;
+      width: 100%;
+    }
+    select { cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238892a4' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+    }
+    select option { background: var(--bg3); }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 70px; }
+
+    .field { margin-bottom: 10px; }
+    .field-label { font-size: 11px; color: var(--muted); margin-bottom: 5px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+
+    .btn {
+      padding: 9px 16px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .2s;
+    }
+    .btn-primary   { background: var(--accent); color: white; }
+    .btn-primary:hover { background: #5278ff; }
+    .btn-green     { background: var(--green); color: #0a0c10; }
+    .btn-green:hover { background: #40e080; }
+    .btn-ghost     { background: var(--bg3); border: 1px solid var(--border); color: var(--muted); }
+    .btn-ghost:hover { color: var(--text); }
+    .btn-full      { width: 100%; padding: 12px; font-size: 14px; }
+    .btn:disabled  { opacity: .5; cursor: not-allowed; }
+
+    /* ── Equip badge ────────────────────────────────────────── */
+    .equip-badge {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg3);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    .equip-icon { font-size: 28px; }
+    .equip-info h3 { font-size: 15px; font-weight: 700; }
+    .equip-info p  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Customer card ──────────────────────────────────────── */
+    .cust-field { display: flex; gap: 8px; margin-bottom: 10px; }
+    .cust-field .ci { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+    .cust-field .cv h4 { font-size: 13px; font-weight: 500; }
+    .cust-field .cv p  { font-size: 11px; color: var(--muted); }
+
+    /* ── Accessories ────────────────────────────────────────── */
+    .acc-pill {
+      display: inline-block;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 3px 10px;
+      font-size: 11px;
+      margin: 2px;
+      color: var(--muted);
+    }
+
+    /* ── Loading / Error ────────────────────────────────────── */
+    .full-center {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 80px 20px; text-align: center;
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin-bottom: 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Portal link ────────────────────────────────────────── */
+    .portal-link-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 11px;
+      color: var(--muted);
+      word-break: break-all;
+      font-family: 'SF Mono', monospace;
+      cursor: pointer;
+    }
+    .portal-link-box:hover { border-color: var(--accent); }
+
+    /* ── Toast ──────────────────────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 20px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 18px;
+      font-size: 13px; color: var(--green);
+      transition: transform .3s;
+      pointer-events: none; z-index: 200;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loadingView" class="full-center">
+  <div class="spinner"></div>
+  <p style="color:var(--muted)">Cargando ticket…</p>
+</div>
+
+<!-- Error -->
+<div id="errorView" style="display:none" class="full-center">
+  <p style="font-size:36px;margin-bottom:12px">⚠️</p>
+  <p style="color:var(--muted)">Ticket no encontrado.</p>
+  <a href="index.html" style="color:var(--accent);margin-top:12px">← Volver al dashboard</a>
+</div>
+
+<!-- Main -->
+<div id="mainView" style="display:none">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <a href="index.html" class="btn-back">← Volver</a>
+    <div class="topbar-title">Detalle del Ticket</div>
+    <div class="topbar-num" id="topNum">—</div>
+  </div>
+
+  <div class="page">
+
+    <!-- LEFT COLUMN -->
+    <div>
+
+      <!-- ── Ticket summary ────────────────────────────────── -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Información del Ticket</h3>
+          <div id="statusPill" class="big-status pill-azul">—</div>
+        </div>
+        <div class="card-body">
+          <div class="info-grid">
+            <div class="info-item"><div class="lbl">N° de ticket</div><div class="val mono" id="iTicketNum">—</div></div>
+            <div class="info-item"><div class="lbl">Fecha de registro</div><div class="val" id="iDate">—</div></div>
+            <div class="info-item"><div class="lbl">Origen</div><div class="val" id="iOrigin">—</div></div>
+            <div class="info-item"><div class="lbl">Técnico asignado</div><div class="val" id="iTech">Sin asignar</div></div>
+          </div>
+          <div class="divider"></div>
+          <div class="field-label">Falla reportada</div>
+          <p style="font-size:14px;line-height:1.6;color:var(--text)" id="iFault">—</p>
+          <div id="iNotasWrap" style="display:none;margin-top:10px">
+            <div class="field-label">Notas del cliente</div>
+            <p style="font-size:13px;line-height:1.5;color:var(--muted)" id="iNotas">—</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Status timeline ───────────────────────────────── -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Historial de estado</h3>
+          <span style="font-size:12px;color:var(--muted)" id="histCount">0 cambios</span>
+        </div>
+        <div class="card-body">
+          <div class="tl" id="tlContent">—</div>
+        </div>
+      </div>
+
+      <!-- ── Messages (visible to client) ─────────────────── -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Mensajes al cliente</h3>
+          <span style="font-size:11px;color:var(--green)">👁 Visibles al cliente</span>
+        </div>
+        <div class="card-body">
+          <div class="messages" id="msgList">
+            <p style="font-size:13px;color:var(--muted);text-align:center">Sin mensajes aún.</p>
+          </div>
+          <div class="divider"></div>
+          <div class="field">
+            <div class="field-label">Agregar mensaje al cliente</div>
+            <textarea id="newMsg" placeholder="Escriba un mensaje que verá el cliente en su portal…" rows="2"></textarea>
+          </div>
+          <button class="btn btn-primary" onclick="sendMessage()">Enviar mensaje</button>
+        </div>
+      </div>
+
+      <!-- ── Internal notes ────────────────────────────────── -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Notas internas</h3>
+          <span style="font-size:11px;color:var(--red)">🔒 Solo staff</span>
+        </div>
+        <div class="card-body">
+          <div id="notesList">
+            <p style="font-size:13px;color:var(--muted)">Sin notas internas.</p>
+          </div>
+          <div class="divider"></div>
+          <div class="field">
+            <div class="field-label">Agregar nota interna</div>
+            <textarea id="newNote" placeholder="Notas privadas del equipo de soporte…" rows="2"></textarea>
+          </div>
+          <button class="btn btn-ghost" onclick="addNote()">Agregar nota</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div>
+
+      <!-- ── Actions ───────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-header"><h3>Acciones</h3></div>
+        <div class="card-body">
+
+          <div class="field">
+            <div class="field-label">Cambiar estado</div>
+            <select id="statusSelect" onchange="onStatusChange()">
+              <option value="">Seleccione nuevo estado…</option>
+              <option value="solicitud_recibida">📝 Solicitud recibida</option>
+              <option value="equipo_en_camino">🚚 Equipo en camino</option>
+              <option value="equipo_recibido">📬 Equipo recibido</option>
+              <option value="en_diagnostico">🔍 En diagnóstico</option>
+              <option value="esperando_aprobacion">⚡ Esperando aprobación</option>
+              <option value="aprobado_reparacion">✅ Reparación aprobada</option>
+              <option value="esperando_repuesto">📦 Esperando repuesto</option>
+              <option value="en_reparacion">🔧 En reparación</option>
+              <option value="en_pruebas">🧪 En pruebas</option>
+              <option value="listo_para_entrega">🎉 Listo para entrega</option>
+              <option value="entregado">✔ Entregado</option>
+              <option value="cerrado">🔒 Cerrado</option>
+              <option value="cancelado">✗ Cancelado</option>
+              <option value="irreparable">⛔ No reparable</option>
+              <option value="abandonado">⚠️ Abandonado</option>
+            </select>
+          </div>
+
+          <div class="field" id="statusNoteField" style="display:none">
+            <div class="field-label">Comentario de estado (opcional)</div>
+            <input type="text" id="statusNote" placeholder="Ej: Recibido el equipo, inicia diagnóstico…">
+          </div>
+
+          <button class="btn btn-primary btn-full" onclick="changeStatus()">Actualizar estado</button>
+
+          <div class="divider"></div>
+
+          <div class="field">
+            <div class="field-label">Asignar técnico</div>
+            <select id="techSelect">
+              <option value="">Sin asignar</option>
+            </select>
+          </div>
+          <button class="btn btn-ghost btn-full" onclick="assignTech()">Guardar asignación</button>
+
+          <div class="divider"></div>
+
+          <div class="field-label" style="margin-bottom:8px">Enlace del cliente</div>
+          <div class="portal-link-box" id="portalLinkBox" onclick="copyPortalLink()">—</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Clic para copiar</div>
+
+        </div>
+      </div>
+
+      <!-- ── Customer info ─────────────────────────────────── -->
+      <div class="card">
+        <div class="card-header"><h3>Cliente</h3></div>
+        <div class="card-body">
+          <div class="cust-field">
+            <span class="ci">👤</span>
+            <div class="cv"><h4 id="cName">—</h4><p>Nombre</p></div>
+          </div>
+          <div class="cust-field">
+            <span class="ci">📞</span>
+            <div class="cv"><h4 id="cPhone">—</h4><p>Teléfono</p></div>
+          </div>
+          <div class="cust-field" id="cEmailRow" style="display:none">
+            <span class="ci">📧</span>
+            <div class="cv"><h4 id="cEmail">—</h4><p>Correo</p></div>
+          </div>
+          <div class="cust-field" id="cIdRow" style="display:none">
+            <span class="ci">🪪</span>
+            <div class="cv"><h4 id="cId">—</h4><p>Identidad / RTN</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Equipment info ────────────────────────────────── -->
+      <div class="card">
+        <div class="card-header"><h3>Equipo</h3></div>
+        <div class="card-body">
+          <div class="equip-badge">
+            <span class="equip-icon" id="eIcon">🔧</span>
+            <div class="equip-info">
+              <h3 id="eName">—</h3>
+              <p id="eCat">—</p>
+            </div>
+          </div>
+          <div class="info-grid">
+            <div class="info-item"><div class="lbl">Condición</div><div class="val" id="eCond">—</div></div>
+            <div class="info-item"><div class="lbl">Color</div><div class="val" id="eColor">—</div></div>
+            <div class="info-item" id="eSerialRow" style="display:none">
+              <div class="lbl">N° de serie</div><div class="val mono" id="eSerial">—</div>
+            </div>
+          </div>
+          <div id="eAccRow" style="display:none;margin-top:10px">
+            <div class="field-label">Accesorios incluidos</div>
+            <div id="eAccList">—</div>
+          </div>
+          <div id="eAccNotesRow" style="display:none;margin-top:10px">
+            <div class="field-label">Notas de accesorios</div>
+            <p style="font-size:12px;color:var(--muted)" id="eAccNotes">—</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Shipping info (remoto) ─────────────────────────── -->
+      <div class="card" id="shippingCard" style="display:none">
+        <div class="card-header"><h3>Envío</h3></div>
+        <div class="card-body">
+          <div class="info-grid">
+            <div class="info-item"><div class="lbl">Método</div><div class="val" id="shMethod">—</div></div>
+            <div class="info-item" id="shCourierRow" style="display:none"><div class="lbl">Courier</div><div class="val" id="shCourier">—</div></div>
+            <div class="info-item" id="shTrackingRow" style="display:none"><div class="lbl">Tracking</div><div class="val mono" id="shTracking">—</div></div>
+            <div class="info-item" id="shArrivalRow" style="display:none"><div class="lbl">Llegada estimada</div><div class="val" id="shArrival">—</div></div>
+          </div>
+          <div id="shNotesRow" style="display:none;margin-top:10px">
+            <div class="field-label">Notas de envío</div>
+            <p style="font-size:12px;color:var(--muted)" id="shNotes">—</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+const SUPABASE_URL = 'https://uzhjnedhmbvgfqqssuov.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6aGpuZWRobWJ2Z2ZxcXNzdW92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMjA1MTgsImV4cCI6MjA5MDg5NjUxOH0.w8oomn73rEZWqKv4RA56uCrBwv1z4VYnks7fyhafqz8';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const STATUS_MAP = {
+  solicitud_recibida:   { label: '📝 Solicitud recibida',   pill: 'pill-azul' },
+  equipo_en_camino:     { label: '🚚 Equipo en camino',     pill: 'pill-dorado' },
+  equipo_recibido:      { label: '📬 Equipo recibido',      pill: 'pill-verde' },
+  en_diagnostico:       { label: '🔍 En diagnóstico',       pill: 'pill-azul' },
+  esperando_aprobacion: { label: '⚡ Esperando aprobación', pill: 'pill-dorado' },
+  aprobado_reparacion:  { label: '✅ Reparación aprobada',  pill: 'pill-verde' },
+  esperando_repuesto:   { label: '📦 Esperando repuesto',   pill: 'pill-naranja' },
+  en_reparacion:        { label: '🔧 En reparación',        pill: 'pill-azul' },
+  en_pruebas:           { label: '🧪 En pruebas',           pill: 'pill-azul' },
+  listo_para_entrega:   { label: '🎉 Listo para entrega',   pill: 'pill-verde' },
+  entregado:            { label: '✔ Entregado',             pill: 'pill-verde' },
+  cerrado:              { label: '🔒 Cerrado',              pill: 'pill-gris' },
+  cancelado:            { label: '✗ Cancelado',             pill: 'pill-rojo' },
+  irreparable:          { label: '⛔ No reparable',         pill: 'pill-rojo' },
+  abandonado:           { label: '⚠️ Abandonado',           pill: 'pill-rojo' }
+};
+
+const CAT_ICONS = { camara:'📷',lente:'🔭',flash:'⚡',luz:'💡',audio:'🎙',gimbal:'🎬',drone:'🚁',computadora:'💻',monitor:'🖥',tripode:'📸',otro:'🔧' };
+const ORIGIN_LABELS = { cliente_presencial:'📍 Presencial',staff_presencial:'🧑‍💼 Staff presencial',staff_telefono:'📞 Staff teléfono',cliente_remoto:'🌐 Remoto' };
+const COND_LABELS   = { bueno:'✅ Bueno',regular:'⚠️ Regular','dañado':'🔴 Dañado' };
+const SHIP_LABELS   = { presencial:'🚶 Lo trae personalmente',courier:'📦 Courier/mensajería',otro:'🔄 Otro' };
+
+let ticketId    = null;
+let ticketData  = null;
+let techProfiles = {};
+let session     = null;
+let accessToken = null;
+
+/* ═══════════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', async () => {
+  session = getSession();
+  if (!session) { location.href = '../login.html'; return; }
+
+  ticketId = new URLSearchParams(location.search).get('id');
+  if (!ticketId) { showView('error'); return; }
+
+  await loadProfiles();
+  await loadTicket();
+});
+
+function getSession() {
+  try {
+    const s = JSON.parse(localStorage.getItem('sp_session') || 'null');
+    if (!s) return null;
+    if (Date.now() - s.logged_in_at > 12 * 3600 * 1000) { localStorage.removeItem('sp_session'); return null; }
+    return s;
+  } catch (_) { return null; }
+}
+
+async function loadProfiles() {
+  const { data } = await sb.from('sp_profiles')
+    .select('id,full_name,role,color,avatar')
+    .eq('is_active', true);
+  if (data) {
+    techProfiles = {};
+    data.forEach(p => { techProfiles[p.id] = p; });
+
+    // Populate tech select
+    const sel = document.getElementById('techSelect');
+    const techs = data.filter(p => ['tecnico','admin','supervisor'].includes(p.role));
+    techs.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value       = p.id;
+      opt.textContent = `${p.avatar || p.full_name[0]} ${p.full_name} (${p.role})`;
+      sel.appendChild(opt);
+    });
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOAD TICKET
+═══════════════════════════════════════════════════════════════ */
+async function loadTicket() {
+  try {
+    const { data: t, error } = await sb.from('sp_tickets').select(`
+      *,
+      sp_customers!sp_tickets_customer_id_fkey (*),
+      sp_equipment!sp_tickets_equipment_id_fkey (*)
+    `).eq('id', ticketId).single();
+
+    if (error || !t) { showView('error'); return; }
+
+    ticketData  = t;
+    accessToken = t.access_token;
+
+    const [{ data: history }, { data: msgs }, { data: notes }] = await Promise.all([
+      sb.from('sp_ticket_status_history').select('*').eq('ticket_id', ticketId).order('created_at'),
+      sb.from('sp_ticket_messages').select('*').eq('ticket_id', ticketId).order('created_at'),
+      sb.from('sp_ticket_internal_notes').select('*').eq('ticket_id', ticketId).order('created_at')
+    ]);
+
+    renderTicket(t, history || [], msgs || [], notes || []);
+    showView('main');
+
+  } catch (ex) {
+    console.error(ex);
+    showView('error');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════════════════════ */
+function renderTicket(t, history, msgs, notes) {
+  const eq = t.sp_equipment;
+  const cu = t.sp_customers;
+  const st = STATUS_MAP[t.status] || { label: t.status, pill: 'pill-gris' };
+
+  // Topbar
+  document.getElementById('topNum').textContent = t.ticket_number;
+  document.title = t.ticket_number + ' · Soporte';
+
+  // Status pill
+  const pill = document.getElementById('statusPill');
+  pill.textContent = st.label;
+  pill.className   = 'big-status ' + st.pill;
+
+  // Info
+  document.getElementById('iTicketNum').textContent = t.ticket_number;
+  document.getElementById('iDate').textContent      = fmtDate(t.created_at);
+  document.getElementById('iOrigin').textContent    = ORIGIN_LABELS[t.ticket_origin] || t.ticket_origin;
+  document.getElementById('iFault').textContent     = t.reported_fault;
+  if (t.client_notes) {
+    document.getElementById('iNotas').textContent = t.client_notes;
+    document.getElementById('iNotasWrap').style.display = 'block';
+  }
+
+  // Tech
+  const tech = t.assigned_to ? techProfiles[t.assigned_to] : null;
+  document.getElementById('iTech').textContent = tech ? tech.full_name : 'Sin asignar';
+  document.getElementById('techSelect').value  = t.assigned_to || '';
+  document.getElementById('statusSelect').value = '';
+
+  // Customer
+  if (cu) {
+    document.getElementById('cName').textContent  = cu.full_name;
+    document.getElementById('cPhone').textContent = cu.phone || '—';
+    if (cu.email)           { document.getElementById('cEmail').textContent = cu.email; document.getElementById('cEmailRow').style.display = 'flex'; }
+    if (cu.identity_number) { document.getElementById('cId').textContent    = cu.identity_number; document.getElementById('cIdRow').style.display = 'flex'; }
+  }
+
+  // Equipment
+  document.getElementById('eIcon').textContent = CAT_ICONS[eq?.category] || '🔧';
+  document.getElementById('eName').textContent = `${eq?.brand} ${eq?.model}`;
+  document.getElementById('eCat').textContent  = (eq?.category || '—');
+  document.getElementById('eCond').textContent = COND_LABELS[eq?.physical_condition] || '—';
+  document.getElementById('eColor').textContent = eq?.color || '—';
+  if (eq?.serial_number) { document.getElementById('eSerial').textContent = eq.serial_number; document.getElementById('eSerialRow').style.display = 'grid-row'; document.getElementById('eSerialRow').style.display = 'block'; }
+  if (eq?.accessories?.length) {
+    document.getElementById('eAccList').innerHTML = eq.accessories.map(a => `<span class="acc-pill">${a}</span>`).join('');
+    document.getElementById('eAccRow').style.display = 'block';
+  }
+  if (eq?.accessories_notes) {
+    document.getElementById('eAccNotes').textContent = eq.accessories_notes;
+    document.getElementById('eAccNotesRow').style.display = 'block';
+  }
+
+  // Shipping
+  if (t.shipping_method) {
+    document.getElementById('shippingCard').style.display = 'block';
+    document.getElementById('shMethod').textContent = SHIP_LABELS[t.shipping_method] || t.shipping_method;
+    if (t.courier_name)   { document.getElementById('shCourier').textContent = t.courier_name;   document.getElementById('shCourierRow').style.display = 'block'; }
+    if (t.tracking_number){ document.getElementById('shTracking').textContent = t.tracking_number; document.getElementById('shTrackingRow').style.display = 'block'; }
+    if (t.estimated_arrival){ document.getElementById('shArrival').textContent = t.estimated_arrival; document.getElementById('shArrivalRow').style.display = 'block'; }
+    if (t.shipping_notes) { document.getElementById('shNotes').textContent = t.shipping_notes;   document.getElementById('shNotesRow').style.display = 'block'; }
+  }
+
+  // Portal link (recepcion/ticket.html → soporte/portal.html)
+  const base = location.origin + location.pathname.replace('recepcion/ticket.html', '');
+  const link = base + 'portal.html?token=' + encodeURIComponent(t.access_token);
+  document.getElementById('portalLinkBox').textContent = link;
+
+  // Timeline
+  renderTimeline(history);
+
+  // Messages
+  renderMessages(msgs);
+
+  // Notes
+  renderNotes(notes);
+}
+
+function renderTimeline(history) {
+  document.getElementById('histCount').textContent = history.length + ' cambio' + (history.length !== 1 ? 's' : '');
+  if (!history.length) {
+    document.getElementById('tlContent').innerHTML = '<p style="font-size:13px;color:var(--muted)">Sin cambios de estado aún.</p>';
+    return;
+  }
+  const stNames = Object.fromEntries(Object.entries(STATUS_MAP).map(([k,v]) => [k, v.label]));
+  document.getElementById('tlContent').innerHTML = history.map((h, i) => {
+    const isLast = i === history.length - 1;
+    const actorNames = { staff:'Staff', client:'Cliente', system:'Sistema' };
+    return `
+      <div class="tl-item">
+        <div class="tl-dot ${isLast ? 'current' : 'done'}">${isLast ? '●' : '✓'}</div>
+        <div class="tl-content">
+          <h4>${stNames[h.to_status] || h.to_status}</h4>
+          <p>${fmtDateTime(h.created_at)} · ${actorNames[h.actor_type] || h.actor_type}${h.comment ? ' · ' + esc(h.comment) : ''}</p>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderMessages(msgs) {
+  if (!msgs.length) return;
+  document.getElementById('msgList').innerHTML = msgs.map(m => `
+    <div class="msg ${m.author_type}">
+      <div class="msg-bubble">${esc(m.message)}</div>
+      <div class="msg-meta">${m.author_type === 'client' ? 'Cliente' : 'Soporte'} · ${fmtDateTime(m.created_at)}</div>
+    </div>
+  `).join('');
+}
+
+function renderNotes(notes) {
+  if (!notes.length) return;
+  document.getElementById('notesList').innerHTML = notes.map(n => {
+    const author = n.author_id ? (techProfiles[n.author_id]?.full_name || 'Staff') : 'Staff';
+    return `
+      <div class="note-item">
+        <p>${esc(n.content)}</p>
+        <div class="nm">${author} · ${fmtDateTime(n.created_at)}</div>
+      </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ACTIONS
+═══════════════════════════════════════════════════════════════ */
+function onStatusChange() {
+  const val = document.getElementById('statusSelect').value;
+  document.getElementById('statusNoteField').style.display = val ? 'block' : 'none';
+}
+
+async function changeStatus() {
+  const newStatus = document.getElementById('statusSelect').value;
+  const comment   = document.getElementById('statusNote').value.trim();
+
+  if (!newStatus) { showToast('⚠️ Seleccione un estado.'); return; }
+  if (newStatus === ticketData?.status) { showToast('Ya está en ese estado.'); return; }
+
+  try {
+    const { error } = await sb.from('sp_tickets')
+      .update({ status: newStatus })
+      .eq('id', ticketId);
+    if (error) throw error;
+
+    // Log manually (trigger ya lo hace, pero añadimos comentario si existe)
+    if (comment) {
+      await sb.from('sp_ticket_status_history').insert({
+        ticket_id: ticketId,
+        from_status: ticketData.status,
+        to_status: newStatus,
+        changed_by: session.id,
+        actor_type: 'staff',
+        comment
+      });
+    }
+
+    showToast('✅ Estado actualizado');
+    setTimeout(() => location.reload(), 1000);
+
+  } catch (ex) {
+    showToast('⚠️ Error: ' + ex.message);
+  }
+}
+
+async function assignTech() {
+  const techId = document.getElementById('techSelect').value || null;
+  try {
+    const { error } = await sb.from('sp_tickets')
+      .update({ assigned_to: techId })
+      .eq('id', ticketId);
+    if (error) throw error;
+    showToast('✅ Técnico asignado');
+    document.getElementById('iTech').textContent =
+      techId ? (techProfiles[techId]?.full_name || 'Asignado') : 'Sin asignar';
+  } catch (ex) {
+    showToast('⚠️ Error: ' + ex.message);
+  }
+}
+
+async function sendMessage() {
+  const msg = document.getElementById('newMsg').value.trim();
+  if (!msg) { showToast('⚠️ Escriba un mensaje.'); return; }
+
+  try {
+    const { error } = await sb.from('sp_ticket_messages').insert({
+      ticket_id:           ticketId,
+      author_type:         'staff',
+      author_id:           session.id,
+      message:             msg,
+      is_visible_to_client: true
+    });
+    if (error) throw error;
+    document.getElementById('newMsg').value = '';
+    showToast('✅ Mensaje enviado');
+    setTimeout(() => location.reload(), 800);
+  } catch (ex) {
+    showToast('⚠️ Error: ' + ex.message);
+  }
+}
+
+async function addNote() {
+  const note = document.getElementById('newNote').value.trim();
+  if (!note) { showToast('⚠️ Escriba una nota.'); return; }
+
+  const noteType = ['admin','supervisor'].includes(session.role) ? 'admin' : session.role;
+
+  try {
+    const { error } = await sb.from('sp_ticket_internal_notes').insert({
+      ticket_id: ticketId,
+      note_type: noteType,
+      author_id: session.id,
+      content:   note
+    });
+    if (error) throw error;
+    document.getElementById('newNote').value = '';
+    showToast('✅ Nota agregada');
+    setTimeout(() => location.reload(), 800);
+  } catch (ex) {
+    showToast('⚠️ Error: ' + ex.message);
+  }
+}
+
+function copyPortalLink() {
+  const link = document.getElementById('portalLinkBox').textContent;
+  navigator.clipboard.writeText(link).then(() => showToast('✅ Enlace copiado'));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════════ */
+function showView(v) {
+  document.getElementById('loadingView').style.display = v === 'loading' ? 'flex' : 'none';
+  document.getElementById('errorView').style.display   = v === 'error'   ? 'flex' : 'none';
+  document.getElementById('mainView').style.display    = v === 'main'    ? 'block': 'none';
+}
+function esc(s) { return s?.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') || ''; }
+function fmtDate(iso)     { return new Date(iso).toLocaleDateString('es-HN', { day:'numeric', month:'long', year:'numeric' }); }
+function fmtDateTime(iso) { return new Date(iso).toLocaleString('es-HN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }); }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
