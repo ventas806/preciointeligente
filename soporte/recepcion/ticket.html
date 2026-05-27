@@ -283,6 +283,98 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── Quote sections ─────────────────────────────────────── */
+    .quote-status {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;
+    }
+    .qs-pendiente { background:rgba(245,200,66,.15); color:var(--gold); border:1px solid rgba(245,200,66,.3); }
+    .qs-aprobada  { background:rgba(46,213,115,.15); color:var(--green); border:1px solid rgba(46,213,115,.3); }
+    .qs-rechazada { background:rgba(255,71,87,.15); color:var(--red); border:1px solid rgba(255,71,87,.3); }
+    .qs-vencida   { background:rgba(136,146,164,.15); color:var(--muted); border:1px solid rgba(136,146,164,.3); }
+    .qs-borrador  { background:rgba(61,106,255,.1); color:#7090ff; border:1px solid rgba(61,106,255,.2); }
+
+    /* Quote line items */
+    .qi-table { width:100%; border-collapse:collapse; font-size:13px; margin:10px 0; }
+    .qi-table thead th { font-size:10px; font-weight:700; text-transform:uppercase;
+      color:var(--muted); padding:6px 8px; border-bottom:1px solid var(--border); text-align:left; }
+    .qi-table tbody td { padding:8px 8px; border-bottom:1px solid rgba(42,47,63,.5); vertical-align:middle; }
+    .qi-table tbody tr:last-child td { border-bottom:none; }
+    .qi-desc { min-width:140px; }
+    .qi-cat  { font-size:10px; color:var(--muted); }
+    .qi-num  { text-align:right; font-family:'SF Mono','Fira Code',monospace; white-space:nowrap; }
+    .qi-total-section { border-top:1px solid var(--border); padding-top:10px; margin-top:6px; }
+    .qi-total-row { display:flex; justify-content:space-between; font-size:13px;
+      color:var(--muted); padding:3px 0; }
+    .qi-total-row.main { font-size:16px; font-weight:800; color:var(--text); padding-top:6px; }
+    .qi-total-row.main .mono { color:var(--green); }
+
+    /* Line item builder (editable) */
+    .qi-build-row { display:grid; grid-template-columns:1fr 60px 110px 32px; gap:6px; align-items:center; margin-bottom:6px; }
+    .qi-build-row input, .qi-build-row select {
+      background:var(--bg); border:1px solid var(--border); border-radius:8px;
+      color:var(--text); font-size:12px; padding:7px 9px; outline:none; font-family:inherit;
+      width:100%; transition:border-color .2s;
+    }
+    .qi-build-row input:focus, .qi-build-row select:focus { border-color:var(--accent); }
+    .qi-del-btn { background:var(--bg3); border:1px solid var(--border); border-radius:8px;
+      color:var(--muted); width:32px; height:32px; cursor:pointer; display:flex;
+      align-items:center; justify-content:center; font-size:14px; transition:all .2s; }
+    .qi-del-btn:hover { color:var(--red); border-color:var(--red); }
+
+    .quote-live-total { background:var(--bg); border:1px solid var(--border); border-radius:10px;
+      padding:12px 16px; margin:12px 0; display:flex; justify-content:space-between; align-items:center;
+      flex-wrap:wrap; gap:10px; }
+    .qlt-item { text-align:center; }
+    .qlt-label { font-size:10px; color:var(--muted); margin-bottom:2px; }
+    .qlt-val   { font-size:16px; font-weight:800; font-family:'SF Mono','Fira Code',monospace; }
+    .qlt-val.tec { color:var(--orange); }
+    .qlt-val.cli { color:var(--green); }
+    .qlt-val.isv { color:var(--muted); }
+
+    /* Rejection reason box */
+    .rejection-box { background:rgba(255,71,87,.08); border:1px solid rgba(255,71,87,.2);
+      border-radius:8px; padding:10px 12px; margin-top:8px; font-size:12px; color:var(--red); }
+
+    .btn-danger  { background:var(--red); color:white; }
+    .btn-danger:hover { background:#ff6b78; }
+    .btn-success { background:var(--green); color:#0a0c10; }
+    .btn-success:hover { background:#40e080; }
+
+    /* Catalog modal */
+    .cat-modal-overlay { position:fixed; inset:0; background:rgba(10,12,16,.85);
+      display:none; align-items:center; justify-content:center; z-index:110; padding:20px; }
+    .cat-modal-overlay.show { display:flex; }
+    .cat-modal { background:var(--bg2); border:1px solid var(--border); border-radius:16px;
+      width:100%; max-width:560px; max-height:85vh; display:flex; flex-direction:column;
+      box-shadow:0 24px 80px rgba(0,0,0,.6); }
+    .cat-modal-header { padding:16px 20px; border-bottom:1px solid var(--border);
+      display:flex; align-items:center; gap:10px; }
+    .cat-modal-header h3 { font-size:15px; font-weight:700; flex:1; }
+    .cat-modal-body { flex:1; overflow-y:auto; padding:12px; }
+    .cat-item { display:flex; align-items:center; gap:12px; padding:10px 12px;
+      border-radius:10px; cursor:pointer; transition:background .15s; border:1.5px solid transparent; }
+    .cat-item:hover { background:rgba(61,106,255,.08); border-color:rgba(61,106,255,.2); }
+    .cat-item-info { flex:1; }
+    .cat-item-name { font-size:13px; font-weight:600; }
+    .cat-item-cat  { font-size:10px; color:var(--muted); margin-top:1px; }
+    .cat-item-prices { text-align:right; }
+    .cat-item-tec { font-size:11px; color:var(--orange); font-weight:700; }
+    .cat-item-cli { font-size:11px; color:var(--green); font-weight:700; }
+
+    /* Reject reason modal */
+    .reject-overlay { position:fixed; inset:0; background:rgba(10,12,16,.85);
+      display:none; align-items:center; justify-content:center; z-index:120; padding:20px; }
+    .reject-overlay.show { display:flex; }
+    .reject-box { background:var(--bg2); border:1px solid var(--border); border-radius:16px;
+      width:100%; max-width:400px; padding:24px; }
+    .reject-box h3 { font-size:15px; font-weight:700; margin-bottom:12px; }
+    .reject-box textarea { width:100%; background:var(--bg3); border:1.5px solid var(--border);
+      border-radius:10px; color:var(--text); font-size:13px; padding:10px 12px; outline:none;
+      font-family:inherit; resize:vertical; min-height:80px; transition:border-color .2s; }
+    .reject-box textarea:focus { border-color:var(--red); }
+    .reject-btns { display:flex; gap:10px; justify-content:flex-end; margin-top:14px; }
+
     /* ── Portal link ────────────────────────────────────────── */
     .portal-link-box {
       background: var(--bg);
@@ -409,6 +501,28 @@
             <textarea id="newNote" placeholder="Notas privadas del equipo de soporte…" rows="2"></textarea>
           </div>
           <button class="btn btn-ghost" onclick="addNote()">Agregar nota</button>
+        </div>
+      </div>
+
+      <!-- ── Cotización del técnico (interna) ──────────────── -->
+      <div class="card">
+        <div class="card-header">
+          <h3>🔧 Cotización del Técnico</h3>
+          <span style="font-size:11px;color:var(--orange)">Técnico → Focus Store</span>
+        </div>
+        <div class="card-body" id="quoteIntBody">
+          <p style="font-size:13px;color:var(--muted)">Cargando…</p>
+        </div>
+      </div>
+
+      <!-- ── Cotización al cliente ──────────────────────────── -->
+      <div class="card">
+        <div class="card-header">
+          <h3>📋 Cotización al Cliente</h3>
+          <span style="font-size:11px;color:var(--green)">Focus Store → Cliente</span>
+        </div>
+        <div class="card-body" id="quoteCliBody">
+          <p style="font-size:13px;color:var(--muted)">Cargando…</p>
         </div>
       </div>
 
@@ -544,6 +658,34 @@
   </div>
 </div>
 
+<!-- ── Catalog picker modal ──────────────────────────────── -->
+<div class="cat-modal-overlay" id="catModalOverlay" onclick="closeCatOutside(event)">
+  <div class="cat-modal">
+    <div class="cat-modal-header">
+      <h3>📦 Seleccionar del catálogo</h3>
+      <input type="text" id="catSearch"
+             style="flex:1;background:var(--bg3);border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-size:13px;outline:none;font-family:inherit"
+             placeholder="Buscar…" oninput="renderCatalogList()">
+      <button class="btn btn-ghost" onclick="closeCatModal()" style="padding:7px 12px;margin-left:6px">✕</button>
+    </div>
+    <div class="cat-modal-body" id="catModalBody">
+      <p style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Cargando catálogo…</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── Reject quote modal ──────────────────────────────────── -->
+<div class="reject-overlay" id="rejectOverlay">
+  <div class="reject-box">
+    <h3 id="rejectTitle">Motivo de rechazo</h3>
+    <textarea id="rejectReason" placeholder="Explique al técnico por qué se rechaza la cotización…"></textarea>
+    <div class="reject-btns">
+      <button class="btn btn-ghost" onclick="closeRejectModal()">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmReject()">Confirmar rechazo</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -648,6 +790,7 @@ async function loadTicket() {
 
     renderTicket(t, history || [], msgs || [], notes || []);
     showView('main');
+    await loadQuotes();
 
   } catch (ex) {
     console.error(ex);
@@ -883,6 +1026,413 @@ function copyPortalLink() {
   const link = document.getElementById('portalLinkBox').textContent;
   navigator.clipboard.writeText(link).then(() => showToast('✅ Enlace copiado'));
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   QUOTES — state
+═══════════════════════════════════════════════════════════════ */
+let quoteInternal = null;   // tech → admin quote
+let quoteClient   = null;   // admin → client quote
+let catalogItems  = [];     // price catalog cache
+let buildItems    = [];     // line items being built [{desc,cat,qty,price}]
+let catTarget     = null;   // 'int' or 'cli' — which quote is being built
+let rejectTarget  = null;   // {quoteId, type}
+
+const CAT_LABEL_MAP = { mano_de_obra:'Mano de obra', repuesto:'Repuesto',
+  diagnostico:'Diagnóstico', servicio:'Servicio', otro:'Otro' };
+
+/* Load quotes for this ticket */
+async function loadQuotes() {
+  const { data } = await sb.from('sp_repair_quotes')
+    .select(`*, sp_quote_items(*), sp_profiles!sp_repair_quotes_created_by_fkey(full_name)`)
+    .eq('ticket_id', ticketId)
+    .order('created_at');
+
+  const quotes = data || [];
+  quoteInternal = quotes.find(q => q.quote_type === 'interna') || null;
+  quoteClient   = quotes.find(q => q.quote_type === 'cliente') || null;
+
+  // Load catalog
+  const { data: cat } = await sb.from('sp_price_catalog')
+    .select('*').eq('is_active', true).order('category').order('name');
+  catalogItems = cat || [];
+
+  renderInternalQuote();
+  renderClientQuote();
+}
+
+/* ── Render internal quote (tech → admin) ────────────────────── */
+function renderInternalQuote() {
+  const el = document.getElementById('quoteIntBody');
+  const canManage = ['admin','supervisor'].includes(session.role);
+
+  if (!quoteInternal) {
+    el.innerHTML = `
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
+        El técnico aún no ha enviado cotización para este ticket.
+      </p>`;
+    return;
+  }
+
+  const q = quoteInternal;
+  const items = q.sp_quote_items || [];
+  const statusHtml = quoteStatusBadge(q.status);
+  const creator = q.sp_profiles?.full_name || 'Técnico';
+
+  let actionsHtml = '';
+  if (q.status === 'pendiente' && canManage) {
+    actionsHtml = `
+      <div class="action-row" style="margin-top:14px">
+        <button class="btn btn-success" onclick="approveInternalQuote('${q.id}')">✅ Aprobar cotización</button>
+        <button class="btn btn-danger"  onclick="openRejectModal('${q.id}','interna')">✗ Rechazar</button>
+      </div>`;
+  }
+  if (q.status === 'rechazada' && q.rejection_reason) {
+    actionsHtml += `<div class="rejection-box">Motivo de rechazo: ${esc(q.rejection_reason)}</div>`;
+  }
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      ${statusHtml}
+      <span style="font-size:11px;color:var(--muted)">Por ${esc(creator)} · ${fmtDate(q.created_at)}</span>
+    </div>
+    ${quoteItemsTable(items, false)}
+    ${quoteTotals(q, false)}
+    ${q.notes ? `<div style="font-size:12px;color:var(--muted);margin-top:8px;padding:8px 12px;background:var(--bg);border-radius:8px">📝 ${esc(q.notes)}</div>` : ''}
+    ${actionsHtml}`;
+}
+
+/* ── Render client quote (admin → client) ────────────────────── */
+function renderClientQuote() {
+  const el = document.getElementById('quoteCliBody');
+  const canManage = ['admin','supervisor','recepcion'].includes(session.role);
+
+  // If no client quote yet — show builder or waiting message
+  if (!quoteClient) {
+    if (!canManage) {
+      el.innerHTML = `<p style="font-size:13px;color:var(--muted)">Sin cotización al cliente todavía.</p>`;
+      return;
+    }
+    el.innerHTML = buildClientQuoteForm();
+    return;
+  }
+
+  const q = quoteClient;
+  const items = q.sp_quote_items || [];
+  const statusHtml = quoteStatusBadge(q.status);
+
+  let actionsHtml = '';
+  if (q.status === 'rechazada' && q.rejection_reason) {
+    actionsHtml = `<div class="rejection-box">Cliente rechazó: ${esc(q.rejection_reason)}</div>`;
+    if (canManage) {
+      actionsHtml += `<button class="btn btn-primary" style="margin-top:12px" onclick="newClientQuote()">Crear nueva cotización</button>`;
+    }
+  }
+  if (q.status === 'pendiente') {
+    actionsHtml = `<p style="font-size:12px;color:var(--gold);margin-top:10px">⏳ Esperando respuesta del cliente…</p>`;
+  }
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      ${statusHtml}
+      <span style="font-size:11px;color:var(--muted)">${fmtDate(q.created_at)}</span>
+    </div>
+    ${quoteItemsTable(items, true)}
+    ${quoteTotals(q, true)}
+    ${q.notes ? `<div style="font-size:12px;color:var(--muted);margin-top:8px;padding:8px 12px;background:var(--bg);border-radius:8px">📝 ${esc(q.notes)}</div>` : ''}
+    ${actionsHtml}`;
+}
+
+/* ── Quote builder form ──────────────────────────────────────── */
+function buildClientQuoteForm(prefill) {
+  buildItems = prefill || [];
+  return `
+    <div id="cliBuildArea">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:12px;font-weight:700;color:var(--muted)">LÍNEAS DE COTIZACIÓN</span>
+        <button class="btn btn-ghost" style="font-size:12px;padding:5px 12px" onclick="openCatModal('cli')">
+          📦 Agregar del catálogo
+        </button>
+      </div>
+      <div id="cliBuildRows"></div>
+      <button class="btn btn-ghost btn-full" style="font-size:12px;margin-bottom:10px" onclick="addBuildRow()">
+        ＋ Agregar línea manualmente
+      </button>
+      <div class="quote-live-total" id="cliLiveTotal">
+        <div class="qlt-item"><div class="qlt-label">Subtotal</div><div class="qlt-val cli" id="qltSub">L 0.00</div></div>
+        <div class="qlt-item"><div class="qlt-label">ISV 15%</div><div class="qlt-val isv" id="qltIsv">L 0.00</div></div>
+        <div class="qlt-item"><div class="qlt-label" style="font-size:13px;font-weight:700">TOTAL</div><div class="qlt-val cli" style="font-size:20px" id="qltTotal">L 0.00</div></div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer">
+          <input type="checkbox" id="isvCheck" onchange="recalcBuild()" checked> Aplicar ISV 15%
+        </label>
+      </div>
+      <div class="field" style="margin-bottom:10px">
+        <div class="field-label">Cargo de diagnóstico</div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center">
+          <input type="number" id="diagFee" placeholder="0.00" min="0" step="0.01" oninput="recalcBuild()">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap">
+            <input type="checkbox" id="diagCredit"> Acreditar si aprueban
+          </label>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:12px">
+        <div class="field-label">Nota para el cliente (opcional)</div>
+        <textarea id="cliQuoteNote" rows="2" placeholder="Notas que verá el cliente en su portal…"></textarea>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-success btn-full" onclick="sendClientQuote()">
+          📤 Enviar cotización al cliente
+        </button>
+      </div>
+    </div>`;
+}
+
+function newClientQuote() {
+  const el = document.getElementById('quoteCliBody');
+  el.innerHTML = buildClientQuoteForm();
+  renderBuildRows();
+}
+
+/* ── Build rows ──────────────────────────────────────────────── */
+function renderBuildRows() {
+  const container = document.getElementById('cliBuildRows');
+  if (!container) return;
+  if (!buildItems.length) {
+    container.innerHTML = `<p style="font-size:12px;color:var(--muted);text-align:center;padding:10px 0">
+      Sin líneas. Agregue items del catálogo o manualmente.</p>`;
+    recalcBuild();
+    return;
+  }
+  container.innerHTML = buildItems.map((item, i) => `
+    <div class="qi-build-row">
+      <input type="text" value="${esc(item.desc)}" placeholder="Descripción…"
+             oninput="buildItems[${i}].desc=this.value">
+      <input type="number" value="${item.qty}" min="1" step="1" placeholder="Qty"
+             oninput="buildItems[${i}].qty=parseFloat(this.value)||1;recalcBuild()">
+      <input type="number" value="${item.price}" min="0" step="0.01" placeholder="Precio"
+             oninput="buildItems[${i}].price=parseFloat(this.value)||0;recalcBuild()">
+      <button class="qi-del-btn" onclick="removeBuildRow(${i})">🗑</button>
+    </div>`).join('');
+  recalcBuild();
+}
+
+function addBuildRow() {
+  buildItems.push({ desc:'', cat:'servicio', qty:1, price:0, catalogId:null });
+  renderBuildRows();
+}
+
+function removeBuildRow(i) {
+  buildItems.splice(i, 1);
+  renderBuildRows();
+}
+
+function recalcBuild() {
+  const sub = buildItems.reduce((s, it) => s + (it.qty * it.price), 0);
+  const diagFee = parseFloat(document.getElementById('diagFee')?.value) || 0;
+  const applyIsv = document.getElementById('isvCheck')?.checked;
+  const isv = applyIsv ? sub * 0.15 : 0;
+  const total = sub + isv + diagFee;
+  if (document.getElementById('qltSub'))   document.getElementById('qltSub').textContent   = 'L ' + fmt(sub);
+  if (document.getElementById('qltIsv'))   document.getElementById('qltIsv').textContent   = 'L ' + fmt(isv);
+  if (document.getElementById('qltTotal')) document.getElementById('qltTotal').textContent = 'L ' + fmt(total);
+}
+
+/* ── Send client quote ───────────────────────────────────────── */
+async function sendClientQuote() {
+  if (!buildItems.length) { showToast('⚠️ Agregue al menos una línea'); return; }
+  const hasEmpty = buildItems.some(i => !i.desc.trim() || i.price <= 0);
+  if (hasEmpty) { showToast('⚠️ Complete todas las líneas (descripción y precio)'); return; }
+
+  const sub       = buildItems.reduce((s, it) => s + (it.qty * it.price), 0);
+  const diagFee   = parseFloat(document.getElementById('diagFee')?.value) || 0;
+  const applyIsv  = document.getElementById('isvCheck')?.checked;
+  const taxRate   = applyIsv ? 0.15 : 0;
+  const taxAmount = sub * taxRate;
+  const total     = sub + taxAmount + diagFee;
+  const note      = document.getElementById('cliQuoteNote')?.value.trim() || null;
+  const diagCredit= document.getElementById('diagCredit')?.checked || false;
+
+  const expiresAt = new Date(Date.now() + 15 * 24 * 3600 * 1000).toISOString();
+
+  try {
+    const { data: q, error: qErr } = await sb.from('sp_repair_quotes').insert({
+      ticket_id: ticketId, quote_type: 'cliente',
+      created_by: session.id, status: 'pendiente',
+      subtotal: sub, tax_rate: taxRate, tax_amount: taxAmount,
+      total, diagnosis_fee: diagFee, diagnosis_credited: diagCredit,
+      notes: note, expires_at: expiresAt,
+      parent_quote_id: quoteInternal?.id || null
+    }).select('id').single();
+    if (qErr) throw qErr;
+
+    const lineItems = buildItems.map((it, i) => ({
+      quote_id: q.id, description: it.desc, item_category: it.cat,
+      quantity: it.qty, unit_price: it.price, total_price: it.qty * it.price,
+      sort_order: i, catalog_item_id: it.catalogId || null
+    }));
+    const { error: iErr } = await sb.from('sp_quote_items').insert(lineItems);
+    if (iErr) throw iErr;
+
+    // Update ticket status → esperando_aprobacion
+    await sb.from('sp_tickets').update({ status: 'esperando_aprobacion' }).eq('id', ticketId);
+
+    showToast('✅ Cotización enviada al cliente');
+    setTimeout(() => location.reload(), 1000);
+  } catch (ex) {
+    showToast('⚠️ Error: ' + ex.message);
+  }
+}
+
+/* ── Approve internal quote ──────────────────────────────────── */
+async function approveInternalQuote(qId) {
+  try {
+    const { error } = await sb.from('sp_repair_quotes').update({
+      status: 'aprobada', approved_at: new Date().toISOString(), approved_by: session.id
+    }).eq('id', qId);
+    if (error) throw error;
+    showToast('✅ Cotización del técnico aprobada');
+    setTimeout(() => location.reload(), 800);
+  } catch (ex) { showToast('⚠️ Error: ' + ex.message); }
+}
+
+/* ── Reject modal ────────────────────────────────────────────── */
+function openRejectModal(qId, type) {
+  rejectTarget = { qId, type };
+  document.getElementById('rejectTitle').textContent =
+    type === 'interna' ? '✗ Rechazar cotización del técnico' : '✗ Rechazar cotización al cliente';
+  document.getElementById('rejectReason').value = '';
+  document.getElementById('rejectOverlay').classList.add('show');
+  document.getElementById('rejectReason').focus();
+}
+function closeRejectModal() { document.getElementById('rejectOverlay').classList.remove('show'); }
+
+async function confirmReject() {
+  const reason = document.getElementById('rejectReason').value.trim();
+  if (!reason) { document.getElementById('rejectReason').style.borderColor = 'var(--red)'; return; }
+  if (!rejectTarget) return;
+
+  try {
+    const { error } = await sb.from('sp_repair_quotes').update({
+      status: 'rechazada', rejection_reason: reason,
+      rejected_by: session.id, rejected_at: new Date().toISOString()
+    }).eq('id', rejectTarget.qId);
+    if (error) throw error;
+    closeRejectModal();
+    showToast('Cotización rechazada');
+    setTimeout(() => location.reload(), 800);
+  } catch (ex) { showToast('⚠️ Error: ' + ex.message); }
+}
+
+/* ── Catalog modal ───────────────────────────────────────────── */
+function openCatModal(target) {
+  catTarget = target;
+  document.getElementById('catSearch').value = '';
+  document.getElementById('catModalOverlay').classList.add('show');
+  renderCatalogList();
+  document.getElementById('catSearch').focus();
+}
+function closeCatModal() { document.getElementById('catModalOverlay').classList.remove('show'); }
+function closeCatOutside(e) { if (e.target === document.getElementById('catModalOverlay')) closeCatModal(); }
+
+function renderCatalogList() {
+  const q = document.getElementById('catSearch').value.toLowerCase();
+  const items = catalogItems.filter(i =>
+    !q || i.name.toLowerCase().includes(q) || (i.description||'').toLowerCase().includes(q)
+  );
+  const body = document.getElementById('catModalBody');
+  if (!items.length) {
+    body.innerHTML = `<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px">No hay items en el catálogo.</p>`;
+    return;
+  }
+  const groups = {};
+  items.forEach(i => { if (!groups[i.category]) groups[i.category] = []; groups[i.category].push(i); });
+
+  body.innerHTML = Object.entries(groups).map(([cat, its]) => `
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);padding:8px 8px 4px">${CAT_LABEL_MAP[cat]||cat}</div>
+    ${its.map(i => `
+      <div class="cat-item" onclick="addFromCatalog('${i.id}')">
+        <div class="cat-item-info">
+          <div class="cat-item-name">${esc(i.name)}</div>
+          ${i.description ? `<div class="cat-item-cat">${esc(i.description)}</div>` : ''}
+        </div>
+        <div class="cat-item-prices">
+          <div class="cat-item-tec">Tec: L ${fmt(i.unit_price_tecnico)}</div>
+          <div class="cat-item-cli">Cli: L ${fmt(i.unit_price_cliente)}</div>
+        </div>
+      </div>`).join('')}
+  `).join('');
+}
+
+function addFromCatalog(catId) {
+  const item = catalogItems.find(i => i.id === catId);
+  if (!item) return;
+  buildItems.push({
+    desc: item.name, cat: item.category, qty: 1,
+    price: item.unit_price_cliente,
+    catalogId: item.id
+  });
+  closeCatModal();
+  renderBuildRows();
+}
+
+/* ── Render helpers for quote display ────────────────────────── */
+function quoteStatusBadge(status) {
+  const map = {
+    pendiente:'⏳ Pendiente', aprobada:'✅ Aprobada',
+    rechazada:'✗ Rechazada', vencida:'⌛ Vencida', borrador:'📝 Borrador'
+  };
+  return `<span class="quote-status qs-${status}">${map[status]||status}</span>`;
+}
+
+function quoteItemsTable(items, showClientPrice) {
+  if (!items.length) return `<p style="font-size:12px;color:var(--muted)">Sin líneas.</p>`;
+  return `
+    <table class="qi-table">
+      <thead><tr>
+        <th>Descripción</th>
+        <th style="text-align:right">Cant.</th>
+        <th style="text-align:right">P. Unit.</th>
+        <th style="text-align:right">Total</th>
+      </tr></thead>
+      <tbody>
+        ${items.sort((a,b)=>a.sort_order-b.sort_order).map(it => `
+          <tr>
+            <td class="qi-desc">
+              <div>${esc(it.description)}</div>
+              ${it.item_category ? `<div class="qi-cat">${CAT_LABEL_MAP[it.item_category]||it.item_category}</div>` : ''}
+            </td>
+            <td class="qi-num">${it.quantity}</td>
+            <td class="qi-num">L ${fmt(it.unit_price)}</td>
+            <td class="qi-num">L ${fmt(it.total_price)}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function quoteTotals(q, isClient) {
+  const sub = parseFloat(q.subtotal)||0;
+  const isv = parseFloat(q.tax_amount)||0;
+  const fee = parseFloat(q.diagnosis_fee)||0;
+  const tot = parseFloat(q.total)||0;
+  return `
+    <div class="qi-total-section">
+      ${fee > 0 ? `
+        <div class="qi-total-row">
+          <span>Subtotal</span><span class="mono">L ${fmt(sub)}</span>
+        </div>
+        <div class="qi-total-row">
+          <span>Diagnóstico ${q.diagnosis_credited ? '(se acredita si aprueban)' : ''}</span>
+          <span class="mono">L ${fmt(fee)}</span>
+        </div>` : `
+        <div class="qi-total-row"><span>Subtotal</span><span class="mono">L ${fmt(sub)}</span></div>`}
+      ${isv > 0 ? `<div class="qi-total-row"><span>ISV 15%</span><span class="mono">L ${fmt(isv)}</span></div>` : ''}
+      <div class="qi-total-row main">
+        <span>TOTAL</span>
+        <span class="mono ${isClient ? 'price-cliente' : 'price-tecnico'}">L ${fmt(tot)}</span>
+      </div>
+    </div>`;
+}
+
+function fmt(n) { return Number(n).toLocaleString('es-HN',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
 /* ═══════════════════════════════════════════════════════════════
    HELPERS
