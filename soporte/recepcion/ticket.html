@@ -2,6 +2,9 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ticket · Focus Store Soporte</title>
   <style>
@@ -1274,6 +1277,33 @@ async function sendClientQuote() {
 
     // Update ticket status → esperando_aprobacion
     await sb.from('sp_tickets').update({ status: 'esperando_aprobacion' }).eq('id', ticketId);
+
+    // Send email notification to client
+    const cu = ticketData?.sp_customers;
+    if (cu?.email) {
+      try {
+        await fetch(`${SUPABASE_URL}/functions/v1/send-ticket-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type:         'quote_ready',
+            clientName:   cu.full_name,
+            clientEmail:  cu.email,
+            ticketNumber: ticketData.ticket_number,
+            deviceBrand:  ticketData.sp_equipment?.brand  || '',
+            deviceModel:  ticketData.sp_equipment?.model  || '',
+            items:        buildItems.map(i => ({ description: i.desc, qty: i.qty, unit_price: i.price })),
+            subtotal:     sub,
+            taxAmount,
+            total,
+            expiresAt,
+            note:         note || ''
+          })
+        });
+      } catch (_) {
+        // email failure does not block quote creation
+      }
+    }
 
     showToast('✅ Cotización enviada al cliente');
     setTimeout(() => location.reload(), 1000);
