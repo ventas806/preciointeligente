@@ -488,6 +488,10 @@
           <div class="stat-value" id="statPartsN">—</div>
           <div class="stat-label">Esperando repuesto</div>
         </div>
+        <div class="stat-card orange" onclick="filterByStatus('esperando_aprobacion')" id="statQuotes" style="position:relative">
+          <div class="stat-value" id="statQuotesN">—</div>
+          <div class="stat-label">Cotiz. técnico pendientes</div>
+        </div>
       </div>
 
       <!-- Filters -->
@@ -655,7 +659,15 @@ async function loadTickets() {
     if (error) throw error;
 
     allTickets = data || [];
-    updateStats();
+
+    // Contar cotizaciones internas pendientes de revisión
+    const { count: pendingQuotes } = await sb
+      .from('sp_repair_quotes')
+      .select('id', { count: 'exact', head: true })
+      .eq('quote_type', 'interna')
+      .eq('status', 'pendiente');
+
+    updateStats(pendingQuotes || 0);
     renderTickets(allTickets);
 
   } catch (ex) {
@@ -671,7 +683,7 @@ async function loadTickets() {
 /* ═══════════════════════════════════════════════════════════════
    STATS
 ═══════════════════════════════════════════════════════════════ */
-function updateStats() {
+function updateStats(pendingQuotes = 0) {
   const active   = allTickets.length;
   const approval = allTickets.filter(t => t.status === 'esperando_aprobacion').length;
   const ready    = allTickets.filter(t => t.status === 'listo_para_entrega').length;
@@ -681,10 +693,15 @@ function updateStats() {
   document.getElementById('statApprovalN').textContent = approval;
   document.getElementById('statReadyN').textContent    = ready;
   document.getElementById('statPartsN').textContent    = parts;
+  document.getElementById('statQuotesN').textContent   = pendingQuotes;
+
+  // Resaltar tarjeta si hay cotizaciones pendientes
+  document.getElementById('statQuotes').classList.toggle('active', pendingQuotes > 0);
 
   // Badge in sidebar
-  if (approval > 0) {
-    document.getElementById('badgePending').textContent = approval;
+  const totalAlert = approval + pendingQuotes;
+  if (totalAlert > 0) {
+    document.getElementById('badgePending').textContent = totalAlert;
     document.getElementById('badgePending').style.display = 'inline';
   }
 }

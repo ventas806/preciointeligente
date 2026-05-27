@@ -690,6 +690,11 @@ async function submitTechQuote(ticketId) {
       sort_order: i, catalog_item_id: r.catalogId || null
     })));
 
+    // Cambiar estado del ticket a "esperando aprobación" automáticamente
+    await sb.from('sp_tickets')
+      .update({ status: 'esperando_aprobacion' })
+      .eq('id', ticketId);
+
     delete quoteCache[ticketId];
     tqBuildItems[ticketId] = [];
     await loadQuoteForCard(ticketId);
