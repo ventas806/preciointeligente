@@ -200,16 +200,15 @@
     </div>
     <div class="nav">
       <div class="nav-section">Principal</div>
-      <a class="nav-item" href="../recepcion/index.html">
+      <a class="nav-item" id="navBackLink" href="../recepcion/index.html">
         <span class="ni">🎫</span> Tickets
       </a>
-      <a class="nav-item" href="../recepcion/nuevo-ticket.html">
-        <span class="ni">➕</span> Nuevo ticket
-      </a>
-      <div class="nav-section">Administración</div>
-      <a class="nav-item" href="index.html">
-        <span class="ni">👥</span> Personal
-      </a>
+      <div id="navAdminSection">
+        <div class="nav-section">Administración</div>
+        <a class="nav-item" href="index.html">
+          <span class="ni">👥</span> Personal
+        </a>
+      </div>
       <a class="nav-item active" href="precios.html">
         <span class="ni">💰</span> Catálogo de precios
       </a>
@@ -235,7 +234,7 @@
   <div class="main">
     <div class="topbar">
       <h2>💰 Catálogo de Precios</h2>
-      <button class="btn-primary" onclick="openCreate()">➕ Agregar servicio</button>
+      <button class="btn-primary" id="btnAgregar" onclick="openCreate()">➕ Agregar servicio</button>
     </div>
 
     <div class="page-body">
@@ -399,8 +398,16 @@ let editingId = null;
 window.addEventListener('DOMContentLoaded', async () => {
   session = getSession();
   if (!session) { location.href = '../login.html'; return; }
-  if (!['admin','supervisor'].includes(session.role)) {
+  // Técnico puede ver en modo lectura; otros roles no autorizados van a recepción
+  const isTecnico  = session.role === 'tecnico';
+  const canEdit    = ['admin','supervisor'].includes(session.role);
+  if (!canEdit && !isTecnico) {
     location.href = '../recepcion/index.html'; return;
+  }
+
+  // Ocultar controles de edición para técnico
+  if (isTecnico) {
+    document.getElementById('btnAgregar').style.display = 'none';
   }
   const av = document.getElementById('navAvatar');
   av.textContent = session.avatar || session.full_name[0];
@@ -408,6 +415,14 @@ window.addEventListener('DOMContentLoaded', async () => {
   av.style.color = session.color || '#3d6aff';
   document.getElementById('navName').textContent = session.full_name;
   document.getElementById('navRole').textContent = ROLE_LABELS[session.role] || session.role;
+
+  // Para técnico: ocultar sección Administración del sidebar y ajustar link de vuelta
+  if (isTecnico) {
+    document.getElementById('navAdminSection').style.display = 'none';
+    document.getElementById('navBackLink').href = '../tecnico/index.html';
+    document.getElementById('navBackLink').textContent = '🔧 Panel técnico';
+  }
+
   await loadItems();
 });
 
@@ -482,7 +497,7 @@ function renderTable() {
       <td class="right">
         <div class="row-actions">
           <span title="${i.is_active ? 'Activo' : 'Inactivo'}" style="font-size:14px">${i.is_active ? '✅' : '⬜'}</span>
-          <button class="btn-icon" onclick="openEdit('${i.id}')" title="Editar">✏️</button>
+          ${canEdit ? `<button class="btn-icon" onclick="openEdit('${i.id}')" title="Editar">✏️</button>` : ''}
         </div>
       </td>
     </tr>`;
