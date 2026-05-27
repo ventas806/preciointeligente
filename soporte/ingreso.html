@@ -364,6 +364,14 @@
       border: 1px solid rgba(255,71,87,.3);
       color: var(--red);
     }
+    .alert-warning {
+      background: rgba(245,200,66,.1);
+      border: 1px solid rgba(245,200,66,.35);
+      color: var(--gold);
+      display: none;
+    }
+    .alert-warning.show { display: block; }
+    .alert-warning strong { display: block; margin-bottom: 4px; font-size: 14px; }
 
     /* ── Loading overlay ────────────────────────────────────── */
     .loading-overlay {
@@ -434,6 +442,14 @@
   </div>
 
   <!-- Global error -->
+  <!-- File-protocol warning (shown when opened via file://) -->
+  <div class="alert alert-warning" id="fileProtocolWarn">
+    <strong>⚠️ Archivo abierto localmente — no puede conectarse a internet</strong>
+    Esta página debe abrirse desde un servidor web (GitHub Pages, Live Server, etc.).<br>
+    Al abrir con <code style="background:rgba(0,0,0,.3);padding:1px 5px;border-radius:4px">file://</code> el navegador bloquea todas las conexiones externas por seguridad.<br>
+    <span style="margin-top:6px;display:block">👉 Súbelo a GitHub Pages o usa la extensión <strong>Live Server</strong> de VS Code.</span>
+  </div>
+
   <div class="alert alert-error" id="globalError"></div>
 
   <!-- ═══════════════════════════════════════════════════════ -->
@@ -752,6 +768,11 @@ let currentStep = 0;
    INIT
 ═══════════════════════════════════════════════════════════════ */
 function init() {
+  // ── Detect file:// protocol (CORS will block all Supabase calls) ──
+  if (location.protocol === 'file:') {
+    document.getElementById('fileProtocolWarn').classList.add('show');
+  }
+
   // Mode badge
   const badge = document.getElementById('modeBadge');
   if (isPresencial) {
@@ -991,8 +1012,21 @@ async function submitForm() {
     document.getElementById('btnNext').disabled = false;
 
     const errEl = document.getElementById('globalError');
-    errEl.textContent = '⚠️ Error al registrar: ' +
-      (ex?.message || 'Ocurrió un problema. Por favor intente de nuevo.');
+
+    // Distinguish network/CORS errors from Supabase API errors
+    let msg;
+    if (ex instanceof TypeError && ex.message.toLowerCase().includes('fetch')) {
+      if (location.protocol === 'file:') {
+        msg = '🚫 No se puede conectar: esta página está abierta como archivo local (file://). ' +
+              'Debe accederse desde un servidor web (GitHub Pages, Live Server, etc.).';
+      } else {
+        msg = '🌐 Sin conexión a internet. Verifique su red e intente de nuevo.';
+      }
+    } else {
+      msg = '⚠️ Error al registrar: ' + (ex?.message || ex?.error_description || 'Ocurrió un problema. Por favor intente de nuevo.');
+    }
+
+    errEl.textContent = msg;
     errEl.classList.add('show');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }

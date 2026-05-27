@@ -139,6 +139,20 @@
     }
     .error-msg.show { display: block; }
 
+    /* file:// protocol warning */
+    .proto-warn {
+      background: rgba(245,200,66,.1);
+      border: 1px solid rgba(245,200,66,.35);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #f5c842;
+      margin-bottom: 14px;
+      display: none;
+      line-height: 1.5;
+    }
+    .proto-warn.show { display: block; }
+
     /* ── Button ─────────────────────────────────────────────── */
     .btn-login {
       width: 100%;
@@ -239,6 +253,11 @@
   <div class="card">
     <div class="card-title">🔐 Acceso del personal</div>
 
+    <!-- file:// warning -->
+    <div class="proto-warn" id="protoWarn">
+      ⚠️ <strong>Archivo local detectado.</strong> Esta página debe abrirse desde un servidor web (GitHub Pages, Live Server). Abrir con <code style="background:rgba(0,0,0,.3);padding:0 4px;border-radius:3px">file://</code> bloquea la conexión a Supabase.
+    </div>
+
     <!-- Error message -->
     <div class="error-msg" id="errMsg">Usuario o PIN incorrecto.</div>
 
@@ -308,6 +327,10 @@ let lookupTimer = null;
 
 /* ── Already logged in? ─────────────────────────────────────── */
 window.addEventListener('DOMContentLoaded', () => {
+  // Detect file:// — Supabase calls will fail with CORS
+  if (location.protocol === 'file:') {
+    document.getElementById('protoWarn').classList.add('show');
+  }
   const sess = getSession();
   if (sess) redirectByRole(sess.role);
   document.getElementById('username').focus();
@@ -417,7 +440,13 @@ async function doLogin() {
 
   } catch (ex) {
     console.error(ex);
-    errEl.textContent = 'Error de conexión. Intente de nuevo.';
+    if (ex instanceof TypeError && ex.message.toLowerCase().includes('fetch')) {
+      errEl.textContent = location.protocol === 'file:'
+        ? '🚫 Archivo local (file://) — abra esta página desde GitHub Pages o un servidor web.'
+        : '🌐 Sin conexión. Verifique su internet e intente de nuevo.';
+    } else {
+      errEl.textContent = 'Error de conexión. Intente de nuevo.';
+    }
     errEl.classList.add('show');
   } finally {
     btnEl.disabled = false;

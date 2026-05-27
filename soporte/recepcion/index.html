@@ -425,6 +425,14 @@
         <span class="ni">➕</span> Nuevo ticket
       </a>
 
+      <!-- Admin section — rendered by JS if role=admin/supervisor -->
+      <div id="navAdminSection" style="display:none">
+        <div class="nav-section">Administración</div>
+        <a class="nav-item" href="../admin/index.html">
+          <span class="ni">👥</span> Gestión de personal
+        </a>
+      </div>
+
       <div class="nav-section">Herramientas</div>
       <a class="nav-item" href="../tecnico/index.html">
         <span class="ni">🔧</span> Vista técnico
@@ -610,6 +618,11 @@ function renderUserNav() {
   av.style.color      = session.color || '#3d6aff';
   nm.textContent      = session.full_name;
   rl.textContent      = ROLE_LABELS[session.role] || session.role;
+
+  // Show admin section only for admin/supervisor
+  if (['admin','supervisor'].includes(session.role)) {
+    document.getElementById('navAdminSection').style.display = 'block';
+  }
 }
 
 async function loadProfiles() {
