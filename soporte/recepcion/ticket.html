@@ -959,6 +959,30 @@ async function changeStatus() {
       });
     }
 
+    // Send email when equipment is ready for pickup
+    if (newStatus === 'listo_para_entrega') {
+      const cu = ticketData?.sp_customers;
+      if (cu?.email) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-ticket-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type:         'ready_for_pickup',
+              clientName:   cu.full_name,
+              clientEmail:  cu.email,
+              ticketNumber: ticketData.ticket_number,
+              deviceBrand:  ticketData.sp_equipment?.brand || '',
+              deviceModel:  ticketData.sp_equipment?.model || '',
+              comment:      comment || ''
+            })
+          });
+        } catch (_) {
+          // email failure does not block status change
+        }
+      }
+    }
+
     showToast('✅ Estado actualizado');
     setTimeout(() => location.reload(), 1000);
 
