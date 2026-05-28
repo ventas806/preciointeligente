@@ -733,6 +733,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   session = getSession();
   if (!session) { location.href = '../login.html'; return; }
 
+  // Técnicos tienen su propio panel — no pueden entrar aquí
+  if (session.role === 'tecnico') { location.href = '../tecnico/index.html'; return; }
+
   ticketId = new URLSearchParams(location.search).get('id');
   if (!ticketId) { showView('error'); return; }
 
