@@ -1003,7 +1003,8 @@ function renderTable() {
                     onclick="toggleActive('${s.id}', ${active}, '${esc(s.full_name)}')"
                     title="${active ? 'Desactivar acceso' : 'Activar acceso'}">
               ${active ? '🔒' : '🔓'}
-            </button>` : ''}
+            </button>
+            <button class="btn-icon danger" onclick="deleteMember('${s.id}','${esc(s.full_name)}')" title="Eliminar permanentemente">🗑️</button>` : ''}
         </div>
       </td>
     </tr>`;
@@ -1298,6 +1299,20 @@ document.getElementById('fName').addEventListener('input', function() {
     document.getElementById('fUser').value = suggested.replace(/[^a-zA-Z0-9._-]/g,'');
   }
 });
+/* ── Eliminar miembro permanentemente ───────────────────────── */
+async function deleteMember(id, name) {
+  if (!confirm(`⚠️ ¿Eliminar permanentemente a "${name}"?\n\nEsta acción NO se puede deshacer.`)) return;
+  if (!confirm(`¿Está seguro? Se eliminará "${name}" para siempre.`)) return;
+  try {
+    const { error } = await sb.from('sp_profiles').delete().eq('id', id);
+    if (error) throw error;
+    showToast(`🗑️ ${name} eliminado correctamente`, 'success');
+    await loadStaff();
+  } catch (ex) {
+    showToast('Error al eliminar: ' + (ex.message || 'Intente de nuevo'), 'error');
+  }
+}
+
 // ── Anti-cache ────────────────────────────────────────────────
 window.addEventListener('pageshow', e => { if (e.persisted) location.reload(true); });
 (function(){ var t=0; document.addEventListener('visibilitychange', function(){
