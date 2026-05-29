@@ -432,8 +432,33 @@
       <p>Tenemos una cotización lista para la reparación de su equipo. Revísela y apruebe o rechace para continuar.</p>
     </div>
     <div class="action-banner action-banner-green" id="bannerListo">
-      <h3>✅ Equipo listo para retiro</h3>
-      <p>Su equipo está listo. Puede retirarlo en nuestras instalaciones. Tiene <strong>15 días calendario</strong> para recogerlo antes de que apliquen cargos de almacenamiento.</p>
+      <h3>🎉 ¡Su equipo está listo para retiro!</h3>
+      <p>Puede retirarlo en nuestras instalaciones. Tiene <strong>15 días calendario</strong> para recogerlo antes de que apliquen cargos de almacenamiento.</p>
+      <div id="confirmarEntregaArea" style="margin-top:14px">
+        <button onclick="openConfirmarEntrega()"
+          style="width:100%;background:#2ed573;color:#0a0c10;font-weight:700;font-size:15px;padding:14px;border:none;border-radius:10px;cursor:pointer;font-family:inherit">
+          ✅ Ya recogí mi equipo
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal confirmar entrega -->
+    <div id="entregaOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;align-items:center;justify-content:center">
+      <div style="background:#12161f;border:1px solid #2a2f3f;border-radius:16px;padding:28px 24px;width:340px;max-width:92vw;text-align:center">
+        <div style="font-size:48px;margin-bottom:12px">📦</div>
+        <h3 style="font-size:18px;color:#e8eaf0;margin-bottom:8px">¿Confirmar recepción?</h3>
+        <p style="font-size:13px;color:#8892a4;margin-bottom:24px">Al confirmar, quedará registrado que recogió su equipo. Esta acción no se puede deshacer.</p>
+        <div style="display:flex;gap:10px">
+          <button onclick="closeConfirmarEntrega()"
+            style="flex:1;padding:12px;background:#1a1f2e;border:1px solid #2a2f3f;border-radius:10px;color:#8892a4;font-size:14px;cursor:pointer;font-family:inherit">
+            Cancelar
+          </button>
+          <button onclick="confirmarEntrega()"
+            style="flex:1;padding:12px;background:#2ed573;color:#0a0c10;font-weight:700;font-size:14px;border:none;border-radius:10px;cursor:pointer;font-family:inherit">
+            Sí, confirmar
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Ticket header -->
@@ -938,6 +963,40 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }
+/* ── Confirmar entrega ───────────────────────────────────────── */
+function openConfirmarEntrega() {
+  document.getElementById('entregaOverlay').style.display = 'flex';
+}
+function closeConfirmarEntrega() {
+  document.getElementById('entregaOverlay').style.display = 'none';
+}
+
+async function confirmarEntrega() {
+  closeConfirmarEntrega();
+  try {
+    const { error } = await sb.from('sp_tickets')
+      .update({ status: 'entregado', delivered_at: new Date().toISOString() })
+      .eq('id', ticketData.id);
+    if (error) throw error;
+
+    // Reemplazar banner con mensaje de agradecimiento
+    document.getElementById('confirmarEntregaArea').innerHTML = `
+      <div style="text-align:center;padding:8px 0">
+        <div style="font-size:36px">🎊</div>
+        <p style="font-weight:700;color:#0a0c10;margin:6px 0 4px">¡Gracias por confiar en Focus Store!</p>
+        <p style="font-size:13px;color:#1a5c3a">Equipo entregado el ${new Date().toLocaleDateString('es-HN',{dateStyle:'long'})}</p>
+      </div>`;
+
+    // Actualizar el pill de estado en la página
+    const pill = document.getElementById('statusPill');
+    if (pill) { pill.textContent = '✔ Entregado'; pill.className = 'status-pill pill-verde'; }
+
+    showToast('✅ ¡Entrega confirmada! Gracias por confiar en Focus Store.');
+  } catch (ex) {
+    showToast('⚠️ Error al confirmar: ' + ex.message);
+  }
+}
+
 // ── Anti-cache ────────────────────────────────────────────────
 window.addEventListener('pageshow', e => { if (e.persisted) location.reload(true); });
 </script>
