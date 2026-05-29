@@ -2,6 +2,9 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Administración · Focus Store Soporte</title>
   <style>
@@ -766,6 +769,14 @@
         <span class="field-error" id="fPinErr">PIN inválido</span>
       </div>
 
+      <!-- Email de notificaciones -->
+      <div class="field">
+        <label for="fEmail">Correo electrónico</label>
+        <input type="email" id="fEmail" placeholder="ejemplo@correo.com">
+        <div class="field-hint">Se usará para enviar notificaciones al miembro (tickets asignados, alertas, etc.)</div>
+        <span class="field-error" id="fEmailErr">Correo inválido</span>
+      </div>
+
       <!-- Activo toggle (edit only) -->
       <div class="field" id="fieldActive" style="display:none">
         <label for="fActive">Estado</label>
@@ -878,7 +889,7 @@ async function loadStaff() {
   try {
     const { data, error } = await sb
       .from('sp_profiles')
-      .select('id, username, full_name, role, color, avatar, is_active, last_login, created_at, app_pin')
+      .select('id, username, full_name, role, color, avatar, is_active, last_login, created_at, app_pin, email')
       .order('full_name');
 
     if (error) throw error;
@@ -1027,6 +1038,7 @@ function openEdit(id) {
   document.getElementById('fUser').value   = s.username;
   document.getElementById('fRole').value   = s.role;
   document.getElementById('fPin').value    = s.app_pin || '';
+  document.getElementById('fEmail').value  = s.email   || '';
   document.getElementById('fActive').value = String(s.is_active);
   document.getElementById('fieldActive').style.display = 'block';
   document.getElementById('fUserHint').textContent = '';
@@ -1083,6 +1095,12 @@ async function saveStaff() {
   btn.textContent = 'Guardando…';
 
   try {
+    const emailVal = document.getElementById('fEmail').value.trim();
+    if (emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+      showFieldErr('fEmail', 'fEmailErr', 'Ingrese un correo válido');
+      btn.disabled = false; btn.textContent = 'Guardar'; return;
+    }
+
     const payload = {
       full_name: name,
       username:  user,
@@ -1090,6 +1108,7 @@ async function saveStaff() {
       app_pin:   pin,
       avatar:    selectedEmoji,
       color:     selectedColor,
+      email:     emailVal || null,
     };
 
     if (editingId) {
