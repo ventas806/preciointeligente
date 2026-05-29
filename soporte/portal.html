@@ -605,9 +605,10 @@ const CATEGORY_ICONS = {
 /* ═══════════════════════════════════════════════════════════════
    GLOBALS
 ═══════════════════════════════════════════════════════════════ */
-let ticketData  = null;
-let quoteData   = null;
-let quoteId     = null;
+let ticketData   = null;
+let quoteData    = null;
+let quoteId      = null;
+let customerData = null; // { full_name, phone }
 
 /* ═══════════════════════════════════════════════════════════════
    INIT
@@ -632,7 +633,8 @@ async function loadTicket() {
         equipment_id, token_expires_at,
         sp_equipment!sp_tickets_equipment_id_fkey (
           category, brand, model, serial_number, physical_condition, accessories
-        )
+        ),
+        sp_customers!sp_tickets_customer_id_fkey (full_name, phone)
       `)
       .eq('access_token', token)
       .single();
@@ -642,7 +644,8 @@ async function loadTicket() {
     // Check expiry
     if (new Date(t.token_expires_at) < new Date()) { showView('error'); return; }
 
-    ticketData = t;
+    ticketData   = t;
+    customerData = t.sp_customers || null;
 
     // Fetch status history
     const { data: history } = await sb
@@ -979,6 +982,23 @@ async function confirmarEntrega() {
       .eq('id', ticketData.id);
     if (error) throw error;
 
+    const eq   = ticketData.sp_equipment;
+    const name = customerData?.full_name || '';
+    const tNum = ticketData.ticket_number;
+
+    // WhatsApp de agradecimiento al cliente
+    if (customerData?.phone) {
+      try {
+        await fetch('https://uzhjnedhmbvgfqqssuov.supabase.co/functions/v1/send-whatsapp', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: customerData.phone,
+            message: `🎊 *¡Gracias por confiar en Focus Store!*\n\nHola ${name}, hemos registrado la entrega de tu *${eq?.brand || ''} ${eq?.model || ''}*.\n\n🎫 Ticket: #${tNum}\n📅 Entregado: ${new Date().toLocaleDateString('es-HN', { dateStyle: 'long' })}\n\nSi tienes alguna duda o necesitas soporte adicional, no dudes en contactarnos.\n\n¡Hasta pronto! 😊\n*Focus Store Honduras*`
+          })
+        });
+      } catch (_) { /* no bloquea */ }
+    }
+
     // Reemplazar banner con mensaje de agradecimiento
     document.getElementById('confirmarEntregaArea').innerHTML = `
       <div style="text-align:center;padding:8px 0">
@@ -987,7 +1007,7 @@ async function confirmarEntrega() {
         <p style="font-size:13px;color:#1a5c3a">Equipo entregado el ${new Date().toLocaleDateString('es-HN',{dateStyle:'long'})}</p>
       </div>`;
 
-    // Actualizar el pill de estado en la página
+    // Actualizar el pill de estado
     const pill = document.getElementById('statusPill');
     if (pill) { pill.textContent = '✔ Entregado'; pill.className = 'status-pill pill-verde'; }
 
