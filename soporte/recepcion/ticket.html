@@ -1859,7 +1859,34 @@ async function doNextStep() {
   if (action === 'recibido') {
     if (!confirm('¿Confirmar que el equipo ya llegó a la tienda?')) return;
     const { error } = await sb.from('sp_tickets').update({ status: 'equipo_recibido' }).eq('id', ticketId);
-    if (!error) { showToast('📬 Equipo marcado como recibido'); setTimeout(() => location.reload(), 800); }
+    if (!error) {
+      // Notificar al cliente
+      const cu    = ticketData?.sp_customers;
+      const brand = ticketData?.sp_equipment?.brand || '';
+      const model = ticketData?.sp_equipment?.model || '';
+      const tNum  = ticketData?.ticket_number;
+      if (cu?.phone) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to: cu.phone,
+              message: `📦 *Focus Store Soporte*\n\nHola ${cu.full_name}, confirmamos que hemos recibido tu equipo *${brand} ${model}* en nuestra tienda.\n\n🎫 Ticket: #${tNum}\n\n🔔 Muy pronto recibirás una notificación cuando tu equipo sea asignado a un técnico para iniciar el diagnóstico.\n\n¡Gracias por tu paciencia! 🙏\n*Focus Store Honduras*`
+            })
+          });
+        } catch(_) {}
+      }
+      if (cu?.email) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-ticket-email`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'equipment_received', clientName: cu.full_name,
+              clientEmail: cu.email, ticketNumber: tNum,
+              deviceBrand: brand, deviceModel: model, portalToken: accessToken })
+          });
+        } catch(_) {}
+      }
+      showToast('📬 Equipo recibido — cliente notificado'); setTimeout(() => location.reload(), 800);
+    }
   } else if (action === 'asignar') {
     document.getElementById('techSelect')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     document.getElementById('techSelect')?.focus();
