@@ -602,6 +602,10 @@
           <div class="portal-link-box" id="portalLinkBox" onclick="copyPortalLink()">—</div>
           <div style="font-size:11px;color:var(--muted);margin-top:4px">Clic para copiar</div>
 
+          <div class="divider" id="deleteSection" style="display:none"></div>
+          <button id="btnDeleteTicket" class="btn btn-danger btn-full" style="display:none;margin-top:4px"
+            onclick="confirmDeleteTicket()">🗑️ Eliminar ticket</button>
+
         </div>
       </div>
 
@@ -815,6 +819,12 @@ async function loadTicket() {
     renderTicket(t, history || [], msgs || [], notes || []);
     showView('main');
     await loadQuotes();
+
+    // Mostrar botón eliminar solo a admins
+    if (['admin'].includes(session.role)) {
+      document.getElementById('deleteSection').style.display  = 'block';
+      document.getElementById('btnDeleteTicket').style.display = 'block';
+    }
 
   } catch (ex) {
     console.error(ex);
@@ -1742,6 +1752,51 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
 }
+/* ═══════════════════════════════════════════════════════════════
+   ELIMINAR TICKET (solo admin)
+═══════════════════════════════════════════════════════════════ */
+async function confirmDeleteTicket() {
+  const tNum = ticketData?.ticket_number || 'este ticket';
+  const ok = confirm(`⚠️ ¿Eliminar permanentemente el Ticket ${tNum}?\n\nEsta acción NO se puede deshacer. Se borrarán todos los datos relacionados (cotizaciones, mensajes, historial).`);
+  if (!ok) return;
+
+  // Segunda confirmación para tickets con datos
+  const ok2 = confirm(`¿Está seguro? Se eliminará ${tNum} para siempre.`);
+  if (!ok2) return;
+
+  const btn = document.getElementById('btnDeleteTicket');
+  btn.disabled = true;
+  btn.textContent = 'Eliminando…';
+
+  try {
+    const id = ticketData.id;
+
+    // Borrar en cascada manualmente (por si no hay ON DELETE CASCADE)
+    // 1. Quote items
+    const { data: quotes } = await sb.from('sp_repair_quotes').select('id').eq('ticket_id', id);
+    if (quotes?.length) {
+      const qIds = quotes.map(q => q.id);
+      await sb.from('sp_quote_items').delete().in('quote_id', qIds);
+      await sb.from('sp_repair_quotes').delete().in('id', qIds);
+    }
+    // 2. Mensajes, notas, historial, alertas
+    await sb.from('sp_ticket_messages').delete().eq('ticket_id', id);
+    await sb.from('sp_ticket_internal_notes').delete().eq('ticket_id', id);
+    await sb.from('sp_ticket_status_history').delete().eq('ticket_id', id);
+    await sb.from('sp_ticket_alerts').delete().eq('ticket_id', id);
+    // 3. Ticket
+    const { error } = await sb.from('sp_tickets').delete().eq('id', id);
+    if (error) throw error;
+
+    showToast('🗑️ Ticket eliminado correctamente');
+    setTimeout(() => { location.href = 'index.html'; }, 1200);
+  } catch (ex) {
+    btn.disabled = false;
+    btn.textContent = '🗑️ Eliminar ticket';
+    showToast('⚠️ Error al eliminar: ' + ex.message);
+  }
+}
+
 // ── Anti-cache ────────────────────────────────────────────────
 window.addEventListener('pageshow', e => { if (e.persisted) location.reload(true); });
 (function(){ var t=0; document.addEventListener('visibilitychange', function(){
