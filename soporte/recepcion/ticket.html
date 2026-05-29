@@ -561,6 +561,12 @@
             </select>
           </div>
 
+          <div class="field" id="partsField" style="display:none">
+            <div class="field-label">⏳ Días estimados para el repuesto <span style="color:var(--red)">*</span></div>
+            <input type="number" id="partsDays" min="1" max="90" placeholder="Ej: 7">
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">📅 El cliente recibirá notificación con la fecha estimada de llegada.</div>
+          </div>
+
           <div class="field" id="statusNoteField" style="display:none">
             <div class="field-label">Comentario de estado (opcional)</div>
             <input type="text" id="statusNote" placeholder="Ej: Recibido el equipo, inicia diagnóstico…">
@@ -935,6 +941,8 @@ function renderNotes(notes) {
 function onStatusChange() {
   const val = document.getElementById('statusSelect').value;
   document.getElementById('statusNoteField').style.display = val ? 'block' : 'none';
+  document.getElementById('partsField').style.display = val === 'esperando_repuesto' ? 'block' : 'none';
+  if (val !== 'esperando_repuesto') document.getElementById('partsDays').value = '';
 }
 
 async function changeStatus() {
@@ -944,9 +952,22 @@ async function changeStatus() {
   if (!newStatus) { showToast('⚠️ Seleccione un estado.'); return; }
   if (newStatus === ticketData?.status) { showToast('Ya está en ese estado.'); return; }
 
+  // Validar días de repuesto si corresponde
+  let partsExpectedAt = null;
+  if (newStatus === 'esperando_repuesto') {
+    const days = parseInt(document.getElementById('partsDays').value);
+    if (!days || days < 1) { showToast('⚠️ Ingrese los días estimados para el repuesto.'); return; }
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    partsExpectedAt = d.toISOString().split('T')[0]; // DATE yyyy-mm-dd
+  }
+
   try {
+    const updatePayload = { status: newStatus };
+    if (partsExpectedAt) updatePayload.parts_expected_at = partsExpectedAt;
+
     const { error } = await sb.from('sp_tickets')
-      .update({ status: newStatus })
+      .update(updatePayload)
       .eq('id', ticketId);
     if (error) throw error;
 
@@ -990,6 +1011,42 @@ async function changeStatus() {
             body: JSON.stringify({
               to: cu.phone,
               message: `✅ *¡Tu equipo está listo!*\n\nHola ${cu.full_name}, tu *${brand} ${model}* ya puede ser recogido en nuestra tienda.\n\n🎫 Ticket: #${tNum}\n\n📍 *Focus Store Honduras*\n¡Gracias por tu preferencia! 😊`
+            })
+          });
+        } catch (_) { /* no bloquea */ }
+      }
+    }
+
+    // Notify client when waiting for parts (email + WhatsApp)
+    if (newStatus === 'esperando_repuesto' && partsExpectedAt) {
+      const cu    = ticketData?.sp_customers;
+      const brand = ticketData.sp_equipment?.brand || '';
+      const model = ticketData.sp_equipment?.model || '';
+      const tNum  = ticketData.ticket_number;
+      const days  = parseInt(document.getElementById('partsDays').value);
+      const dateStr = new Date(partsExpectedAt + 'T12:00:00').toLocaleDateString('es-HN', { day: 'numeric', month: 'long', year: 'numeric' });
+      if (cu?.email) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-ticket-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'parts_waiting',
+              clientName: cu.full_name, clientEmail: cu.email,
+              ticketNumber: tNum, deviceBrand: brand, deviceModel: model,
+              partsDays: days, partsExpectedDate: dateStr
+            })
+          });
+        } catch (_) { /* no bloquea */ }
+      }
+      if (cu?.phone) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: cu.phone,
+              message: `📦 *Focus Store Soporte*\n\nHola ${cu.full_name}, tu equipo *${brand} ${model}* necesita un repuesto para continuar la reparación.\n\n🎫 Ticket: #${tNum}\n⏳ Tiempo estimado: *${days} día(s)*\n📅 Fecha estimada: *${dateStr}*\n\nTe avisamos cuando el repuesto llegue. ¡Gracias por tu paciencia! 🙏`
             })
           });
         } catch (_) { /* no bloquea */ }
