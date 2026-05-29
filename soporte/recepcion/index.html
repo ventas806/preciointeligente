@@ -847,6 +847,11 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
 }
+// ── Anti-cache ────────────────────────────────────────────────
+window.addEventListener('pageshow', e => { if (e.persisted) location.reload(true); });
+(function(){ var t=0; document.addEventListener('visibilitychange', function(){
+  if (document.hidden) { t=Date.now(); } else if (t && Date.now()-t>90000) location.reload(true);
+}); })();
 </script>
 </body>
 </html>

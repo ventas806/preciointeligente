@@ -938,6 +938,8 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }
+// ── Anti-cache ────────────────────────────────────────────────
+window.addEventListener('pageshow', e => { if (e.persisted) location.reload(true); });
 </script>
 </body>
 </html>

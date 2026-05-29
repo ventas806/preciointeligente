@@ -1298,6 +1298,11 @@ document.getElementById('fName').addEventListener('input', function() {
     document.getElementById('fUser').value = suggested.replace(/[^a-zA-Z0-9._-]/g,'');
   }
 });
+// ── Anti-cache ────────────────────────────────────────────────
+window.addEventListener('pageshow', e => { if (e.persisted) location.reload(true); });
+(function(){ var t=0; document.addEventListener('visibilitychange', function(){
+  if (document.hidden) { t=Date.now(); } else if (t && Date.now()-t>90000) location.reload(true);
+}); })();
 </script>
 </body>
 </html>

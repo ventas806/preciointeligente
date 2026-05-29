@@ -632,6 +632,8 @@ async function submitTicket() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 }
+// ── Anti-cache ────────────────────────────────────────────────
+window.addEventListener('pageshow', e => { if (e.persisted) location.reload(true); });
 </script>
 </body>
 </html>
