@@ -314,6 +314,15 @@
     .tkt-days.warn  { color: var(--gold); }
     .tkt-days.alert { color: var(--red); }
 
+    /* Overdue alert badge */
+    .overdue-badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      background: rgba(245,200,66,.12); border: 1px solid rgba(245,200,66,.35);
+      border-radius: 5px; font-size: 10px; padding: 2px 6px;
+      color: var(--gold); font-weight: 700; margin-left: 5px;
+      vertical-align: middle; white-space: nowrap;
+    }
+
     /* ── Loading / Empty ─────────────────────────────────────── */
     .centered-msg {
       text-align: center;
@@ -653,7 +662,7 @@ async function loadTickets() {
     const { data, error } = await sb
       .from('sp_tickets')
       .select(`
-        id, ticket_number, status, ticket_origin, created_at,
+        id, ticket_number, status, ticket_origin, created_at, status_changed_at,
         reported_fault, assigned_to,
         sp_customers!sp_tickets_customer_id_fkey (full_name, phone),
         sp_equipment!sp_tickets_equipment_id_fkey (category, brand, model)
@@ -769,6 +778,15 @@ function renderTickets(tickets) {
 
     const daysClass = days > 30 ? 'alert' : days > 15 ? 'warn' : '';
 
+    // Overdue alert badge
+    const hoursInStatus = (Date.now() - new Date(t.status_changed_at || t.created_at)) / 3_600_000;
+    let overdueHTML = '';
+    if (t.status === 'equipo_recibido' && hoursInStatus > 48) {
+      overdueHTML = `<span class="overdue-badge" title="${Math.floor(hoursInStatus)}h en este estado">⚠️ +48h</span>`;
+    } else if (t.status === 'en_diagnostico' && hoursInStatus > 96) {
+      overdueHTML = `<span class="overdue-badge" title="${Math.floor(hoursInStatus)}h en este estado">⚠️ +96h</span>`;
+    }
+
     const techHTML = tech
       ? `<span class="mini-av" style="background:${tech.color||'#3d6aff'}33;color:${tech.color||'#3d6aff'}">${tech.avatar||tech.full_name[0]}</span>
          <span>${tech.full_name.split(' ')[0]}</span>`
@@ -788,7 +806,7 @@ function renderTickets(tickets) {
         <h4>${cust?.full_name || 'Sin cliente'}</h4>
         <p>${CAT_ICONS[eq?.category]||'🔧'} ${eq?.brand||''} ${eq?.model||''}</p>
       </div>
-      <div><span class="status-chip ${st.chip}">${st.label}</span></div>
+      <div><span class="status-chip ${st.chip}">${st.label}</span>${overdueHTML}</div>
       <div class="tkt-tech">${techHTML}</div>
       <div class="tkt-days ${daysClass}">${days}d</div>
     </a>`;
