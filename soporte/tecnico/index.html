@@ -121,6 +121,18 @@
     .btn-primary:hover { background:#5278ff; }
     .btn-ghost { background:var(--bg3); border:1px solid var(--border); color:var(--muted); }
     .btn-ghost:hover { color:var(--text); border-color:var(--muted); }
+    .btn-action-blue   { background:#3d6aff; color:#fff; }
+    .btn-action-blue:hover { background:#5278ff; }
+    .btn-action-green  { background:#2ed573; color:#1a1f2e; font-weight:700; }
+    .btn-action-green:hover { background:#3ee583; }
+    .btn-action-purple { background:#a29bfe; color:#1a1f2e; font-weight:700; }
+    .btn-action-purple:hover { background:#b5affe; }
+    /* Next-step banner */
+    .next-step { border-radius:10px; padding:10px 14px; margin-bottom:12px; display:flex; flex-direction:column; gap:8px; }
+    .next-step-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); }
+    .next-step-blue   { background:rgba(61,106,255,.08);  border:1px solid rgba(61,106,255,.25); }
+    .next-step-green  { background:rgba(46,213,115,.07);  border:1px solid rgba(46,213,115,.25); }
+    .next-step-purple { background:rgba(162,155,254,.07); border:1px solid rgba(162,155,254,.25); }
 
     textarea.sm {
       width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:8px;
@@ -443,7 +455,24 @@ function renderTickets(tickets) {
         </div>
         ${t.client_notes ? `<div class="fault-box" style="border-left:3px solid var(--accent)"><div class="lbl">Notas del cliente</div>${esc(t.client_notes)}</div>` : ''}
 
-        <!-- Change status -->
+        <!-- Next-step action buttons -->
+        ${t.status === 'aprobado_reparacion' ? `
+        <div class="next-step next-step-blue">
+          <div class="next-step-lbl">✅ Cotización aprobada — ¿Listo para iniciar?</div>
+          <button class="btn-sm btn-action-blue" onclick="openActModal('repair','${t.id}')">▶️ Iniciar reparación</button>
+        </div>` : ''}
+        ${t.status === 'en_reparacion' ? `
+        <div class="next-step next-step-green">
+          <div class="next-step-lbl">🔧 En reparación — ¿Lista para pruebas?</div>
+          <button class="btn-sm btn-action-green" onclick="openActModal('testing','${t.id}')">✅ Reparación lista → Pruebas</button>
+        </div>` : ''}
+        ${t.status === 'en_pruebas' ? `
+        <div class="next-step next-step-purple">
+          <div class="next-step-lbl">🧪 En pruebas — ¿Todo correcto?</div>
+          <button class="btn-sm btn-action-purple" onclick="openActModal('ready','${t.id}')">🎉 Pruebas OK → Listo para entrega</button>
+        </div>` : ''}
+
+        <!-- Change status (manual override) -->
         <div class="tc-actions">
           <select class="sm" id="st-${t.id}">${statusOpts}</select>
           <button class="btn-sm btn-primary" onclick="changeStatus('${t.id}','${t.status}')">Actualizar estado</button>
@@ -854,11 +883,140 @@ function showToast(msg) {
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
 }
+/* ═══════════════════════════════════════════════════════════════
+   ACTION MODAL — Botones de avance de estado
+═══════════════════════════════════════════════════════════════ */
+let _actAction = null, _actTicketId = null;
+
+function openActModal(action, ticketId) {
+  _actAction   = action;
+  _actTicketId = ticketId;
+  const t = allTickets.find(x => x.id === ticketId);
+  if (!t) return;
+
+  const configs = {
+    repair:  { title: '▶️ Iniciar reparación',         desc: `Ticket #${t.ticket_number} — ${t.brand} ${t.model}`, showDays: true,  confirmLabel: 'Iniciar reparación',      color: '#3d6aff', textColor: '#fff' },
+    testing: { title: '✅ Reparación lista → Pruebas', desc: `Ticket #${t.ticket_number} — ${t.brand} ${t.model}`, showDays: true,  confirmLabel: 'Pasar a pruebas',         color: '#2ed573', textColor: '#1a1f2e' },
+    ready:   { title: '🎉 Listo para entrega',         desc: `Ticket #${t.ticket_number} — ${t.brand} ${t.model}\n\nEl cliente recibirá notificación para recoger su equipo.`, showDays: false, confirmLabel: 'Confirmar', color: '#a29bfe', textColor: '#1a1f2e' }
+  };
+  const cfg = configs[action];
+  document.getElementById('actModalTitle').textContent   = cfg.title;
+  document.getElementById('actModalDesc').textContent    = cfg.desc;
+  document.getElementById('actModalDaysRow').style.display = cfg.showDays ? 'block' : 'none';
+  document.getElementById('actModalDays').value          = '';
+  const btn = document.getElementById('actModalConfirmBtn');
+  btn.textContent       = cfg.confirmLabel;
+  btn.style.background  = cfg.color;
+  btn.style.color       = cfg.textColor;
+  document.getElementById('actModalOverlay').style.display = 'flex';
+  if (cfg.showDays) document.getElementById('actModalDays').focus();
+}
+
+function closeActModal() {
+  document.getElementById('actModalOverlay').style.display = 'none';
+  _actAction = _actTicketId = null;
+}
+
+async function confirmActModal() {
+  const action    = _actAction;
+  const ticketId  = _actTicketId;
+  const t = allTickets.find(x => x.id === ticketId);
+  if (!t) return;
+
+  let days = 0;
+  if (action !== 'ready') {
+    days = parseInt(document.getElementById('actModalDays').value);
+    if (!days || days < 1) { showToast('⚠️ Ingrese los días estimados'); return; }
+  }
+
+  closeActModal();
+
+  const d = new Date(); d.setDate(d.getDate() + days);
+  const expectedAt = d.toISOString().split('T')[0];
+  const dateStr    = days > 0
+    ? new Date(expectedAt + 'T12:00:00').toLocaleDateString('es-HN', { day:'numeric', month:'long', year:'numeric' })
+    : '';
+
+  const statusMap = { repair: 'en_reparacion', testing: 'en_pruebas', ready: 'listo_para_entrega' };
+  const newStatus = statusMap[action];
+  const updatePayload = { status: newStatus };
+  if (action === 'repair')  updatePayload.repair_expected_at  = expectedAt;
+  if (action === 'testing') updatePayload.testing_expected_at = expectedAt;
+
+  try {
+    const { error } = await sb.from('sp_tickets').update(updatePayload).eq('id', ticketId);
+    if (error) throw error;
+
+    // Fetch customer + token for notifications (sin mostrar datos al tech)
+    const { data: tkt } = await sb.from('sp_tickets')
+      .select('access_token, sp_customers!sp_tickets_customer_id_fkey(full_name, email, phone)')
+      .eq('id', ticketId).single();
+    const cu    = tkt?.sp_customers;
+    const token = tkt?.access_token;
+    const brand = t.brand || '';
+    const model = t.model || '';
+
+    // Email al cliente
+    if (cu?.email && token) {
+      try {
+        const emailPayload = {
+          type: action === 'repair' ? 'repair_started' : action === 'testing' ? 'testing_started' : 'ready_for_pickup',
+          clientName: cu.full_name, clientEmail: cu.email,
+          ticketNumber: t.ticket_number, deviceBrand: brand, deviceModel: model,
+          portalToken: token
+        };
+        if (action === 'repair')  { emailPayload.repairDays  = days; emailPayload.repairExpectedDate  = dateStr; }
+        if (action === 'testing') { emailPayload.testingDays = days; emailPayload.testingExpectedDate = dateStr; }
+        await fetch(`${SUPABASE_URL}/functions/v1/send-ticket-email`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(emailPayload)
+        });
+      } catch(_) {}
+    }
+
+    // WhatsApp al cliente
+    if (cu?.phone) {
+      let waMsg = '';
+      const name = cu.full_name || '';
+      const equip = `${brand} ${model}`.trim();
+      if (action === 'repair')  waMsg = `🔧 *Focus Store Soporte*\n\n¡Buenas noticias, ${name}! Tu equipo *${equip}* ya está en reparación.\n\n🎫 Ticket: #${t.ticket_number}\n⏳ Tiempo estimado: *${days} día(s)*\n📅 Fecha estimada: *${dateStr}*\n\nTe avisamos cuando esté listo. 🙏`;
+      if (action === 'testing') waMsg = `🧪 *Focus Store Soporte*\n\n¡Casi listo, ${name}! Tu *${equip}* está en fase de pruebas.\n\n🎫 Ticket: #${t.ticket_number}\n⏳ Tiempo estimado: *${days} día(s)*\n📅 Fecha estimada: *${dateStr}*\n\nTe avisamos cuando puedas venir a recogerlo. 🙏`;
+      if (action === 'ready')   waMsg = `✅ *¡Tu equipo está listo!*\n\nHola ${name}, tu *${equip}* ya puede ser recogido en nuestra tienda.\n\n🎫 Ticket: #${t.ticket_number}\n\n📍 *Focus Store Honduras*\n¡Gracias por tu preferencia! 😊`;
+      try {
+        await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: cu.phone, message: waMsg })
+        });
+      } catch(_) {}
+    }
+
+    showToast('✅ Estado actualizado — cliente notificado');
+    setTimeout(() => loadTickets(), 800);
+  } catch (ex) { showToast('⚠️ Error: ' + ex.message); }
+}
+
 // ── Anti-cache ────────────────────────────────────────────────
 window.addEventListener('pageshow', e => { if (e.persisted) location.reload(true); });
 (function(){ var t=0; document.addEventListener('visibilitychange', function(){
   if (document.hidden) { t=Date.now(); } else if (t && Date.now()-t>90000) location.reload(true);
 }); })();
 </script>
+<!-- ── Action Modal ─────────────────────────────────────────── -->
+<div id="actModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:28px 24px;width:340px;max-width:92vw">
+    <h3 id="actModalTitle" style="font-size:17px;margin-bottom:6px"></h3>
+    <p  id="actModalDesc"  style="font-size:12px;color:var(--muted);margin-bottom:18px;white-space:pre-line"></p>
+    <div id="actModalDaysRow">
+      <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Días estimados *</label>
+      <input type="number" id="actModalDays" min="1" max="90" placeholder="Ej: 3"
+             style="width:100%;background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:20px;padding:12px;margin-top:8px;outline:none;text-align:center;font-family:inherit"
+             onkeydown="if(event.key==='Enter')confirmActModal()">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="btn-sm btn-ghost" style="flex:1" onclick="closeActModal()">Cancelar</button>
+      <button class="btn-sm" id="actModalConfirmBtn" style="flex:1" onclick="confirmActModal()">Confirmar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
