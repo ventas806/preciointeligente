@@ -2,6 +2,9 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Técnico · Focus Store Soporte</title>
   <style>
@@ -157,6 +160,15 @@
     .tq-items-table td { padding:5px 6px; border-bottom:1px solid rgba(42,47,63,.5); }
     .tq-items-table tr:last-child td { border-bottom:none; }
     .tq-items-table .right { text-align:right; font-family:monospace; }
+    .tq-days { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin:8px 0; }
+    .tq-days h5 { font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); margin:0 0 8px; }
+    .tq-days-grid { display:grid; grid-template-columns:1fr 70px; gap:5px 10px; align-items:center; font-size:12px; }
+    .tq-days-grid label { color:var(--muted); }
+    .tq-days-grid input { background:var(--bg3); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px; padding:5px 8px; text-align:center; width:100%; outline:none; }
+    .tq-days-grid input:focus { border-color:var(--accent); }
+    .tq-days-grid input.req-err { border-color:var(--red); }
+    .tq-days-total { grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; padding-top:6px; border-top:1px solid var(--border); margin-top:4px; font-size:12px; }
+    .tq-days-total span:last-child { font-weight:800; color:var(--accent); font-size:15px; font-family:monospace; }
     .rejection-note { background:rgba(255,71,87,.08); border:1px solid rgba(255,71,87,.2);
       border-radius:8px; padding:8px 12px; font-size:12px; color:var(--red); margin-top:6px; }
 
@@ -600,6 +612,19 @@ function renderTechQuote(ticketId) {
       <span>Total cotizado</span>
       <span class="tot">L ${fmtN(tot)}</span>
     </div>
+    ${(q.repair_days || q.testing_days) ? `
+    <div class="tq-days" style="margin-top:8px">
+      <h5>📅 Días estimados de trabajo</h5>
+      <div class="tq-days-grid">
+        <label>🔧 Reparación</label><span style="text-align:center;font-weight:700">${q.repair_days||0} día(s)</span>
+        ${q.parts_days > 0 ? `<label>📦 Repuesto</label><span style="text-align:center;font-weight:700">${q.parts_days} día(s)</span>` : ''}
+        <label>🧪 Pruebas</label><span style="text-align:center;font-weight:700">${q.testing_days||0} día(s)</span>
+        <div class="tq-days-total">
+          <span>⏱️ Total estimado</span>
+          <span>${(q.repair_days||0)+(q.parts_days||0)+(q.testing_days||0)} día(s)</span>
+        </div>
+      </div>
+    </div>` : ''}
     ${q.notes ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">📝 ${esc(q.notes)}</div>` : ''}
     ${q.status === 'rechazada' && q.rejection_reason
       ? `<div class="rejection-note">Motivo de rechazo: ${esc(q.rejection_reason)}<br>
@@ -622,6 +647,24 @@ function tqBuilderHTML(tid) {
     </button>
     <div class="tq-total">
       <span>Total</span><span class="tot" id="tqtot-${tid}">L 0.00</span>
+    </div>
+    <div class="tq-days">
+      <h5>📅 Días estimados de trabajo <span style="color:var(--red)">*obligatorio</span></h5>
+      <div class="tq-days-grid">
+        <label>🔧 Días de reparación *</label>
+        <input type="number" id="tqRepairDays-${tid}" min="1" max="90" placeholder="Ej: 3"
+               oninput="recalcTqDays('${tid}')">
+        <label>📦 Días para repuesto <span style="font-size:10px">(0 si no necesita)</span></label>
+        <input type="number" id="tqPartsDays-${tid}" min="0" max="90" value="0"
+               oninput="recalcTqDays('${tid}')">
+        <label>🧪 Días de pruebas *</label>
+        <input type="number" id="tqTestingDays-${tid}" min="1" max="30" placeholder="Ej: 1"
+               oninput="recalcTqDays('${tid}')">
+        <div class="tq-days-total">
+          <span>⏱️ Total días estimados</span>
+          <span id="tqTotalDays-${tid}">— días</span>
+        </div>
+      </div>
     </div>
     <textarea class="sm" id="tqnote-${tid}" placeholder="Nota interna para Focus Store (opcional)…" rows="1" style="margin-bottom:8px"></textarea>
     <button class="btn-sm btn-primary" style="width:100%" onclick="submitTechQuote('${tid}')">
@@ -667,20 +710,45 @@ function recalcTq(tid) {
   if (el) el.textContent = 'L ' + fmtN(tot);
 }
 
+function recalcTqDays(tid) {
+  const repair  = parseInt(document.getElementById(`tqRepairDays-${tid}`)?.value)  || 0;
+  const parts   = parseInt(document.getElementById(`tqPartsDays-${tid}`)?.value)   || 0;
+  const testing = parseInt(document.getElementById(`tqTestingDays-${tid}`)?.value) || 0;
+  const total   = repair + parts + testing;
+  const el = document.getElementById(`tqTotalDays-${tid}`);
+  if (el) el.textContent = total > 0 ? `${total} día(s)` : '— días';
+}
+
 async function submitTechQuote(ticketId) {
   const rows = tqBuildItems[ticketId] || [];
   if (!rows.length) { showToast('⚠️ Agregue al menos una línea'); return; }
   if (rows.some(r => !r.desc.trim() || r.price <= 0)) {
     showToast('⚠️ Complete todas las líneas'); return;
   }
-  const sub   = rows.reduce((s,r)=>s+(r.qty*r.price),0);
-  const note  = document.getElementById(`tqnote-${ticketId}`)?.value.trim() || null;
+
+  // Validar días obligatorios
+  const repairDays  = parseInt(document.getElementById(`tqRepairDays-${ticketId}`)?.value)  || 0;
+  const partsDays   = parseInt(document.getElementById(`tqPartsDays-${ticketId}`)?.value)   || 0;
+  const testingDays = parseInt(document.getElementById(`tqTestingDays-${ticketId}`)?.value) || 0;
+
+  if (repairDays < 1) {
+    document.getElementById(`tqRepairDays-${ticketId}`)?.classList.add('req-err');
+    showToast('⚠️ Ingrese los días estimados de reparación'); return;
+  }
+  if (testingDays < 1) {
+    document.getElementById(`tqTestingDays-${ticketId}`)?.classList.add('req-err');
+    showToast('⚠️ Ingrese los días estimados de pruebas'); return;
+  }
+
+  const sub  = rows.reduce((s,r)=>s+(r.qty*r.price),0);
+  const note = document.getElementById(`tqnote-${ticketId}`)?.value.trim() || null;
 
   try {
     const { data: q, error: qErr } = await sb.from('sp_repair_quotes').insert({
       ticket_id: ticketId, quote_type: 'interna',
       created_by: session.id, status: 'pendiente',
-      subtotal: sub, tax_rate: 0, tax_amount: 0, total: sub, notes: note
+      subtotal: sub, tax_rate: 0, tax_amount: 0, total: sub, notes: note,
+      repair_days: repairDays, parts_days: partsDays, testing_days: testingDays
     }).select('id').single();
     if (qErr) throw qErr;
 
