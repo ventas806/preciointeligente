@@ -430,6 +430,15 @@
     <div class="topbar-num" id="topNum">—</div>
   </div>
 
+  <!-- ── Próximo Paso Banner ──────────────────────────────────── -->
+  <div id="nextStepBanner" style="display:none;margin:12px 16px 0;background:rgba(61,106,255,.08);border:1px solid rgba(61,106,255,.3);border-radius:12px;padding:14px 18px;display:none;align-items:center;gap:14px;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:4px">⚡ Próximo paso recomendado</div>
+      <div id="nextStepText" style="font-size:14px;color:var(--text);font-weight:600"></div>
+    </div>
+    <button id="nextStepBtn" onclick="doNextStep()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap"></button>
+  </div>
+
   <div class="page">
 
     <!-- LEFT COLUMN -->
@@ -833,6 +842,7 @@ async function loadTicket() {
 
     renderTicket(t, history || [], msgs || [], notes || []);
     showView('main');
+    renderNextStep(t.status);
     await loadQuotes();
 
     // Mostrar botón eliminar solo a admins
@@ -1809,6 +1819,76 @@ async function confirmDeleteTicket() {
     btn.disabled = false;
     btn.textContent = '🗑️ Eliminar ticket';
     showToast('⚠️ Error al eliminar: ' + ex.message);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PRÓXIMO PASO — Banner de guía automática
+═══════════════════════════════════════════════════════════════ */
+const NEXT_STEPS = {
+  solicitud_recibida:   { text: '¿Ya llegó el equipo a la tienda? Márcalo como recibido.',            btn: '📬 Marcar como recibido',        color: '#2ed573', action: 'recibido' },
+  equipo_en_camino:     { text: 'El equipo está en camino. Cuando llegue, márcalo como recibido.',    btn: '📬 Marcar como recibido',        color: '#2ed573', action: 'recibido' },
+  equipo_recibido:      { text: 'Asigna un técnico para iniciar el diagnóstico del equipo.',          btn: '🔍 Asignar técnico',             color: '#3d6aff', action: 'asignar' },
+  en_diagnostico:       { text: 'Esperando que el técnico envíe su cotización interna.',              btn: '👁 Ver cotización técnico',       color: '#8892a4', action: 'ver_cotizacion' },
+  esperando_aprobacion: { text: 'El técnico envió su cotización. Revísala para aprobar o rechazar.',  btn: '✅ Revisar cotización',          color: '#f5c842', action: 'ver_cotizacion' },
+  aprobado_reparacion:  { text: 'Cotización aprobada. Crea y envía la cotización al cliente.',        btn: '💰 Crear cotización al cliente', color: '#2ed573', action: 'cotizar_cliente' },
+  esperando_repuesto:   { text: 'Esperando llegada del repuesto. Actualiza cuando llegue.',           btn: '🔧 Repuesto llegó → Reparación', color: '#ff9f43', action: 'en_reparacion' },
+  en_reparacion:        { text: 'El equipo está en reparación. Actualiza cuando termine.',            btn: '🧪 Reparación lista → Pruebas',  color: '#3d6aff', action: 'en_pruebas' },
+  en_pruebas:           { text: 'El equipo está en pruebas. Cuando todo esté OK, márcalo listo.',     btn: '🎉 Pruebas OK → Listo',          color: '#a29bfe', action: 'listo' },
+  listo_para_entrega:   { text: 'El equipo está listo. El cliente ya fue notificado.',                btn: '✔ Marcar como entregado',       color: '#2ed573', action: 'entregado' },
+};
+
+function renderNextStep(status) {
+  const banner = document.getElementById('nextStepBanner');
+  const ns = NEXT_STEPS[status];
+  if (!ns) { banner.style.display = 'none'; return; }
+  document.getElementById('nextStepText').textContent = ns.text;
+  const btn = document.getElementById('nextStepBtn');
+  btn.textContent      = ns.btn;
+  btn.style.background = ns.color;
+  btn.style.color      = ['#f5c842','#2ed573','#ff9f43','#a29bfe'].includes(ns.color) ? '#1a1f2e' : '#fff';
+  banner.style.display = 'flex';
+}
+
+async function doNextStep() {
+  const status = ticketData?.status;
+  const ns = NEXT_STEPS[status];
+  if (!ns) return;
+  const action = ns.action;
+
+  if (action === 'recibido') {
+    if (!confirm('¿Confirmar que el equipo ya llegó a la tienda?')) return;
+    const { error } = await sb.from('sp_tickets').update({ status: 'equipo_recibido' }).eq('id', ticketId);
+    if (!error) { showToast('📬 Equipo marcado como recibido'); setTimeout(() => location.reload(), 800); }
+  } else if (action === 'asignar') {
+    document.getElementById('techSelect')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.getElementById('techSelect')?.focus();
+    showToast('👇 Selecciona un técnico y guarda la asignación');
+  } else if (action === 'ver_cotizacion') {
+    document.getElementById('quoteIntBody')?.closest('.card')?.scrollIntoView({ behavior: 'smooth' });
+  } else if (action === 'cotizar_cliente') {
+    document.getElementById('quoteCliBody')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    showToast('👇 Completa la cotización al cliente');
+  } else if (action === 'en_reparacion') {
+    if (!confirm('¿El repuesto llegó? ¿Cambiar a En Reparación?')) return;
+    const { error } = await sb.from('sp_tickets').update({ status: 'en_reparacion' }).eq('id', ticketId);
+    if (!error) { showToast('🔧 Cambiado a En Reparación'); setTimeout(() => location.reload(), 800); }
+  } else if (action === 'en_pruebas') {
+    if (!confirm('¿La reparación está lista? ¿Cambiar a En Pruebas?')) return;
+    const { error } = await sb.from('sp_tickets').update({ status: 'en_pruebas' }).eq('id', ticketId);
+    if (!error) { showToast('🧪 Cambiado a En Pruebas'); setTimeout(() => location.reload(), 800); }
+  } else if (action === 'listo') {
+    if (!confirm('¿Las pruebas están OK? ¿Marcar como Listo para entrega?')) return;
+    const { error } = await sb.from('sp_tickets').update({ status: 'listo_para_entrega' }).eq('id', ticketId);
+    if (!error) {
+      const cu = ticketData?.sp_customers;
+      if (cu?.phone) { try { await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ to: cu.phone, message: `✅ *¡Tu equipo está listo!*\n\nHola ${cu.full_name}, tu equipo ya puede ser recogido en nuestra tienda.\n\n📍 *Focus Store Honduras* 😊` }) }); } catch(_){} }
+      showToast('🎉 Listo — cliente notificado'); setTimeout(() => location.reload(), 800);
+    }
+  } else if (action === 'entregado') {
+    if (!confirm('¿Confirmar que el cliente recogió su equipo?')) return;
+    const { error } = await sb.from('sp_tickets').update({ status: 'entregado', delivered_at: new Date().toISOString() }).eq('id', ticketId);
+    if (!error) { showToast('✔ Ticket marcado como entregado'); setTimeout(() => location.reload(), 800); }
   }
 }
 
