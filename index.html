@@ -2930,7 +2930,7 @@ function productoToRow(p) {
     url2:           sanitizarTexto(p.url2),
     nota:           sanitizarTexto(p.nota),
     imagen:         p.imagen         || null,
-    nota_rapida:    sanitizarTexto(p.notaRapida).substring(0,12),
+    nota_rapida:    sanitizarTexto(p.notaRapida).substring(0,20),
     web_publicado:  p.webPublicado   || false,
     invelec:        p.invelec        || false,
     descontinuado:  p.descontinuado  || false,
@@ -4234,6 +4234,8 @@ function renderTablaProductos() {
   });
   else if(orden==='sku') prods.sort((a,b)=>String(a.sku).localeCompare(String(b.sku)));
   else if(orden==='nombre') prods.sort((a,b)=>a.producto.localeCompare(b.producto));
+  // Descontinuados siempre al final, sin importar el orden elegido
+  prods.sort((a,b) => (a.descontinuado ? 1 : 0) - (b.descontinuado ? 1 : 0));
 
   const cols = getHeadersPorRol();
   document.getElementById('theadProductos').innerHTML = '<tr>'+cols.map(c=>`<th style="${c.k==='img'?'width:48px;text-align:center;':''}"> ${c.l}</th>`).join('')+'</tr>';
@@ -13191,11 +13193,18 @@ async function toggleDescontinuado(id, valor) {
   const p = productos.find(x => x.id === id);
   if (!p) return;
   p.descontinuado = valor;
+  // Auto-actualizar nota al marcar/desmarcar
+  if (valor) {
+    p.notaRapida = 'Descontinuado';
+  } else if ((p.notaRapida||'').toLowerCase() === 'descontinuado') {
+    p.notaRapida = '';
+  }
   p.ultimaModif = new Date().toISOString().replace('Z','').replace('T',' ').substring(0,19);
   try { await gsSave('Productos', p); } catch(e) { console.error(e); }
   addHistorial(`Producto "${p.producto}" marcado como ${valor ? '🚫 Descontinuado' : '♻️ Reactivado'}`, 'Inventario');
   showToast(valor ? '🚫 Producto marcado como Descontinuado' : '♻️ Producto Reactivado', valor ? 'info' : 'success');
   renderTablaInventario();
+  renderTablaProductos();
 }
 
 // ── ÓRDENES DE COMPRA ────────────────────────────────────────────────────────
