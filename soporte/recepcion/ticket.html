@@ -605,6 +605,7 @@
           <div class="divider" id="deleteSection" style="display:none"></div>
           <button id="btnDeleteTicket" class="btn btn-danger btn-full" style="display:none;margin-top:4px"
             onclick="confirmDeleteTicket()">🗑️ Eliminar ticket</button>
+          <script>(function(){try{var s=JSON.parse(localStorage.getItem('sp_session')||'null');if(s&&s.role==='admin'){document.getElementById('btnDeleteTicket').style.display='block';document.getElementById('deleteSection').style.display='block';}}catch(_){}})();</script>
 
         </div>
       </div>

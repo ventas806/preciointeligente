@@ -448,7 +448,7 @@
         <span class="ni">➕</span> Nuevo ticket
       </a>
 
-      <!-- Admin section — rendered by JS if role=admin/supervisor -->
+      <!-- Admin section — shown immediately via inline script -->
       <div id="navAdminSection" style="display:none">
         <div class="nav-section">Administración</div>
         <a class="nav-item" href="../admin/index.html">
@@ -458,6 +458,7 @@
           <span class="ni">💰</span> Catálogo de precios
         </a>
       </div>
+      <script>(function(){try{var s=JSON.parse(localStorage.getItem('sp_session')||'null');if(s&&['admin','supervisor'].includes(s.role))document.getElementById('navAdminSection').style.display='block';}catch(_){}})();</script>
 
       <div class="nav-section">Herramientas</div>
       <a class="nav-item" href="../tecnico/index.html">
