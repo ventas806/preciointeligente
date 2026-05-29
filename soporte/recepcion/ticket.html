@@ -754,7 +754,7 @@ function getSession() {
 
 async function loadProfiles() {
   const { data } = await sb.from('sp_profiles')
-    .select('id,full_name,role,color,avatar,email')
+    .select('id,full_name,role,color,avatar,email,phone')
     .eq('is_active', true);
   if (data) {
     techProfiles = {};
@@ -962,27 +962,37 @@ async function changeStatus() {
       });
     }
 
-    // Send email when equipment is ready for pickup
+    // Notify client when equipment is ready for pickup (email + WhatsApp)
     if (newStatus === 'listo_para_entrega') {
-      const cu = ticketData?.sp_customers;
+      const cu    = ticketData?.sp_customers;
+      const brand = ticketData.sp_equipment?.brand || '';
+      const model = ticketData.sp_equipment?.model || '';
+      const tNum  = ticketData.ticket_number;
       if (cu?.email) {
         try {
           await fetch(`${SUPABASE_URL}/functions/v1/send-ticket-email`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              type:         'ready_for_pickup',
-              clientName:   cu.full_name,
-              clientEmail:  cu.email,
-              ticketNumber: ticketData.ticket_number,
-              deviceBrand:  ticketData.sp_equipment?.brand || '',
-              deviceModel:  ticketData.sp_equipment?.model || '',
-              comment:      comment || ''
+              type: 'ready_for_pickup',
+              clientName: cu.full_name, clientEmail: cu.email,
+              ticketNumber: tNum, deviceBrand: brand, deviceModel: model,
+              comment: comment || ''
             })
           });
-        } catch (_) {
-          // email failure does not block status change
-        }
+        } catch (_) { /* no bloquea */ }
+      }
+      if (cu?.phone) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: cu.phone,
+              message: `✅ *¡Tu equipo está listo!*\n\nHola ${cu.full_name}, tu *${brand} ${model}* ya puede ser recogido en nuestra tienda.\n\n🎫 Ticket: #${tNum}\n\n📍 *Focus Store Honduras*\n¡Gracias por tu preferencia! 😊`
+            })
+          });
+        } catch (_) { /* no bloquea */ }
       }
     }
 
@@ -1002,23 +1012,38 @@ async function assignTech() {
       .eq('id', ticketId);
     if (error) throw error;
 
-    // Notify technician by email
-    if (techId && techProfiles[techId]?.email) {
-      const tech = techProfiles[techId];
-      try {
-        await fetch(`${SUPABASE_URL}/functions/v1/notify-tech`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            techEmail:    tech.email,
-            techName:     tech.full_name,
-            ticketNumber: ticketData.ticket_number,
-            deviceBrand:  ticketData.sp_equipment?.brand  || '',
-            deviceModel:  ticketData.sp_equipment?.model  || '',
-            reportedFault: ticketData.reported_fault || ''
-          })
-        });
-      } catch (_) { /* no bloquea */ }
+    // Notify technician (email + WhatsApp)
+    if (techId && techProfiles[techId]) {
+      const tech  = techProfiles[techId];
+      const brand = ticketData.sp_equipment?.brand || '';
+      const model = ticketData.sp_equipment?.model || '';
+      const tNum  = ticketData.ticket_number;
+      const fault = ticketData.reported_fault || '';
+      if (tech.email) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/notify-tech`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              techEmail: tech.email, techName: tech.full_name,
+              ticketNumber: tNum, deviceBrand: brand, deviceModel: model,
+              reportedFault: fault
+            })
+          });
+        } catch (_) { /* no bloquea */ }
+      }
+      if (tech.phone) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: tech.phone,
+              message: `🔧 *Focus Store Soporte*\n\nHola ${tech.full_name}, se te asignó un ticket.\n\n🎫 *Ticket:* #${tNum}\n💻 *Equipo:* ${brand} ${model}\n🔍 *Falla:* ${fault.substring(0, 150)}\n\nRevísalo en tu panel:\nhttps://ventas806.github.io/preciointeligente/soporte/tecnico/index.html`
+            })
+          });
+        } catch (_) { /* no bloquea */ }
+      }
     }
 
     showToast('✅ Técnico asignado');
@@ -1325,31 +1350,38 @@ async function sendClientQuote() {
     // Update ticket status → esperando_aprobacion
     await sb.from('sp_tickets').update({ status: 'esperando_aprobacion' }).eq('id', ticketId);
 
-    // Send email notification to client
-    const cu = ticketData?.sp_customers;
+    // Notify client: quote ready (email + WhatsApp)
+    const cu    = ticketData?.sp_customers;
+    const brand = ticketData.sp_equipment?.brand || '';
+    const model = ticketData.sp_equipment?.model || '';
+    const tNum  = ticketData.ticket_number;
     if (cu?.email) {
       try {
         await fetch(`${SUPABASE_URL}/functions/v1/send-ticket-email`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            type:         'quote_ready',
-            clientName:   cu.full_name,
-            clientEmail:  cu.email,
-            ticketNumber: ticketData.ticket_number,
-            deviceBrand:  ticketData.sp_equipment?.brand  || '',
-            deviceModel:  ticketData.sp_equipment?.model  || '',
-            items:        buildItems.map(i => ({ description: i.desc, qty: i.qty, unit_price: i.price })),
-            subtotal:     sub,
-            taxAmount,
-            total,
-            expiresAt,
-            note:         note || ''
+            type: 'quote_ready',
+            clientName: cu.full_name, clientEmail: cu.email,
+            ticketNumber: tNum, deviceBrand: brand, deviceModel: model,
+            items: buildItems.map(i => ({ description: i.desc, qty: i.qty, unit_price: i.price })),
+            subtotal: sub, taxAmount, total, expiresAt, note: note || ''
           })
         });
-      } catch (_) {
-        // email failure does not block quote creation
-      }
+      } catch (_) { /* no bloquea */ }
+    }
+    if (cu?.phone) {
+      const totalFmt = total.toLocaleString('es-HN', { minimumFractionDigits: 2 });
+      try {
+        await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: cu.phone,
+            message: `💰 *Focus Store Soporte*\n\nHola ${cu.full_name}, tu cotización para el Ticket *#${tNum}* está lista.\n\n💻 *Equipo:* ${brand} ${model}\n💵 *Total:* L. ${totalFmt}\n\n✅ Aprueba o rechaza en:\nhttps://ventas806.github.io/preciointeligente/soporte/portal.html`
+          })
+        });
+      } catch (_) { /* no bloquea */ }
     }
 
     showToast('✅ Cotización enviada al cliente');

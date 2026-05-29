@@ -776,6 +776,12 @@
         <div class="field-hint">Se usará para enviar notificaciones al miembro (tickets asignados, alertas, etc.)</div>
         <span class="field-error" id="fEmailErr">Correo inválido</span>
       </div>
+      <div class="field">
+        <label for="fPhone">WhatsApp / Teléfono</label>
+        <input type="tel" id="fPhone" placeholder="9999-0000">
+        <div class="field-hint">Se usará para enviar notificaciones por WhatsApp al miembro.</div>
+        <span class="field-error" id="fPhoneErr">Número inválido (mín. 8 dígitos)</span>
+      </div>
 
       <!-- Activo toggle (edit only) -->
       <div class="field" id="fieldActive" style="display:none">
@@ -889,7 +895,7 @@ async function loadStaff() {
   try {
     const { data, error } = await sb
       .from('sp_profiles')
-      .select('id, username, full_name, role, color, avatar, is_active, last_login, created_at, app_pin, email')
+      .select('id, username, full_name, role, color, avatar, is_active, last_login, created_at, app_pin, email, phone')
       .order('full_name');
 
     if (error) throw error;
@@ -1014,6 +1020,8 @@ function openCreate() {
   document.getElementById('fUser').value   = '';
   document.getElementById('fRole').value   = '';
   document.getElementById('fPin').value    = '1234';
+  document.getElementById('fEmail').value  = '';
+  document.getElementById('fPhone').value  = '';
   document.getElementById('fieldActive').style.display = 'none';
   document.getElementById('fUserHint').textContent = '';
   clearFieldErrors();
@@ -1039,6 +1047,7 @@ function openEdit(id) {
   document.getElementById('fRole').value   = s.role;
   document.getElementById('fPin').value    = s.app_pin || '';
   document.getElementById('fEmail').value  = s.email   || '';
+  document.getElementById('fPhone').value  = s.phone   || '';
   document.getElementById('fActive').value = String(s.is_active);
   document.getElementById('fieldActive').style.display = 'block';
   document.getElementById('fUserHint').textContent = '';
@@ -1100,6 +1109,11 @@ async function saveStaff() {
       showFieldErr('fEmail', 'fEmailErr', 'Ingrese un correo válido');
       btn.disabled = false; btn.textContent = 'Guardar'; return;
     }
+    const phoneVal = document.getElementById('fPhone').value.trim();
+    if (phoneVal && phoneVal.replace(/\D/g,'').length < 8) {
+      showFieldErr('fPhone', 'fPhoneErr', 'Número inválido (mín. 8 dígitos)');
+      btn.disabled = false; btn.textContent = 'Guardar'; return;
+    }
 
     const payload = {
       full_name: name,
@@ -1109,6 +1123,7 @@ async function saveStaff() {
       avatar:    selectedEmoji,
       color:     selectedColor,
       email:     emailVal || null,
+      phone:     phoneVal || null,
     };
 
     if (editingId) {
