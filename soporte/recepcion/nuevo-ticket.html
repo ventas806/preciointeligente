@@ -599,19 +599,21 @@ async function submitTicket() {
             clientName, clientEmail,
             ticketNumber: ticketNum,
             deviceBrand: brand,
-            deviceModel: model
+            deviceModel: model,
+            portalToken: ticket.access_token
           })
         });
       } catch (_) { /* no bloquea */ }
     }
     if (clientPhone) {
+      const portalLink = `https://ventas806.github.io/preciointeligente/soporte/portal.html?token=${ticket.access_token}`;
       try {
         await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             to: clientPhone,
-            message: `👋 Hola ${clientName}! Tu equipo quedó registrado en *Focus Store*.\n\n🎫 *Ticket:* #${ticketNum}\n💻 *Equipo:* ${brand} ${model}\n\nPuedes consultar el estado en:\nhttps://ventas806.github.io/preciointeligente/soporte/portal.html\n\n¡Gracias por confiar en nosotros! 🙏`
+            message: `👋 Hola ${clientName}! Tu equipo quedó registrado en *Focus Store*.\n\n🎫 *Ticket:* #${ticketNum}\n💻 *Equipo:* ${brand} ${model}\n\nConsulta el estado de tu equipo aquí:\n${portalLink}\n\n¡Gracias por confiar en nosotros! 🙏`
           })
         });
       } catch (_) { /* no bloquea */ }

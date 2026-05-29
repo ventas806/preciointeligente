@@ -1030,7 +1030,7 @@ async function changeStatus() {
               type: 'ready_for_pickup',
               clientName: cu.full_name, clientEmail: cu.email,
               ticketNumber: tNum, deviceBrand: brand, deviceModel: model,
-              comment: comment || ''
+              comment: comment || '', portalToken: accessToken
             })
           });
         } catch (_) { /* no bloquea */ }
@@ -1063,7 +1063,7 @@ async function changeStatus() {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'repair_started', clientName: cu.full_name, clientEmail: cu.email,
               ticketNumber: tNum, deviceBrand: brand, deviceModel: model,
-              repairDays: days, repairExpectedDate: dateStr })
+              repairDays: days, repairExpectedDate: dateStr, portalToken: accessToken })
           });
         } catch (_) { /* no bloquea */ }
       }
@@ -1092,7 +1092,7 @@ async function changeStatus() {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'testing_started', clientName: cu.full_name, clientEmail: cu.email,
               ticketNumber: tNum, deviceBrand: brand, deviceModel: model,
-              testingDays: days, testingExpectedDate: dateStr })
+              testingDays: days, testingExpectedDate: dateStr, portalToken: accessToken })
           });
         } catch (_) { /* no bloquea */ }
       }
@@ -1124,7 +1124,7 @@ async function changeStatus() {
               type: 'parts_waiting',
               clientName: cu.full_name, clientEmail: cu.email,
               ticketNumber: tNum, deviceBrand: brand, deviceModel: model,
-              partsDays: days, partsExpectedDate: dateStr
+              partsDays: days, partsExpectedDate: dateStr, portalToken: accessToken
             })
           });
         } catch (_) { /* no bloquea */ }
@@ -1546,7 +1546,8 @@ async function sendClientQuote() {
             clientName: cu.full_name, clientEmail: cu.email,
             ticketNumber: tNum, deviceBrand: brand, deviceModel: model,
             items: buildItems.map(i => ({ description: i.desc, qty: i.qty, unit_price: i.price })),
-            subtotal: sub, taxAmount, total, expiresAt, note: note || ''
+            subtotal: sub, taxAmount, total, expiresAt, note: note || '',
+            portalToken: accessToken
           })
         });
       } catch (_) { /* no bloquea */ }
@@ -1559,7 +1560,7 @@ async function sendClientQuote() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             to: cu.phone,
-            message: `💰 *Focus Store Soporte*\n\nHola ${cu.full_name}, tu cotización para el Ticket *#${tNum}* está lista.\n\n💻 *Equipo:* ${brand} ${model}\n💵 *Total:* L. ${totalFmt}\n\n✅ Aprueba o rechaza en:\nhttps://ventas806.github.io/preciointeligente/soporte/portal.html`
+            message: `💰 *Focus Store Soporte*\n\nHola ${cu.full_name}, tu cotización para el Ticket *#${tNum}* está lista.\n\n💻 *Equipo:* ${brand} ${model}\n💵 *Total:* L. ${totalFmt}\n\n✅ Aprueba o rechaza en:\nhttps://ventas806.github.io/preciointeligente/soporte/portal.html?token=${accessToken}`
           })
         });
       } catch (_) { /* no bloquea */ }
