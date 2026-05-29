@@ -567,6 +567,18 @@
             <div style="font-size:12px;color:var(--muted);margin-top:4px">📅 El cliente recibirá notificación con la fecha estimada de llegada.</div>
           </div>
 
+          <div class="field" id="repairField" style="display:none">
+            <div class="field-label">🔧 Días estimados de reparación <span style="color:var(--red)">*</span></div>
+            <input type="number" id="repairDays" min="1" max="90" placeholder="Ej: 3">
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">📅 El cliente recibirá notificación con la fecha estimada de entrega.</div>
+          </div>
+
+          <div class="field" id="testingField" style="display:none">
+            <div class="field-label">🧪 Días estimados de pruebas <span style="color:var(--red)">*</span></div>
+            <input type="number" id="testingDays" min="1" max="30" placeholder="Ej: 1">
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">📅 El cliente recibirá notificación con la fecha estimada de finalización.</div>
+          </div>
+
           <div class="field" id="statusNoteField" style="display:none">
             <div class="field-label">Comentario de estado (opcional)</div>
             <input type="text" id="statusNote" placeholder="Ej: Recibido el equipo, inicia diagnóstico…">
@@ -940,9 +952,13 @@ function renderNotes(notes) {
 ═══════════════════════════════════════════════════════════════ */
 function onStatusChange() {
   const val = document.getElementById('statusSelect').value;
-  document.getElementById('statusNoteField').style.display = val ? 'block' : 'none';
-  document.getElementById('partsField').style.display = val === 'esperando_repuesto' ? 'block' : 'none';
-  if (val !== 'esperando_repuesto') document.getElementById('partsDays').value = '';
+  document.getElementById('statusNoteField').style.display  = val ? 'block' : 'none';
+  document.getElementById('partsField').style.display       = val === 'esperando_repuesto' ? 'block' : 'none';
+  document.getElementById('repairField').style.display      = val === 'en_reparacion'      ? 'block' : 'none';
+  document.getElementById('testingField').style.display     = val === 'en_pruebas'         ? 'block' : 'none';
+  if (val !== 'esperando_repuesto') document.getElementById('partsDays').value   = '';
+  if (val !== 'en_reparacion')      document.getElementById('repairDays').value  = '';
+  if (val !== 'en_pruebas')         document.getElementById('testingDays').value = '';
 }
 
 async function changeStatus() {
@@ -952,19 +968,35 @@ async function changeStatus() {
   if (!newStatus) { showToast('⚠️ Seleccione un estado.'); return; }
   if (newStatus === ticketData?.status) { showToast('Ya está en ese estado.'); return; }
 
-  // Validar días de repuesto si corresponde
-  let partsExpectedAt = null;
+  // Calcular fechas estimadas según el estado
+  let partsExpectedAt = null, repairExpectedAt = null, testingExpectedAt = null;
+
+  function calcDate(days) {
+    const d = new Date(); d.setDate(d.getDate() + days);
+    return d.toISOString().split('T')[0];
+  }
+
   if (newStatus === 'esperando_repuesto') {
     const days = parseInt(document.getElementById('partsDays').value);
     if (!days || days < 1) { showToast('⚠️ Ingrese los días estimados para el repuesto.'); return; }
-    const d = new Date();
-    d.setDate(d.getDate() + days);
-    partsExpectedAt = d.toISOString().split('T')[0]; // DATE yyyy-mm-dd
+    partsExpectedAt = calcDate(days);
+  }
+  if (newStatus === 'en_reparacion') {
+    const days = parseInt(document.getElementById('repairDays').value);
+    if (!days || days < 1) { showToast('⚠️ Ingrese los días estimados de reparación.'); return; }
+    repairExpectedAt = calcDate(days);
+  }
+  if (newStatus === 'en_pruebas') {
+    const days = parseInt(document.getElementById('testingDays').value);
+    if (!days || days < 1) { showToast('⚠️ Ingrese los días estimados de pruebas.'); return; }
+    testingExpectedAt = calcDate(days);
   }
 
   try {
     const updatePayload = { status: newStatus };
-    if (partsExpectedAt) updatePayload.parts_expected_at = partsExpectedAt;
+    if (partsExpectedAt)   updatePayload.parts_expected_at   = partsExpectedAt;
+    if (repairExpectedAt)  updatePayload.repair_expected_at  = repairExpectedAt;
+    if (testingExpectedAt) updatePayload.testing_expected_at = testingExpectedAt;
 
     const { error } = await sb.from('sp_tickets')
       .update(updatePayload)
@@ -1012,6 +1044,64 @@ async function changeStatus() {
               to: cu.phone,
               message: `✅ *¡Tu equipo está listo!*\n\nHola ${cu.full_name}, tu *${brand} ${model}* ya puede ser recogido en nuestra tienda.\n\n🎫 Ticket: #${tNum}\n\n📍 *Focus Store Honduras*\n¡Gracias por tu preferencia! 😊`
             })
+          });
+        } catch (_) { /* no bloquea */ }
+      }
+    }
+
+    // Notify client: en reparacion
+    if (newStatus === 'en_reparacion' && repairExpectedAt) {
+      const cu    = ticketData?.sp_customers;
+      const brand = ticketData.sp_equipment?.brand || '';
+      const model = ticketData.sp_equipment?.model || '';
+      const tNum  = ticketData.ticket_number;
+      const days  = parseInt(document.getElementById('repairDays').value);
+      const dateStr = new Date(repairExpectedAt + 'T12:00:00').toLocaleDateString('es-HN', { day: 'numeric', month: 'long', year: 'numeric' });
+      if (cu?.email) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-ticket-email`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'repair_started', clientName: cu.full_name, clientEmail: cu.email,
+              ticketNumber: tNum, deviceBrand: brand, deviceModel: model,
+              repairDays: days, repairExpectedDate: dateStr })
+          });
+        } catch (_) { /* no bloquea */ }
+      }
+      if (cu?.phone) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to: cu.phone,
+              message: `🔧 *Focus Store Soporte*\n\n¡Buenas noticias, ${cu.full_name}! Tu equipo *${brand} ${model}* ya está en reparación.\n\n🎫 Ticket: #${tNum}\n⏳ Tiempo estimado: *${days} día(s)*\n📅 Fecha estimada: *${dateStr}*\n\nTe avisamos cuando esté listo. 🙏` })
+          });
+        } catch (_) { /* no bloquea */ }
+      }
+    }
+
+    // Notify client: en pruebas
+    if (newStatus === 'en_pruebas' && testingExpectedAt) {
+      const cu    = ticketData?.sp_customers;
+      const brand = ticketData.sp_equipment?.brand || '';
+      const model = ticketData.sp_equipment?.model || '';
+      const tNum  = ticketData.ticket_number;
+      const days  = parseInt(document.getElementById('testingDays').value);
+      const dateStr = new Date(testingExpectedAt + 'T12:00:00').toLocaleDateString('es-HN', { day: 'numeric', month: 'long', year: 'numeric' });
+      if (cu?.email) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-ticket-email`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'testing_started', clientName: cu.full_name, clientEmail: cu.email,
+              ticketNumber: tNum, deviceBrand: brand, deviceModel: model,
+              testingDays: days, testingExpectedDate: dateStr })
+          });
+        } catch (_) { /* no bloquea */ }
+      }
+      if (cu?.phone) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to: cu.phone,
+              message: `🧪 *Focus Store Soporte*\n\n¡Casi listo, ${cu.full_name}! Tu *${brand} ${model}* está en fase de pruebas.\n\n🎫 Ticket: #${tNum}\n⏳ Tiempo estimado: *${days} día(s)*\n📅 Fecha estimada: *${dateStr}*\n\nTe avisamos cuando puedas venir a recogerlo. 🙏` })
           });
         } catch (_) { /* no bloquea */ }
       }
