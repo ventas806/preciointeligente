@@ -1001,7 +1001,41 @@ async function submitForm() {
 
     if (tktErr) throw tktErr;
 
-    // 7 ── Redirect to confirmation ─────────────────────────────
+    // 7 ── Notificar al cliente (email + WhatsApp) ─────────────
+    const clientName  = v('fullName');
+    const clientEmail = v('email');
+    const clientPhone = v('phone');
+    const portalLink  = `https://ventas806.github.io/preciointeligente/soporte/portal.html?token=${ticket.access_token}`;
+    const tNum        = ticket.ticket_number;
+
+    const waMsg = `👋 *¡Hola ${clientName}!*\n\nTu solicitud de soporte técnico fue registrada exitosamente en *Focus Store*.\n\n🎫 *Ticket:* #${tNum}\n\nPuedes dar seguimiento a tu equipo en cualquier momento desde el siguiente enlace:\n🔗 ${portalLink}\n\n¡Estamos trabajando para ayudarte! 🙏\n*Focus Store Honduras*`;
+
+    if (clientPhone) {
+      try {
+        await fetch('https://uzhjnedhmbvgfqqssuov.supabase.co/functions/v1/send-whatsapp', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: clientPhone, message: waMsg })
+        });
+      } catch (_) { /* no bloquea */ }
+    }
+
+    if (clientEmail) {
+      try {
+        await fetch('https://uzhjnedhmbvgfqqssuov.supabase.co/functions/v1/send-ticket-email', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'ticket_created',
+            clientName, clientEmail,
+            ticketNumber: tNum,
+            deviceBrand: v('brand') || '',
+            deviceModel: v('model') || '',
+            portalToken: ticket.access_token
+          })
+        });
+      } catch (_) { /* no bloquea */ }
+    }
+
+    // 8 ── Redirect to confirmation ─────────────────────────────
     const q = new URLSearchParams({
       ticket: ticket.ticket_number,
       token:  ticket.access_token,
