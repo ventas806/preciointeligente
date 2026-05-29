@@ -897,6 +897,37 @@ async function approveQuote() {
       .eq('id', ticketData.id);
     if (tErr) throw tErr;
 
+    // Notificar al técnico asignado (WhatsApp + email)
+    try {
+      const { data: tkt } = await sb.from('sp_tickets')
+        .select('sp_profiles!sp_tickets_assigned_to_fkey(full_name, email, phone)')
+        .eq('id', ticketData.id).single();
+      const tech = tkt?.sp_profiles;
+      const eq   = ticketData.sp_equipment;
+      const tNum = ticketData.ticket_number;
+      const TECNICO_URL = 'https://ventas806.github.io/preciointeligente/soporte/tecnico/index.html';
+
+      if (tech?.phone) {
+        await fetch('https://uzhjnedhmbvgfqqssuov.supabase.co/functions/v1/send-whatsapp', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: tech.phone,
+            message: `✅ *¡Cotización aprobada! — Focus Store*\n\nHola ${tech.full_name}, el cliente aprobó la cotización para el Ticket *#${tNum}*.\n\n💻 Equipo: ${eq?.brand||''} ${eq?.model||''}\n\n¡Ya puedes iniciar la reparación desde tu panel!\n🔗 ${TECNICO_URL}`
+          })
+        });
+      }
+      if (tech?.email) {
+        await fetch('https://uzhjnedhmbvgfqqssuov.supabase.co/functions/v1/notify-tech', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            techEmail: tech.email, techName: tech.full_name,
+            ticketNumber: tNum, deviceBrand: eq?.brand||'', deviceModel: eq?.model||'',
+            reportedFault: `✅ El cliente aprobó la cotización. Ya puedes iniciar la reparación.`
+          })
+        });
+      }
+    } catch(_) { /* no bloquea la aprobación */ }
+
     showToast('✅ Cotización aprobada. ¡Gracias!');
     setTimeout(() => location.reload(), 2000);
 
