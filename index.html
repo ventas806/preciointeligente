@@ -4179,7 +4179,7 @@ function getHeadersPorRol() {
   const perms = PERMS[currentUser.rol];
   const base = [{k:'img',l:'IMG'},{k:'sku',l:'SKU'},{k:'producto',l:'Producto'},{k:'estado',l:'Estado'},{k:'cantidad',l:'Cant.'},{k:'notaRapida',l:'Nota'},{k:'webPublicado',l:'🌐 Web'},{k:'invelec',l:'INVELEC'},{k:'link',l:'🔗'},{k:'wix',l:'🛒'},{k:'descVend',l:'💰'}];
   const costFields  = [{k:'costoTotalLPS',l:'Costo LPS'}];
-  const priceFields = [{k:'descMax',l:'Desc.MAX'},{k:'descIngresado',l:'Desc %'},{k:'precioConDesc',l:'Precio Final'},{k:'enCamino',l:'🚢 Camino'}];
+  const priceFields = [{k:'descIngresado',l:'Desc %'},{k:'precioConDesc',l:'Precio Final'},{k:'enCamino',l:'🚢 Camino'}];
 
   let cols = [];
   if(currentUser.rol==='admin'||currentUser.rol==='gerencia') cols.push({k:'acciones',l:'⚙️'});
@@ -4340,7 +4340,7 @@ function renderTablaProductos() {
           const ajLabel = (aj > 0 ? '+' : '') + (aj * 100).toFixed(1) + '%';
           return `<td style="color:${ajColor};font-weight:700;font-size:12px;text-align:center" title="Ajuste Manual Col U: ${ajLabel}">${ajLabel}</td>`;
         }
-        case 'descMax': return `<td>${fmtPct(c.descMax)}</td>`;
+        case 'descMax': return '';
         case 'descIngresado': return `<td style="text-align:center;color:${(p.descuento||0)>0?'var(--accent4)':'var(--text3)'};">${(p.descuento||0)>0?fmtPct((p.descuento||0)/100):'—'}</td>`;
         case 'precioConDesc': return `<td class="td-price" style="color:var(--accent3)">${fmtLPS(c.precioFinalDesc)}</td>`;
         case 'utilBrutaLPS': return `<td style="color:var(--green)">${fmtLPS(c.utilBrutaLPS)}</td>`;
