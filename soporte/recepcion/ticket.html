@@ -754,7 +754,7 @@ function getSession() {
 
 async function loadProfiles() {
   const { data } = await sb.from('sp_profiles')
-    .select('id,full_name,role,color,avatar')
+    .select('id,full_name,role,color,avatar,email')
     .eq('is_active', true);
   if (data) {
     techProfiles = {};
@@ -1001,6 +1001,26 @@ async function assignTech() {
       .update({ assigned_to: techId })
       .eq('id', ticketId);
     if (error) throw error;
+
+    // Notify technician by email
+    if (techId && techProfiles[techId]?.email) {
+      const tech = techProfiles[techId];
+      try {
+        await fetch(`${SUPABASE_URL}/functions/v1/notify-tech`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            techEmail:    tech.email,
+            techName:     tech.full_name,
+            ticketNumber: ticketData.ticket_number,
+            deviceBrand:  ticketData.sp_equipment?.brand  || '',
+            deviceModel:  ticketData.sp_equipment?.model  || '',
+            reportedFault: ticketData.reported_fault || ''
+          })
+        });
+      } catch (_) { /* no bloquea */ }
+    }
+
     showToast('✅ Técnico asignado');
     document.getElementById('iTech').textContent =
       techId ? (techProfiles[techId]?.full_name || 'Asignado') : 'Sin asignar';

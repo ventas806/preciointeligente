@@ -365,6 +365,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let session   = null;
 let existingCustomerId = null;
 let searchTimer = null;
+let techData  = {}; // id → { full_name, email }
 
 window.addEventListener('DOMContentLoaded', async () => {
   session = getSession();
@@ -391,11 +392,13 @@ function getSession() {
 
 async function loadTechs() {
   const { data } = await sb.from('sp_profiles')
-    .select('id,full_name,role').eq('is_active', true)
+    .select('id,full_name,role,email').eq('is_active', true)
     .in('role', ['tecnico','admin','supervisor']);
   if (data) {
+    techData = {};
     const sel = document.getElementById('assignTo');
     data.forEach(p => {
+      techData[p.id] = { full_name: p.full_name, email: p.email };
       const o = document.createElement('option');
       o.value       = p.id;
       o.textContent = `${p.full_name} (${p.role})`;
@@ -542,7 +545,26 @@ async function submitTicket() {
       });
     }
 
-    // 6. Send confirmation email to client (if email provided)
+    // 6. Notify assigned technician by email
+    const techId = v('assignTo');
+    if (techId && techData[techId]?.email) {
+      try {
+        await fetch(`${SUPABASE_URL}/functions/v1/notify-tech`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            techEmail:    techData[techId].email,
+            techName:     techData[techId].full_name,
+            ticketNumber: ticket.ticket_number,
+            deviceBrand:  v('brand'),
+            deviceModel:  v('model'),
+            reportedFault: v('fault')
+          })
+        });
+      } catch (_) { /* no bloquea */ }
+    }
+
+    // 7. Send confirmation email to client (if email provided)
     const clientEmail = v('email');
     if (clientEmail) {
       document.querySelector('#loadingOverlay p').textContent = 'Enviando confirmación al cliente…';
