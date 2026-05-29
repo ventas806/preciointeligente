@@ -425,7 +425,7 @@
 
   <!-- Topbar -->
   <div class="topbar">
-    <a href="index.html" class="btn-back">← Volver</a>
+    <a href="index.html" class="btn-back" onclick="this.href='index.html?_v='+Date.now()">← Volver</a>
     <div class="topbar-title">Detalle del Ticket</div>
     <div class="topbar-num" id="topNum">—</div>
   </div>
@@ -761,6 +761,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   ticketId = new URLSearchParams(location.search).get('id');
   if (!ticketId) { showView('error'); return; }
 
+  renderUserNav();
   await loadProfiles();
   await loadTicket();
 });
@@ -772,6 +773,19 @@ function getSession() {
     if (Date.now() - s.logged_in_at > 12 * 3600 * 1000) { localStorage.removeItem('sp_session'); return null; }
     return s;
   } catch (_) { return null; }
+}
+
+function renderUserNav() {
+  const ROLE_LABELS = { admin:'Administrador', supervisor:'Supervisor', recepcion:'Recepción', tecnico:'Técnico' };
+  const av = document.getElementById('navAvatar');
+  const nm = document.getElementById('navName');
+  const rl = document.getElementById('navRole');
+  if (av) { av.textContent = session.avatar || session.full_name[0]; av.style.background = (session.color||'#3d6aff')+'33'; av.style.color = session.color||'#3d6aff'; }
+  if (nm) nm.textContent = session.full_name;
+  if (rl) rl.textContent = ROLE_LABELS[session.role] || session.role;
+  // Mostrar sección admin en sidebar
+  const adminSec = document.getElementById('navAdminSection');
+  if (adminSec && ['admin','supervisor'].includes(session.role)) adminSec.style.display = 'block';
 }
 
 async function loadProfiles() {
@@ -1789,7 +1803,7 @@ async function confirmDeleteTicket() {
     if (error) throw error;
 
     showToast('🗑️ Ticket eliminado correctamente');
-    setTimeout(() => { location.href = 'index.html'; }, 1200);
+    setTimeout(() => { location.href = 'index.html?_v=' + Date.now(); }, 1200);
   } catch (ex) {
     btn.disabled = false;
     btn.textContent = '🗑️ Eliminar ticket';

@@ -808,7 +808,7 @@ function renderTickets(tickets) {
       staff_telefono:'📞',cliente_remoto:'🌐'
     };
 
-    return `<a class="tkt-row" href="ticket.html?id=${t.id}">
+    return `<a class="tkt-row" href="ticket.html?id=${t.id}&_v=${Date.now()}">
       <div class="tkt-num">
         ${t.ticket_number}
         <div class="tkt-date">${fmtDateShort(t.created_at)} ${originMap[t.ticket_origin]||''}</div>
