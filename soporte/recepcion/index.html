@@ -323,6 +323,17 @@
       vertical-align: middle; white-space: nowrap;
     }
 
+    /* ── Quick action button ─────────────────────────────────── */
+    .btn-quick {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(46,213,115,.12); border: 1px solid rgba(46,213,115,.35);
+      border-radius: 6px; font-size: 11px; font-weight: 700; padding: 3px 9px;
+      color: var(--green); cursor: pointer; margin-left: 6px;
+      vertical-align: middle; white-space: nowrap; font-family: inherit;
+      transition: all .2s;
+    }
+    .btn-quick:hover { background: rgba(46,213,115,.25); border-color: var(--green); }
+
     /* ── Loading / Empty ─────────────────────────────────────── */
     .centered-msg {
       text-align: center;
@@ -806,7 +817,12 @@ function renderTickets(tickets) {
         <h4>${cust?.full_name || 'Sin cliente'}</h4>
         <p>${CAT_ICONS[eq?.category]||'🔧'} ${eq?.brand||''} ${eq?.model||''}</p>
       </div>
-      <div><span class="status-chip ${st.chip}">${st.label}</span>${overdueHTML}</div>
+      <div>
+        <span class="status-chip ${st.chip}">${st.label}</span>${overdueHTML}
+        ${(t.status === 'solicitud_recibida' || t.status === 'equipo_en_camino')
+          ? `<button class="btn-quick" onclick="marcarRecibido('${t.id}',event)">📬 Recibido</button>`
+          : ''}
+      </div>
       <div class="tkt-tech">${techHTML}</div>
       <div class="tkt-days ${daysClass}">${days}d</div>
     </a>`;
@@ -847,6 +863,19 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
 }
+/* ── Marcar equipo como recibido (acción rápida desde la lista) ── */
+async function marcarRecibido(ticketId, e) {
+  e.preventDefault(); e.stopPropagation();
+  try {
+    const { error } = await sb.from('sp_tickets')
+      .update({ status: 'equipo_recibido' })
+      .eq('id', ticketId);
+    if (error) throw error;
+    showToast('📬 Equipo marcado como recibido');
+    setTimeout(() => loadTickets(), 600);
+  } catch (ex) { showToast('⚠️ Error: ' + ex.message); }
+}
+
 // ── Anti-cache ────────────────────────────────────────────────
 window.addEventListener('pageshow', e => { if (e.persisted) location.reload(true); });
 (function(){ var t=0; document.addEventListener('visibilitychange', function(){

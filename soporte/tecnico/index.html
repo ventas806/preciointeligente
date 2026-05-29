@@ -550,9 +550,17 @@ async function changeStatus(ticketId, currentStatus) {
 
 async function takeTicket(ticketId) {
   try {
-    const { error } = await sb.from('sp_tickets').update({ assigned_to: session.id }).eq('id', ticketId);
+    const t = allTickets.find(x => x.id === ticketId);
+    const earlyStatuses = ['solicitud_recibida', 'equipo_en_camino', 'equipo_recibido'];
+    const autoDiag = t && earlyStatuses.includes(t.status);
+
+    const payload = { assigned_to: session.id };
+    if (autoDiag) payload.status = 'en_diagnostico';
+
+    const { error } = await sb.from('sp_tickets').update(payload).eq('id', ticketId);
     if (error) throw error;
-    showToast('✅ Ticket asignado a ti');
+
+    showToast(autoDiag ? '🔍 Ticket tomado — iniciando diagnóstico' : '✅ Ticket asignado a ti');
     setTimeout(() => loadTickets(), 800);
   } catch (ex) { showToast('⚠️ Error: ' + ex.message); }
 }
