@@ -800,6 +800,42 @@ async function submitTechQuote(ticketId) {
       .update({ status: 'esperando_aprobacion' })
       .eq('id', ticketId);
 
+    // Notificar a admin/supervisor
+    try {
+      const t = allTickets.find(x => x.id === ticketId);
+      const totalDays = repairDays + partsDays + testingDays;
+      const totalFmt  = sub.toLocaleString('es-HN', { minimumFractionDigits: 2 });
+      const recepcionURL = 'https://ventas806.github.io/preciointeligente/soporte/recepcion/ticket.html?id=' + ticketId;
+
+      const { data: admins } = await sb.from('sp_profiles')
+        .select('full_name, email, phone')
+        .in('role', ['admin', 'supervisor'])
+        .eq('is_active', true);
+
+      const waMsg = `⚡ *Focus Store — Nueva Cotización*\n\n*${session.full_name}* envió una cotización para revisión.\n\n🎫 *Ticket:* #${t?.ticket_number || ticketId}\n💻 *Equipo:* ${t?.brand || ''} ${t?.model || ''}\n💵 *Total:* L. ${totalFmt}\n⏱️ *Días estimados:* ${totalDays} día(s)\n\nRevisa y aprueba en el panel:\n${recepcionURL}`;
+
+      for (const admin of (admins || [])) {
+        if (admin.phone) {
+          try { await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: admin.phone, message: waMsg }) }); } catch(_) {}
+        }
+        if (admin.email) {
+          try {
+            await fetch(`${SUPABASE_URL}/functions/v1/notify-tech`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                techEmail: admin.email,
+                techName: admin.full_name,
+                ticketNumber: t?.ticket_number || '',
+                deviceBrand: t?.brand || '',
+                deviceModel: t?.model || '',
+                reportedFault: `⚡ ${session.full_name} envió una cotización por L. ${totalFmt} (${totalDays} días estimados). Revisa y aprueba en: ${recepcionURL}`
+              })
+            });
+          } catch(_) {}
+        }
+      }
+    } catch(_) { /* notificación silenciosa */ }
+
     delete quoteCache[ticketId];
     tqBuildItems[ticketId] = [];
     await loadQuoteForCard(ticketId);
