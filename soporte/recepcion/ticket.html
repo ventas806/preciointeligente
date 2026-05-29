@@ -1189,48 +1189,71 @@ async function changeStatus() {
 async function assignTech() {
   const techId = document.getElementById('techSelect').value || null;
   try {
-    const { error } = await sb.from('sp_tickets')
-      .update({ assigned_to: techId })
-      .eq('id', ticketId);
+    // Auto-cambiar a en_diagnostico si el ticket está en estado temprano
+    const earlyStatuses = ['solicitud_recibida','equipo_en_camino','equipo_recibido'];
+    const autoDiag = techId && earlyStatuses.includes(ticketData?.status);
+    const updatePayload = { assigned_to: techId };
+    if (autoDiag) updatePayload.status = 'en_diagnostico';
+
+    const { error } = await sb.from('sp_tickets').update(updatePayload).eq('id', ticketId);
     if (error) throw error;
 
-    // Notify technician (email + WhatsApp)
+    const brand = ticketData.sp_equipment?.brand || '';
+    const model = ticketData.sp_equipment?.model || '';
+    const tNum  = ticketData.ticket_number;
+    const cu    = ticketData?.sp_customers;
+
+    // Notificar técnico (email + WhatsApp)
     if (techId && techProfiles[techId]) {
       const tech  = techProfiles[techId];
-      const brand = ticketData.sp_equipment?.brand || '';
-      const model = ticketData.sp_equipment?.model || '';
-      const tNum  = ticketData.ticket_number;
       const fault = ticketData.reported_fault || '';
       if (tech.email) {
         try {
           await fetch(`${SUPABASE_URL}/functions/v1/notify-tech`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              techEmail: tech.email, techName: tech.full_name,
-              ticketNumber: tNum, deviceBrand: brand, deviceModel: model,
-              reportedFault: fault
-            })
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ techEmail: tech.email, techName: tech.full_name,
+              ticketNumber: tNum, deviceBrand: brand, deviceModel: model, reportedFault: fault })
           });
-        } catch (_) { /* no bloquea */ }
+        } catch (_) {}
       }
       if (tech.phone) {
         try {
           await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              to: tech.phone,
-              message: `🔧 *Focus Store Soporte*\n\nHola ${tech.full_name}, se te asignó un ticket.\n\n🎫 *Ticket:* #${tNum}\n💻 *Equipo:* ${brand} ${model}\n🔍 *Falla:* ${fault.substring(0, 150)}\n\nRevísalo en tu panel:\nhttps://ventas806.github.io/preciointeligente/soporte/tecnico/index.html`
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to: tech.phone,
+              message: `🔧 *Focus Store Soporte*\n\nHola ${tech.full_name}, se te asignó un ticket.\n\n🎫 *Ticket:* #${tNum}\n💻 *Equipo:* ${brand} ${model}\n🔍 *Falla:* ${fault.substring(0,150)}\n\nRevísalo en tu panel:\nhttps://ventas806.github.io/preciointeligente/soporte/tecnico/index.html`
             })
           });
-        } catch (_) { /* no bloquea */ }
+        } catch (_) {}
       }
     }
 
-    showToast('✅ Técnico asignado');
-    document.getElementById('iTech').textContent =
-      techId ? (techProfiles[techId]?.full_name || 'Asignado') : 'Sin asignar';
+    // Notificar cliente si cambió a en_diagnostico
+    if (autoDiag && cu) {
+      if (cu.phone) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to: cu.phone,
+              message: `🔍 *Focus Store Soporte*\n\nHola ${cu.full_name}, ¡buenas noticias! Tu equipo *${brand} ${model}* ha sido asignado a nuestro equipo técnico y ya está siendo revisado.\n\n🎫 Ticket: #${tNum}\n\nUna vez finalizado el diagnóstico recibirás una cotización para tu aprobación.\n\n¡Gracias por tu paciencia! 🙏\n*Focus Store Honduras*`
+            })
+          });
+        } catch (_) {}
+      }
+      if (cu.email) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-ticket-email`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'tech_assigned', clientName: cu.full_name,
+              clientEmail: cu.email, ticketNumber: tNum,
+              deviceBrand: brand, deviceModel: model, portalToken: accessToken })
+          });
+        } catch (_) {}
+      }
+    }
+
+    showToast(autoDiag ? '✅ Técnico asignado — cliente notificado' : '✅ Técnico asignado');
+    setTimeout(() => location.reload(), 800);
   } catch (ex) {
     showToast('⚠️ Error: ' + ex.message);
   }
