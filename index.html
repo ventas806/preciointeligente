@@ -11518,7 +11518,7 @@ function iniciarVerificadorVersion() {
               <div style="font-size:13px;font-weight:700;color:#fff">Nueva versión disponible</div>
               <div style="font-size:12px;color:#8892aa;margin-top:2px">Recarga para obtener los últimos cambios</div>
             </div>
-            <button onclick="location.reload(true)"
+            <button onclick="location.href = location.pathname + '?v=' + Date.now()"
               style="background:linear-gradient(135deg,#3d6aff,#2d5aef);color:#fff;border:none;border-radius:8px;
               padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit">
               Actualizar
