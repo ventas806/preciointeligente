@@ -1178,6 +1178,34 @@ async function changeStatus() {
       }
     }
 
+    // Notify client when equipment is irreparable
+    if (newStatus === 'irreparable') {
+      const cu    = ticketData?.sp_customers;
+      const brand = ticketData.sp_equipment?.brand || '';
+      const model = ticketData.sp_equipment?.model || '';
+      const tNum  = ticketData.ticket_number;
+      const politicas = `\n\n📌 *Políticas de retiro:*\n• 15 días de almacenamiento gratuito\n• Después aplican cargos diarios\n• A los 60 días se declara abandonado`;
+      if (cu?.phone) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to: cu.phone,
+              message: `⛔ *Focus Store Soporte*\n\nHola ${cu.full_name}, lamentamos informarte que tras el diagnóstico de tu equipo *${brand} ${model}*, nuestro equipo técnico determinó que no tiene reparación posible.\n\n🎫 Ticket: #${tNum}\n\nPuedes pasar a recoger tu equipo en nuestra tienda cuando gustes.${politicas}\n\n📍 *Focus Store Honduras*\nGracias por tu comprensión.` })
+          });
+        } catch (_) { /* no bloquea */ }
+      }
+      if (cu?.email) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-ticket-email`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'irreparable', clientName: cu.full_name,
+              clientEmail: cu.email, ticketNumber: tNum,
+              deviceBrand: brand, deviceModel: model, portalToken: accessToken })
+          });
+        } catch (_) { /* no bloquea */ }
+      }
+    }
+
     showToast('✅ Estado actualizado');
     setTimeout(() => location.reload(), 1000);
 
