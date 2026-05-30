@@ -1709,7 +1709,42 @@ async function confirmReject() {
     }).eq('id', rejectTarget.qId);
     if (error) throw error;
     closeRejectModal();
-    showToast('Cotización rechazada');
+
+    // Si es la cotización INTERNA (del técnico) → notificar cliente que pase a recoger
+    if (rejectTarget.type === 'interna') {
+      // Cambiar estado del ticket a cancelado
+      await sb.from('sp_tickets').update({ status: 'cancelado' }).eq('id', ticketId);
+
+      const cu    = ticketData?.sp_customers;
+      const brand = ticketData?.sp_equipment?.brand || '';
+      const model = ticketData?.sp_equipment?.model || '';
+      const tNum  = ticketData?.ticket_number;
+      const politicasWA = `\n\n📌 *Políticas de retiro:*\n• 15 días de almacenamiento gratuito\n• Después aplican cargos diarios\n• A los 60 días se declara abandonado`;
+
+      if (cu?.phone) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to: cu.phone,
+              message: `ℹ️ *Focus Store Soporte*\n\nHola ${cu.full_name}, te informamos que la reparación de tu equipo *${brand} ${model}* no será procesada.\n\n🎫 Ticket: #${tNum}\n\nPuedes pasar a recoger tu equipo en nuestra tienda cuando gustes.${politicasWA}\n\n📍 *Focus Store Honduras*\nGracias por tu comprensión.` })
+          });
+        } catch(_) {}
+      }
+      if (cu?.email) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-ticket-email`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'irreparable', clientName: cu.full_name,
+              clientEmail: cu.email, ticketNumber: tNum,
+              deviceBrand: brand, deviceModel: model, portalToken: accessToken })
+          });
+        } catch(_) {}
+      }
+      showToast('✅ Cotización rechazada — cliente notificado');
+    } else {
+      showToast('Cotización rechazada');
+    }
+
     setTimeout(() => location.reload(), 800);
   } catch (ex) { showToast('⚠️ Error: ' + ex.message); }
 }
@@ -1903,6 +1938,7 @@ const NEXT_STEPS = {
   en_pruebas:           { text: 'El equipo está en pruebas. Cuando todo esté OK, márcalo listo.',     btn: '🎉 Pruebas OK → Listo',          color: '#a29bfe', action: 'listo' },
   listo_para_entrega:   { text: 'El equipo está listo. El cliente ya fue notificado.',                btn: '✔ Marcar como entregado',       color: '#2ed573', action: 'entregado' },
   irreparable:          { text: 'El cliente fue notificado. Cuando venga a recoger su equipo, márcalo como entregado.', btn: '✔ Cliente recogió su equipo',    color: '#2ed573', action: 'entregado' },
+  cancelado:            { text: 'El cliente rechazó la reparación. Cuando venga a recoger su equipo, márcalo como entregado.', btn: '✔ Cliente recogió su equipo', color: '#2ed573', action: 'entregado' },
 };
 
 function renderNextStep(status) {

@@ -551,9 +551,10 @@
 <!-- Reject modal -->
 <div class="modal-overlay" id="rejectModal">
   <div class="modal">
-    <h3>Rechazar cotización</h3>
-    <p>¿Desea rechazar la cotización? Puede indicar el motivo.</p>
-    <textarea id="rejectReason" placeholder="Motivo del rechazo (opcional)…"></textarea>
+    <h3>✗ Rechazar cotización</h3>
+    <p>Por favor indícanos el motivo del rechazo para que podamos ayudarte mejor.</p>
+    <textarea id="rejectReason" placeholder="Ej: El precio es muy alto, prefiero no repararlo…" style="border:1.5px solid var(--border)"></textarea>
+    <p id="rejectReasonErr" style="display:none;color:var(--red);font-size:12px;margin-top:4px">Por favor escribe el motivo del rechazo.</p>
     <div class="modal-btns">
       <button class="btn" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted)"
         onclick="closeRejectModal()">Cancelar</button>
@@ -943,22 +944,52 @@ async function confirmReject() {
   if (!quoteId || !ticketData) return;
 
   const reason = document.getElementById('rejectReason').value.trim();
+  const errEl  = document.getElementById('rejectReasonErr');
+
+  // Motivo obligatorio
+  if (!reason) {
+    errEl.style.display = 'block';
+    document.getElementById('rejectReason').style.borderColor = 'var(--red)';
+    return;
+  }
+  errEl.style.display = 'none';
 
   try {
     const { error: qErr } = await sb
       .from('sp_repair_quotes')
-      .update({ status: 'rechazada', rejection_reason: reason || null })
+      .update({ status: 'rechazada', rejection_reason: reason })
       .eq('id', quoteId);
     if (qErr) throw qErr;
 
-    const { error: tErr } = await sb
-      .from('sp_tickets')
-      .update({ status: 'cancelado' })
-      .eq('id', ticketData.id);
-    if (tErr) throw tErr;
+    // Mantener status en esperando_aprobacion para que admin gestione manualmente
+    // (no cambia a cancelado - el admin decide el siguiente paso)
 
     closeRejectModal();
-    showToast('La cotización fue rechazada.');
+
+    // Notificar al admin via WhatsApp
+    const eq   = ticketData.sp_equipment;
+    const tNum = ticketData.ticket_number;
+    const name = customerData?.full_name || 'El cliente';
+    try {
+      // Obtener admins con teléfono desde la BD
+      const { data: admins } = await sb.from('sp_profiles')
+        .select('phone, email, full_name')
+        .in('role', ['admin', 'supervisor'])
+        .eq('is_active', true);
+
+      const waMsg = `❌ *Cliente rechazó cotización — Focus Store*\n\n*${name}* rechazó la cotización del Ticket *#${tNum}*.\n\n💻 Equipo: ${eq?.brand||''} ${eq?.model||''}\n📝 Motivo: "${reason}"\n\nRevisa el ticket para tomar acción:\nhttps://ventas806.github.io/preciointeligente/soporte/recepcion/ticket.html?id=${ticketData.id}&_v=${Date.now()}`;
+
+      for (const admin of (admins || [])) {
+        if (admin.phone) {
+          await fetch('https://uzhjnedhmbvgfqqssuov.supabase.co/functions/v1/send-whatsapp', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to: admin.phone, message: waMsg })
+          });
+        }
+      }
+    } catch(_) { /* silencioso */ }
+
+    showToast('Cotización rechazada. Hemos notificado a Focus Store.');
     setTimeout(() => location.reload(), 2000);
 
   } catch (ex) {
