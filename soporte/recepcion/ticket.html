@@ -1378,6 +1378,9 @@ async function loadQuotes() {
 
   renderInternalQuote();
   renderClientQuote();
+
+  // Re-renderizar banner con info actualizada de cotizaciones
+  if (ticketData) renderNextStep(ticketData.status);
 }
 
 /* ── Render internal quote (tech → admin) ────────────────────── */
@@ -2022,6 +2025,7 @@ const NEXT_STEPS = {
   en_diagnostico:       { text: 'Esperando que el técnico envíe su cotización interna.',              btn: '👁 Ver cotización técnico',       color: '#8892a4', action: 'ver_cotizacion' },
   esperando_aprobacion: { text: 'El técnico envió su cotización. Revísala para aprobar o rechazar.',  btn: '✅ Revisar cotización',          color: '#f5c842', action: 'ver_cotizacion' },
   aprobado_reparacion:  { text: '✅ El cliente aprobó la cotización. Aprueba la cotización del técnico para comenzar la reparación.', btn: '✅ Aprobar cotización del técnico', color: '#f5c842', action: 'ver_cotizacion' },
+  aprobado_reparacion_listo: { text: '🔧 Cotización del técnico aprobada. El técnico puede iniciar la reparación en su panel.', btn: '🔧 Ver panel del técnico', color: '#2ed573', action: 'ver_panel_tecnico' },
   esperando_repuesto:   { text: 'Esperando llegada del repuesto. Actualiza cuando llegue.',           btn: '🔧 Repuesto llegó → Reparación', color: '#ff9f43', action: 'en_reparacion' },
   en_reparacion:        { text: 'El equipo está en reparación. Actualiza cuando termine.',            btn: '🧪 Reparación lista → Pruebas',  color: '#3d6aff', action: 'en_pruebas' },
   en_pruebas:           { text: 'El equipo está en pruebas. Cuando todo esté OK, márcalo listo.',     btn: '🎉 Pruebas OK → Listo',          color: '#a29bfe', action: 'listo' },
@@ -2032,7 +2036,14 @@ const NEXT_STEPS = {
 
 function renderNextStep(status) {
   const banner = document.getElementById('nextStepBanner');
-  const ns = NEXT_STEPS[status];
+
+  // Caso especial: aprobado_reparacion + cotización interna ya aprobada
+  let effectiveStatus = status;
+  if (status === 'aprobado_reparacion' && quoteInternal?.status === 'aprobada') {
+    effectiveStatus = 'aprobado_reparacion_listo';
+  }
+
+  const ns = NEXT_STEPS[effectiveStatus];
   if (!ns) { banner.style.display = 'none'; return; }
   document.getElementById('nextStepText').textContent = ns.text;
   const btn = document.getElementById('nextStepBtn');
@@ -2079,6 +2090,8 @@ async function doNextStep() {
       }
       showToast('📬 Equipo recibido — cliente notificado'); setTimeout(() => location.reload(), 800);
     }
+  } else if (action === 'ver_panel_tecnico') {
+    window.open('https://ventas806.github.io/preciointeligente/soporte/tecnico/index.html', '_blank');
   } else if (action === 'asignar') {
     document.getElementById('techSelect')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     document.getElementById('techSelect')?.focus();
