@@ -961,8 +961,12 @@ async function confirmReject() {
       .eq('id', quoteId);
     if (qErr) throw qErr;
 
-    // Mantener status en esperando_aprobacion para que admin gestione manualmente
-    // (no cambia a cancelado - el admin decide el siguiente paso)
+    // Cambiar ticket a cancelado para que admin vea en lista que fue rechazado
+    const { error: tErr } = await sb
+      .from('sp_tickets')
+      .update({ status: 'cancelado' })
+      .eq('id', ticketData.id);
+    if (tErr) throw tErr;
 
     closeRejectModal();
 
