@@ -1710,7 +1710,7 @@ async function confirmReject() {
     if (error) throw error;
     closeRejectModal();
 
-    // Si es la cotización INTERNA (del técnico) → notificar cliente que pase a recoger
+    // Si es la cotización INTERNA (del técnico) → notificar técnico Y cliente
     if (rejectTarget.type === 'interna') {
       // Cambiar estado del ticket a cancelado
       await sb.from('sp_tickets').update({ status: 'cancelado' }).eq('id', ticketId);
@@ -1719,8 +1719,36 @@ async function confirmReject() {
       const brand = ticketData?.sp_equipment?.brand || '';
       const model = ticketData?.sp_equipment?.model || '';
       const tNum  = ticketData?.ticket_number;
-      const politicasWA = `\n\n📌 *Políticas de retiro:*\n• 15 días de almacenamiento gratuito\n• Después aplican cargos diarios\n• A los 60 días se declara abandonado`;
 
+      // 1. Notificar al TÉCNICO con el motivo
+      const techId = ticketData?.assigned_to;
+      if (techId && techProfiles[techId]) {
+        const tech = techProfiles[techId];
+        if (tech.phone) {
+          try {
+            await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ to: tech.phone,
+                message: `❌ *Focus Store — Cotización Rechazada*\n\nHola ${tech.full_name}, tu cotización para el Ticket *#${tNum}* fue rechazada.\n\n💻 Equipo: ${brand} ${model}\n📝 Motivo: "${reason}"\n\nRevisa el ticket en tu panel:\nhttps://ventas806.github.io/preciointeligente/soporte/tecnico/index.html` })
+            });
+          } catch(_) {}
+        }
+        if (tech.email) {
+          try {
+            await fetch(`${SUPABASE_URL}/functions/v1/notify-tech`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                techEmail: tech.email, techName: tech.full_name,
+                ticketNumber: tNum, deviceBrand: brand, deviceModel: model,
+                reportedFault: `❌ Tu cotización fue rechazada.\n\nMotivo: "${reason}"\n\nPor favor revisa y envía una nueva cotización si aplica.`
+              })
+            });
+          } catch(_) {}
+        }
+      }
+
+      // 2. Notificar al CLIENTE que pase a recoger + políticas
+      const politicasWA = `\n\n📌 *Políticas de retiro:*\n• 15 días de almacenamiento gratuito\n• Después aplican cargos diarios\n• A los 60 días se declara abandonado`;
       if (cu?.phone) {
         try {
           await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
@@ -1740,7 +1768,7 @@ async function confirmReject() {
           });
         } catch(_) {}
       }
-      showToast('✅ Cotización rechazada — cliente notificado');
+      showToast('✅ Cotización rechazada — técnico y cliente notificados');
     } else {
       showToast('Cotización rechazada');
     }
