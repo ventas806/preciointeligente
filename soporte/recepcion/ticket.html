@@ -1510,7 +1510,11 @@ function buildClientQuoteForm(prefill) {
       <div class="quote-live-total" id="cliLiveTotal">
         <div class="qlt-item"><div class="qlt-label">Subtotal</div><div class="qlt-val cli" id="qltSub">L 0.00</div></div>
         <div class="qlt-item"><div class="qlt-label">ISV 15%</div><div class="qlt-val isv" id="qltIsv">L 0.00</div></div>
-        <div class="qlt-item"><div class="qlt-label" style="font-size:13px;font-weight:700">TOTAL</div><div class="qlt-val cli" style="font-size:20px" id="qltTotal">L 0.00</div></div>
+        <div class="qlt-item" id="qltCreditRow" style="display:none">
+          <div class="qlt-label" style="color:var(--green)">✅ Crédito diagnóstico</div>
+          <div class="qlt-val" id="qltCreditAmt" style="color:var(--green);font-family:monospace">-L 0.00</div>
+        </div>
+        <div class="qlt-item"><div class="qlt-label" style="font-size:13px;font-weight:700">TOTAL A PAGAR</div><div class="qlt-val cli" style="font-size:20px" id="qltTotal">L 0.00</div></div>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer">
           <input type="checkbox" id="isvCheck" onchange="recalcBuild()" checked> Aplicar ISV 15%
         </label>
@@ -1535,7 +1539,7 @@ function buildClientQuoteForm(prefill) {
         <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center">
           <input type="number" id="diagFee" placeholder="0.00" min="0" step="0.01" oninput="recalcBuild()">
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap">
-            <input type="checkbox" id="diagCredit"> Acreditar si aprueban
+            <input type="checkbox" id="diagCredit" onchange="recalcBuild()"> Acreditar si aprueban
           </label>
         </div>
       </div>
@@ -1591,14 +1595,21 @@ function removeBuildRow(i) {
 }
 
 function recalcBuild() {
-  const sub = buildItems.reduce((s, it) => s + (it.qty * it.price), 0);
-  const diagFee = parseFloat(document.getElementById('diagFee')?.value) || 0;
-  const applyIsv = document.getElementById('isvCheck')?.checked;
-  const isv = applyIsv ? sub * 0.15 : 0;
-  const total = sub + isv + diagFee;
+  const sub        = buildItems.reduce((s, it) => s + (it.qty * it.price), 0);
+  const diagFee    = parseFloat(document.getElementById('diagFee')?.value) || 0;
+  const diagCredit = document.getElementById('diagCredit')?.checked;
+  const applyIsv   = document.getElementById('isvCheck')?.checked;
+  const isv        = applyIsv ? sub * 0.15 : 0;
+  // Si se acredita, el diagnóstico YA FUE COBRADO → se descuenta del total
+  const total = sub + isv - (diagCredit ? diagFee : 0);
   if (document.getElementById('qltSub'))   document.getElementById('qltSub').textContent   = 'L ' + fmt(sub);
   if (document.getElementById('qltIsv'))   document.getElementById('qltIsv').textContent   = 'L ' + fmt(isv);
   if (document.getElementById('qltTotal')) document.getElementById('qltTotal').textContent = 'L ' + fmt(total);
+  // Mostrar/ocultar fila de crédito
+  const creditRow = document.getElementById('qltCreditRow');
+  const creditAmt = document.getElementById('qltCreditAmt');
+  if (creditRow) creditRow.style.display = (diagCredit && diagFee > 0) ? 'flex' : 'none';
+  if (creditAmt) creditAmt.textContent   = '-L ' + fmt(diagFee);
 }
 
 /* ── Send client quote ───────────────────────────────────────── */
@@ -1608,14 +1619,15 @@ async function sendClientQuote(btn) {
   if (hasEmpty) { showToast('⚠️ Complete todas las líneas (descripción y precio)'); return; }
   const restore = btnLoad(btn, 'Enviando cotización…');
 
-  const sub       = buildItems.reduce((s, it) => s + (it.qty * it.price), 0);
-  const diagFee   = parseFloat(document.getElementById('diagFee')?.value) || 0;
-  const applyIsv  = document.getElementById('isvCheck')?.checked;
-  const taxRate   = applyIsv ? 0.15 : 0;
-  const taxAmount = sub * taxRate;
-  const total     = sub + taxAmount + diagFee;
-  const note      = document.getElementById('cliQuoteNote')?.value.trim() || null;
-  const diagCredit= document.getElementById('diagCredit')?.checked || false;
+  const sub        = buildItems.reduce((s, it) => s + (it.qty * it.price), 0);
+  const diagFee    = parseFloat(document.getElementById('diagFee')?.value) || 0;
+  const diagCredit = document.getElementById('diagCredit')?.checked || false;
+  const applyIsv   = document.getElementById('isvCheck')?.checked;
+  const taxRate    = applyIsv ? 0.15 : 0;
+  const taxAmount  = sub * taxRate;
+  // Si se acredita, el diagnóstico YA FUE COBRADO → se descuenta del total
+  const total = sub + taxAmount - (diagCredit ? diagFee : 0);
+  const note  = document.getElementById('cliQuoteNote')?.value.trim() || null;
 
   const expiresAt = new Date(Date.now() + 15 * 24 * 3600 * 1000).toISOString();
 
@@ -1661,6 +1673,7 @@ async function sendClientQuote(btn) {
             ticketNumber: tNum, deviceBrand: brand, deviceModel: model,
             items: buildItems.map(i => ({ description: i.desc, qty: i.qty, unit_price: i.price })),
             subtotal: sub, taxAmount, total, expiresAt, note: note || '',
+            diagFee: diagCredit ? diagFee : 0, diagCredit,
             portalToken: accessToken
           })
         });
@@ -1881,22 +1894,28 @@ function quoteTotals(q, isClient) {
   const isv = parseFloat(q.tax_amount)||0;
   const fee = parseFloat(q.diagnosis_fee)||0;
   const tot = parseFloat(q.total)||0;
+  const credited = q.diagnosis_credited;
   return `
     <div class="qi-total-section">
-      ${fee > 0 ? `
-        <div class="qi-total-row">
-          <span>Subtotal</span><span class="mono">L ${fmt(sub)}</span>
-        </div>
-        <div class="qi-total-row">
-          <span>Diagnóstico ${q.diagnosis_credited ? '(se acredita si aprueban)' : ''}</span>
-          <span class="mono">L ${fmt(fee)}</span>
-        </div>` : `
-        <div class="qi-total-row"><span>Subtotal</span><span class="mono">L ${fmt(sub)}</span></div>`}
+      <div class="qi-total-row"><span>Subtotal</span><span class="mono">L ${fmt(sub)}</span></div>
       ${isv > 0 ? `<div class="qi-total-row"><span>ISV 15%</span><span class="mono">L ${fmt(isv)}</span></div>` : ''}
+      ${fee > 0 && credited ? `
+        <div class="qi-total-row" style="color:var(--green)">
+          <span>✅ Crédito diagnóstico (ya pagado)</span>
+          <span class="mono">-L ${fmt(fee)}</span>
+        </div>` : fee > 0 ? `
+        <div class="qi-total-row">
+          <span>Cargo diagnóstico</span>
+          <span class="mono">L ${fmt(fee)}</span>
+        </div>` : ''}
       <div class="qi-total-row main">
-        <span>TOTAL</span>
+        <span>TOTAL A PAGAR</span>
         <span class="mono ${isClient ? 'price-cliente' : 'price-tecnico'}">L ${fmt(tot)}</span>
       </div>
+      ${fee > 0 && credited ? `
+        <div style="background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.2);border-radius:6px;padding:8px 10px;margin-top:8px;font-size:11px;color:#f5c842">
+          📌 <strong>Nota:</strong> Si no aprueba la reparación, el cargo de diagnóstico (L ${fmt(fee)}) no es reembolsable.
+        </div>` : ''}
     </div>`;
 }
 
