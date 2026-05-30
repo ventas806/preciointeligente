@@ -1707,7 +1707,36 @@ async function approveInternalQuote(qId) {
       status: 'aprobada', approved_at: new Date().toISOString(), approved_by: session.id
     }).eq('id', qId);
     if (error) throw error;
-    showToast('✅ Cotización del técnico aprobada');
+
+    // Notificar al técnico que su cotización fue aprobada por el admin
+    const techId = ticketData?.assigned_to;
+    if (techId && techProfiles[techId]) {
+      const tech  = techProfiles[techId];
+      const brand = ticketData.sp_equipment?.brand || '';
+      const model = ticketData.sp_equipment?.model || '';
+      const tNum  = ticketData.ticket_number;
+      if (tech.phone) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to: tech.phone,
+              message: `✅ *Focus Store — Cotización Aprobada*\n\nHola ${tech.full_name}, tu cotización para el Ticket *#${tNum}* fue aprobada por Focus Store.\n\n💻 Equipo: ${brand} ${model}\n\nPronto te avisaremos para iniciar la reparación cuando el cliente confirme.\n🔗 https://ventas806.github.io/preciointeligente/soporte/tecnico/index.html` })
+          });
+        } catch(_) {}
+      }
+      if (tech.email) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/notify-tech`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ techEmail: tech.email, techName: tech.full_name,
+              ticketNumber: tNum, deviceBrand: brand, deviceModel: model,
+              reportedFault: `✅ Tu cotización fue aprobada por Focus Store. Pronto te avisaremos cuando el cliente confirme para iniciar la reparación.` })
+          });
+        } catch(_) {}
+      }
+    }
+
+    showToast('✅ Cotización aprobada — técnico notificado');
     setTimeout(() => location.reload(), 800);
   } catch (ex) { showToast('⚠️ Error: ' + ex.message); }
 }
