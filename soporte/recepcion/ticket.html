@@ -237,6 +237,15 @@
     .btn-ghost:hover { color: var(--text); }
     .btn-full      { width: 100%; padding: 12px; font-size: 14px; }
     .btn:disabled  { opacity: .5; cursor: not-allowed; }
+    /* ── Loading spinner ─────────────────────────────────── */
+    @keyframes _spin { to { transform: rotate(360deg); } }
+    .btn-spinner {
+      display: inline-block; width: 13px; height: 13px;
+      border: 2px solid rgba(255,255,255,.35); border-top-color: currentColor;
+      border-radius: 50%; animation: _spin .7s linear infinite;
+      vertical-align: middle; margin-right: 7px;
+    }
+    .btn-loading { opacity: .75 !important; cursor: not-allowed !important; pointer-events: none; }
 
     /* ── Equip badge ────────────────────────────────────────── */
     .equip-badge {
@@ -593,7 +602,7 @@
             <input type="text" id="statusNote" placeholder="Ej: Recibido el equipo, inicia diagnóstico…">
           </div>
 
-          <button class="btn btn-primary btn-full" onclick="changeStatus()">Actualizar estado</button>
+          <button class="btn btn-primary btn-full" onclick="changeStatus(this)">Actualizar estado</button>
 
           <div class="divider"></div>
 
@@ -603,7 +612,7 @@
               <option value="">Sin asignar</option>
             </select>
           </div>
-          <button class="btn btn-ghost btn-full" onclick="assignTech()">Guardar asignación</button>
+          <button class="btn btn-ghost btn-full" onclick="assignTech(this)">Guardar asignación</button>
 
           <div class="divider"></div>
 
@@ -996,12 +1005,13 @@ function onStatusChange() {
   if (val !== 'en_pruebas')         document.getElementById('testingDays').value = '';
 }
 
-async function changeStatus() {
+async function changeStatus(btn) {
   const newStatus = document.getElementById('statusSelect').value;
   const comment   = document.getElementById('statusNote').value.trim();
 
   if (!newStatus) { showToast('⚠️ Seleccione un estado.'); return; }
   if (newStatus === ticketData?.status) { showToast('Ya está en ese estado.'); return; }
+  const restore = btnLoad(btn, 'Actualizando…');
 
   // Calcular fechas estimadas según el estado
   let partsExpectedAt = null, repairExpectedAt = null, testingExpectedAt = null;
@@ -1210,11 +1220,13 @@ async function changeStatus() {
     setTimeout(() => location.reload(), 1000);
 
   } catch (ex) {
+    restore?.();
     showToast('⚠️ Error: ' + ex.message);
   }
 }
 
-async function assignTech() {
+async function assignTech(btn) {
+  const restore = btnLoad(btn, 'Guardando…');
   const techId = document.getElementById('techSelect').value || null;
   try {
     // Auto-cambiar a en_diagnostico si el ticket está en estado temprano
@@ -1532,7 +1544,7 @@ function buildClientQuoteForm(prefill) {
         <textarea id="cliQuoteNote" rows="2" placeholder="Notas que verá el cliente en su portal…"></textarea>
       </div>
       <div style="display:flex;gap:10px">
-        <button class="btn btn-success btn-full" onclick="sendClientQuote()">
+        <button class="btn btn-success btn-full" onclick="sendClientQuote(this)">
           📤 Enviar cotización al cliente
         </button>
       </div>
@@ -1590,10 +1602,11 @@ function recalcBuild() {
 }
 
 /* ── Send client quote ───────────────────────────────────────── */
-async function sendClientQuote() {
+async function sendClientQuote(btn) {
   if (!buildItems.length) { showToast('⚠️ Agregue al menos una línea'); return; }
   const hasEmpty = buildItems.some(i => !i.desc.trim() || i.price <= 0);
   if (hasEmpty) { showToast('⚠️ Complete todas las líneas (descripción y precio)'); return; }
+  const restore = btnLoad(btn, 'Enviando cotización…');
 
   const sub       = buildItems.reduce((s, it) => s + (it.qty * it.price), 0);
   const diagFee   = parseFloat(document.getElementById('diagFee')?.value) || 0;
@@ -2048,6 +2061,25 @@ async function doNextStep() {
     const { error } = await sb.from('sp_tickets').update({ status: 'entregado', delivered_at: new Date().toISOString() }).eq('id', ticketId);
     if (!error) { showToast('✔ Ticket marcado como entregado'); setTimeout(() => location.reload(), 800); }
   }
+}
+
+/* ── btnLoad — estado de carga para botones ──────────────────
+   Uso: const restore = btnLoad(btn, 'Guardando…');
+        // … async work …
+        restore(); // o se llama en finally
+──────────────────────────────────────────────────────────── */
+function btnLoad(btn, text) {
+  if (!btn) return () => {};
+  const origHTML = btn.innerHTML;
+  const origDisabled = btn.disabled;
+  btn.disabled = true;
+  btn.classList.add('btn-loading');
+  btn.innerHTML = `<span class="btn-spinner"></span>${text || 'Procesando…'}`;
+  return function restore() {
+    btn.disabled = origDisabled;
+    btn.classList.remove('btn-loading');
+    btn.innerHTML = origHTML;
+  };
 }
 
 // ── Anti-cache ────────────────────────────────────────────────

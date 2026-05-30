@@ -127,6 +127,10 @@
     .btn-action-green:hover { background:#3ee583; }
     .btn-action-purple { background:#a29bfe; color:#1a1f2e; font-weight:700; }
     .btn-action-purple:hover { background:#b5affe; }
+    /* ── Loading spinner ─────────────────────────────────── */
+    @keyframes _spin { to { transform: rotate(360deg); } }
+    .btn-spinner { display:inline-block; width:13px; height:13px; border:2px solid rgba(255,255,255,.35); border-top-color:currentColor; border-radius:50%; animation:_spin .7s linear infinite; vertical-align:middle; margin-right:7px; }
+    .btn-loading { opacity:.75 !important; cursor:not-allowed !important; pointer-events:none; }
     /* Next-step banner */
     .next-step { border-radius:10px; padding:10px 14px; margin-bottom:12px; display:flex; flex-direction:column; gap:8px; }
     .next-step-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); }
@@ -704,7 +708,7 @@ function tqBuilderHTML(tid) {
       </div>
     </div>
     <textarea class="sm" id="tqnote-${tid}" placeholder="Nota interna para Focus Store (opcional)…" rows="1" style="margin-bottom:8px"></textarea>
-    <button class="btn-sm btn-primary" style="width:100%" onclick="submitTechQuote('${tid}')">
+    <button class="btn-sm btn-primary" style="width:100%" onclick="submitTechQuote('${tid}',this)">
       📤 Enviar cotización
     </button>`;
 }
@@ -756,7 +760,8 @@ function recalcTqDays(tid) {
   if (el) el.textContent = total > 0 ? `${total} día(s)` : '— días';
 }
 
-async function submitTechQuote(ticketId) {
+async function submitTechQuote(ticketId, btn) {
+  const restore = btnLoad(btn, 'Enviando…');
   const rows = tqBuildItems[ticketId] || [];
   if (!rows.length) { showToast('⚠️ Agregue al menos una línea'); return; }
   if (rows.some(r => !r.desc.trim() || r.price <= 0)) {
@@ -822,7 +827,7 @@ async function submitTechQuote(ticketId) {
     tqBuildItems[ticketId] = [];
     await loadQuoteForCard(ticketId);
     showToast('✅ Cotización enviada a Focus Store');
-  } catch (ex) { showToast('⚠️ Error: ' + ex.message); }
+  } catch (ex) { restore?.(); showToast('⚠️ Error: ' + ex.message); }
 }
 
 function resetTechQuote(ticketId) {
@@ -944,6 +949,8 @@ function closeActModal() {
 }
 
 async function confirmActModal() {
+  const confirmBtn = document.getElementById('actModalConfirmBtn');
+  const restoreBtn = btnLoad(confirmBtn, 'Procesando…');
   const action    = _actAction;
   const ticketId  = _actTicketId;
   const t = allTickets.find(x => x.id === ticketId);
@@ -1018,7 +1025,17 @@ async function confirmActModal() {
 
     showToast('✅ Estado actualizado — cliente notificado');
     setTimeout(() => loadTickets(), 800);
-  } catch (ex) { showToast('⚠️ Error: ' + ex.message); }
+  } catch (ex) { restoreBtn?.(); showToast('⚠️ Error: ' + ex.message); }
+}
+
+/* ── btnLoad ─────────────────────────────────────────────── */
+function btnLoad(btn, text) {
+  if (!btn) return () => {};
+  const origHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.classList.add('btn-loading');
+  btn.innerHTML = `<span class="btn-spinner"></span>${text || 'Procesando…'}`;
+  return function() { btn.disabled = false; btn.classList.remove('btn-loading'); btn.innerHTML = origHTML; };
 }
 
 // ── Anti-cache ────────────────────────────────────────────────
