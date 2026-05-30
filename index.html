@@ -13785,7 +13785,7 @@ function renderTablaInventario() {
       <td style="text-align:center;white-space:nowrap;gap:4px">
         ${!p.descontinuado
           ? `<button class="btn btn-ghost btn-sm" onclick="abrirModalOrden('${p.id}')" title="Crear orden de compra">🚢 Ordenar</button>
-             ${enCamino > 0 ? `<span style="font-size:10px;color:#a29bfe;margin-left:4px">+${enCamino} en camino</span>` : ''}
+             ${enCamino > 0 ? `<button class="btn btn-ghost btn-sm" onclick="recibirMercaderia('${p.id}')" title="Registrar mercadería recibida" style="color:#00c8a0;margin-left:2px">📦 Recibir</button>` : ''}
              <button class="btn btn-ghost btn-sm" onclick="toggleDescontinuado('${p.id}',true)" title="Marcar como descontinuado" style="margin-left:4px;color:#636e72">🚫</button>`
           : `<button class="btn btn-ghost btn-sm" onclick="toggleDescontinuado('${p.id}',false)" title="Reactivar producto" style="color:var(--accent3)">♻️ Reactivar</button>`
         }
@@ -13813,6 +13813,76 @@ async function toggleDescontinuado(id, valor) {
 }
 
 // ── ÓRDENES DE COMPRA ────────────────────────────────────────────────────────
+
+async function recibirMercaderia(productoId) {
+  const p = productos.find(x => x.id === productoId);
+  if (!p) return;
+
+  // Órdenes activas de este producto
+  const ordenes = ordenesCompra.filter(o =>
+    o.productoId === productoId && ['pendiente','en_transito'].includes(o.estado)
+  );
+  const totalEnCamino = ordenes.reduce((s,o) => s + (o.cantidadOrdenada - o.cantidadRecibida), 0);
+
+  const cantStr = prompt(
+    `📦 Recibir mercadería: ${p.producto}\n\n` +
+    `Stock actual: ${parseInt(p.cantidad)||0} unidades\n` +
+    `En camino (pendiente): ${totalEnCamino} unidades\n\n` +
+    `¿Cuántas unidades estás recibiendo ahora?`
+  );
+  if (!cantStr) return;
+  const cantRecib = parseInt(cantStr);
+  if (!cantRecib || cantRecib <= 0) { showToast('⚠️ Cantidad inválida', 'error'); return; }
+
+  // 1. Actualizar stock del producto
+  const cantAnterior = parseInt(p.cantidad) || 0;
+  p.cantidad = cantAnterior + cantRecib;
+  p.ultimaModif = new Date().toISOString().replace('Z','').replace('T',' ').substring(0,19);
+  try { await gsSave('Productos', p); } catch(e) { showToast('❌ Error actualizando producto', 'error'); return; }
+
+  // 2. Descontar de las órdenes activas (FIFO: la más antigua primero)
+  const ordOrdenadas = [...ordenes].sort((a,b) => a.fechaOrden.localeCompare(b.fechaOrden));
+  let restante = cantRecib;
+  for (const o of ordOrdenadas) {
+    if (restante <= 0) break;
+    const pendienteOrden = o.cantidadOrdenada - o.cantidadRecibida;
+    if (pendienteOrden <= 0) continue;
+    const aDescontar = Math.min(restante, pendienteOrden);
+    const nuevaRecibida = o.cantidadRecibida + aDescontar;
+    const nuevoEstado = nuevaRecibida >= o.cantidadOrdenada ? 'recibida' : o.estado;
+    restante -= aDescontar;
+
+    // Actualizar en Supabase
+    const { error } = await sb.rpc('marcar_orden_recibida', {
+      p_id: o.id,
+      p_cant_recibida: nuevaRecibida,
+      p_estado: nuevoEstado
+    });
+    if (error) {
+      // Fallback: update directo
+      await sb.from('ordenes_compra').update({
+        cantidad_recibida: nuevaRecibida,
+        estado: nuevoEstado,
+        updated_at: new Date().toISOString()
+      }).eq('id', o.id);
+    }
+
+    // Actualizar local
+    o.cantidadRecibida = nuevaRecibida;
+    o.estado = nuevoEstado;
+  }
+
+  const completadas = ordOrdenadas.filter(o => o.estado === 'recibida').length;
+  addHistorial(`Recibidas ${cantRecib} uds de "${p.producto}" (stock: ${cantAnterior}→${p.cantidad})`, 'Inventario');
+  showToast(
+    `✅ +${cantRecib} uds recibidas · Stock: ${p.cantidad}${completadas > 0 ? ` · ${completadas} orden(es) completada(s) ✅` : ''}`,
+    'success'
+  );
+
+  await cargarOrdenesCompra();
+  renderTablaInventario();
+  renderTablaProductos();
+}
 
 async function cargarOrdenesCompra() {
   try {
