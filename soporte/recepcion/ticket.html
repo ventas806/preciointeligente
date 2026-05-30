@@ -2021,7 +2021,7 @@ const NEXT_STEPS = {
   equipo_recibido:      { text: 'Asigna un técnico para iniciar el diagnóstico del equipo.',          btn: '🔍 Asignar técnico',             color: '#3d6aff', action: 'asignar' },
   en_diagnostico:       { text: 'Esperando que el técnico envíe su cotización interna.',              btn: '👁 Ver cotización técnico',       color: '#8892a4', action: 'ver_cotizacion' },
   esperando_aprobacion: { text: 'El técnico envió su cotización. Revísala para aprobar o rechazar.',  btn: '✅ Revisar cotización',          color: '#f5c842', action: 'ver_cotizacion' },
-  aprobado_reparacion:  { text: 'Cotización aprobada. Crea y envía la cotización al cliente.',        btn: '💰 Crear cotización al cliente', color: '#2ed573', action: 'cotizar_cliente' },
+  aprobado_reparacion:  { text: '✅ El cliente aprobó la cotización. Aprueba la cotización del técnico para comenzar la reparación.', btn: '✅ Aprobar cotización del técnico', color: '#f5c842', action: 'ver_cotizacion' },
   esperando_repuesto:   { text: 'Esperando llegada del repuesto. Actualiza cuando llegue.',           btn: '🔧 Repuesto llegó → Reparación', color: '#ff9f43', action: 'en_reparacion' },
   en_reparacion:        { text: 'El equipo está en reparación. Actualiza cuando termine.',            btn: '🧪 Reparación lista → Pruebas',  color: '#3d6aff', action: 'en_pruebas' },
   en_pruebas:           { text: 'El equipo está en pruebas. Cuando todo esté OK, márcalo listo.',     btn: '🎉 Pruebas OK → Listo',          color: '#a29bfe', action: 'listo' },
