@@ -9226,10 +9226,9 @@ function renderReporteVendedores() {
     porVendedor[key].totalSinISV   += (v.subtotalSinISV || 0);
     porVendedor[key].totalUtilidad += v.utilidadBruta;
     porVendedor[key].totalCosto    += (v.subtotalSinISV - v.utilidadBruta - (v.descuento || 0));
-    // Cobrado sin ISV: si es parcial con saldo pendiente, proporcional; si no, 100% del sinISV
-    const _pend = (v.metodoPago === 'parcial' && (v.saldoPendiente||0) > 0) ? (v.saldoPendiente||0) : 0;
-    const cobradoV = _pend > 0 && v.total > 0 ? (v.total - _pend) / v.total * (v.subtotalSinISV||0) : (v.subtotalSinISV||0);
-    porVendedor[key].totalCobradoSinISV += cobradoV;
+    // Cobrado sin ISV: solo ventas 100% canceladas (sin saldo pendiente)
+    const _tienePendiente = v.metodoPago === 'parcial' && (v.saldoPendiente||0) > 0;
+    porVendedor[key].totalCobradoSinISV += _tienePendiente ? 0 : (v.subtotalSinISV||0);
   });
   // Sumar comisiones por vendedor usando la lista de comisiones del período
   todasParaComision.forEach(v => {
@@ -9261,10 +9260,10 @@ function renderReporteVendedores() {
   const totCobrado    = totVentas - totPorCobrar;
   const cntCobrado    = lista.length - cntCredito;
   // Cobrado sin ISV: suma proporcional de cada venta
+  // Cobrado sin ISV: solo ventas 100% canceladas (excluye parciales con saldo pendiente)
   const totCobradoSinISV = lista.reduce((a,v) => {
-    const _pend = (v.metodoPago === 'parcial' && (v.saldoPendiente||0) > 0) ? (v.saldoPendiente||0) : 0;
-    const cobradoV = _pend > 0 && v.total > 0 ? (v.total - _pend) / v.total * (v.subtotalSinISV||0) : (v.subtotalSinISV||0);
-    return a + cobradoV;
+    const tienePendiente = v.metodoPago === 'parcial' && (v.saldoPendiente||0) > 0;
+    return a + (tienePendiente ? 0 : (v.subtotalSinISV||0));
   }, 0);
 
   kpisEl.innerHTML = `
