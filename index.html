@@ -9269,17 +9269,17 @@ function renderReporteVendedores() {
 
   kpisEl.innerHTML = `
     <div class="stat-card"><div class="stat-label">Ventas Totales</div><div class="stat-value stat-green">${fmtLPS(totVentas)}</div><div class="stat-sub">${lista.length} transacción(es)</div></div>
-    <div class="stat-card" style="border-color:rgba(0,200,160,.2)">
-      <div class="stat-label" style="color:#00e0b0">✅ Cobrado sin ISV</div>
-      <div class="stat-value" style="color:#00e0b0">${fmtLPS(totCobradoSinISV)}</div>
-      <div class="stat-sub" style="color:var(--text3)">ISV cobrado: ${fmtLPS(totCobrado - totCobradoSinISV)}</div>
-    </div>
+    <div class="stat-card" style="border-color:rgba(100,180,255,.25)"><div class="stat-label" style="color:#64b4ff">Total sin ISV</div><div class="stat-value" style="color:#64b4ff">${fmtLPS(totSinISV)}</div><div class="stat-sub" style="color:var(--text3)">ISV: ${fmtLPS(totISV)}</div></div>
     <div class="stat-card" style="border-color:rgba(0,200,160,.3)">
       <div class="stat-label" style="color:var(--accent2)">✅ Total Cobrado</div>
       <div class="stat-value" style="color:var(--accent2)">${fmtLPS(totCobrado)}</div>
       <div class="stat-sub" style="color:var(--text3)">sin créditos pendientes</div>
     </div>
-    <div class="stat-card" style="border-color:rgba(100,180,255,.25)"><div class="stat-label" style="color:#64b4ff">Total sin ISV</div><div class="stat-value" style="color:#64b4ff">${fmtLPS(totSinISV)}</div><div class="stat-sub" style="color:var(--text3)">ISV: ${fmtLPS(totISV)}</div></div>
+    <div class="stat-card" style="border-color:rgba(0,200,160,.2)">
+      <div class="stat-label" style="color:#00e0b0">✅ Cobrado sin ISV</div>
+      <div class="stat-value" style="color:#00e0b0">${fmtLPS(totCobradoSinISV)}</div>
+      <div class="stat-sub" style="color:var(--text3)">ISV cobrado: ${fmtLPS(totCobrado - totCobradoSinISV)}</div>
+    </div>
     <div class="stat-card"><div class="stat-label">Utilidad Bruta</div><div class="stat-value stat-blue">${fmtLPS(totUtilidad)}</div></div>
     <div class="stat-card"><div class="stat-label">ROI Promedio</div><div class="stat-value ${roiGlobalCls}">${fmtPct(roiGlobal)}</div><div class="stat-sub">utilidad / costo</div></div>
     <div class="stat-card"><div class="stat-label">Total Comisiones</div><div class="stat-value stat-teal">${fmtLPS(totComision)}</div><div class="stat-sub">pagos completados</div></div>
