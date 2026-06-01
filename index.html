@@ -8876,12 +8876,15 @@ function renderReporteVendedores() {
   const porVendedor = {};
   lista.forEach(v => {
     const key = v.vendedorId || 'sin_vendedor';
-    if (!porVendedor[key]) porVendedor[key] = { nombre: v.vendedorNombre, ventas:[], totalVentas:0, totalComision:0, totalUtilidad:0, totalCosto:0, totalSinISV:0 };
+    if (!porVendedor[key]) porVendedor[key] = { nombre: v.vendedorNombre, ventas:[], totalVentas:0, totalComision:0, totalUtilidad:0, totalCosto:0, totalSinISV:0, totalCobradoSinISV:0 };
     porVendedor[key].ventas.push(v);
     porVendedor[key].totalVentas   += v.total;
     porVendedor[key].totalSinISV   += (v.subtotalSinISV || 0);
     porVendedor[key].totalUtilidad += v.utilidadBruta;
     porVendedor[key].totalCosto    += (v.subtotalSinISV - v.utilidadBruta - (v.descuento || 0));
+    // Cobrado sin ISV: proporcional a lo ya pagado
+    const cobradoV = v.total > 0 ? (v.total - (v.saldoPendiente||0)) / v.total * (v.subtotalSinISV||0) : (v.subtotalSinISV||0);
+    porVendedor[key].totalCobradoSinISV += cobradoV;
   });
   // Sumar comisiones por vendedor usando la lista de comisiones del período
   todasParaComision.forEach(v => {
@@ -8912,6 +8915,11 @@ function renderReporteVendedores() {
   // Total ya cobrado = total - saldo pendiente (lo que realmente entró a caja)
   const totCobrado    = totVentas - totPorCobrar;
   const cntCobrado    = lista.length - cntCredito;
+  // Cobrado sin ISV: suma proporcional de cada venta
+  const totCobradoSinISV = lista.reduce((a,v) => {
+    const cobradoV = v.total > 0 ? (v.total - (v.saldoPendiente||0)) / v.total * (v.subtotalSinISV||0) : (v.subtotalSinISV||0);
+    return a + cobradoV;
+  }, 0);
 
   kpisEl.innerHTML = `
     <div class="stat-card"><div class="stat-label">Ventas Totales</div><div class="stat-value stat-green">${fmtLPS(totVentas)}</div><div class="stat-sub">${lista.length} transacción(es)</div></div>
@@ -8919,6 +8927,11 @@ function renderReporteVendedores() {
       <div class="stat-label" style="color:var(--accent2)">✅ Total Cobrado</div>
       <div class="stat-value" style="color:var(--accent2)">${fmtLPS(totCobrado)}</div>
       <div class="stat-sub" style="color:var(--text3)">sin créditos pendientes</div>
+    </div>
+    <div class="stat-card" style="border-color:rgba(0,200,160,.2)">
+      <div class="stat-label" style="color:#00e0b0">✅ Cobrado sin ISV</div>
+      <div class="stat-value" style="color:#00e0b0">${fmtLPS(totCobradoSinISV)}</div>
+      <div class="stat-sub" style="color:var(--text3)">ISV cobrado: ${fmtLPS(totCobrado - totCobradoSinISV)}</div>
     </div>
     <div class="stat-card" style="border-color:rgba(100,180,255,.25)"><div class="stat-label" style="color:#64b4ff">Total sin ISV</div><div class="stat-value" style="color:#64b4ff">${fmtLPS(totSinISV)}</div><div class="stat-sub" style="color:var(--text3)">ISV: ${fmtLPS(totISV)}</div></div>
     <div class="stat-card"><div class="stat-label">Utilidad Bruta</div><div class="stat-value stat-blue">${fmtLPS(totUtilidad)}</div></div>
@@ -8948,6 +8961,7 @@ function renderReporteVendedores() {
         <th>Vendedor</th><th style="text-align:center"># Ventas</th>
         <th style="text-align:right">Total Vendido</th>
         <th style="text-align:right;color:#64b4ff">Sin ISV</th>
+        <th style="text-align:right;color:#00e0b0">✅ Cobrado sin ISV</th>
         <th style="text-align:right">Utilidad Bruta</th>
         <th style="text-align:right">ROI</th>
         <th style="text-align:right">% Comisión</th>
@@ -8973,6 +8987,7 @@ function renderReporteVendedores() {
             <td style="text-align:center">${r.ventas.length}</td>
             <td style="text-align:right;color:var(--green);font-weight:700">${fmtLPS(r.totalVentas)}</td>
             <td style="text-align:right;color:#64b4ff;font-weight:600">${fmtLPS(r.totalSinISV||0)}</td>
+            <td style="text-align:right;color:#00e0b0;font-weight:700">${fmtLPS(r.totalCobradoSinISV||0)}</td>
             <td style="text-align:right;color:var(--accent)">${fmtLPS(r.totalUtilidad)}</td>
             <td style="text-align:right;font-weight:700;color:${roiCls}">${fmtPct(roi)}</td>
             <td style="text-align:right">${pct.toFixed(1)}%</td>
