@@ -11416,6 +11416,7 @@ function renderHistorialCotizaciones() {
           <button class="btn btn-primary btn-sm" onclick="editarCotizacion('${c.id}')" title="Editar">✏️</button>
           <button class="btn btn-ghost btn-sm" onclick="imprimirCotizacion('${c.id}')" title="Imprimir">🖨️</button>
           <button class="btn btn-ghost btn-sm" onclick="abrirEmailCotizacion('${c.id}')" title="Enviar por Gmail" style="color:#EA4335">📧</button>
+          <button class="btn btn-ghost btn-sm" onclick="compartirCotizacion('${c.id}')" title="Compartir link al cliente" style="color:#25d366;border-color:rgba(37,211,102,.3)">📤</button>
           ${c.estado!=='convertida'&&c.estado!=='rechazada'?`<button class="btn btn-sm" onclick="convertirAVenta('${c.id}')" title="Convertir a Venta" style="background:var(--gold);color:#000;border:none">🔄 Venta</button>`:''}
           ${c.estado==='activa'||c.estado==='vencida'?`<button class="btn btn-sm" onclick="marcarCotizacionRechazada('${c.id}')" title="Rechazar" style="background:rgba(255,71,87,.12);border:1px solid rgba(255,71,87,.3);color:var(--red)">❌</button>`:''}
           <button class="btn btn-danger btn-sm" onclick="eliminarCotizacion('${c.id}')" title="Eliminar">🗑️</button>
@@ -11424,6 +11425,119 @@ function renderHistorialCotizaciones() {
     }).join('')}
     </tbody>
   </table></div>`;
+}
+
+// ── COMPARTIR COTIZACIÓN ─────────────────────────────────────────────────────
+const ULTRA_INSTANCE = 'instance178325';
+const ULTRA_TOKEN    = 'zm383lcp9w2xv11q';
+
+async function compartirCotizacion(id) {
+  const c = cotizaciones.find(x => x.id === id);
+  if (!c) return;
+
+  const link = `https://cotizacion.focusstore.net/?id=${encodeURIComponent(c.numero)}`;
+  const tel  = (c.clienteTel || '').replace(/\D/g,'');
+  const nombre = c.clienteNombre || 'Cliente';
+
+  // Mostrar modal de compartir
+  const prev = document.getElementById('modalCompartirCot');
+  if (prev) prev.remove();
+
+  const m = document.createElement('div');
+  m.id = 'modalCompartirCot';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  m.innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:100%;max-width:480px;overflow:hidden">
+      <div style="padding:20px 24px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:16px;font-weight:800">📤 Compartir Cotización</div>
+        <button onclick="document.getElementById('modalCompartirCot').remove()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
+      </div>
+      <div style="padding:20px 24px">
+        <div style="font-size:13px;color:var(--text2);margin-bottom:6px">📋 <strong>${c.numero}</strong> · ${nombre}</div>
+
+        <!-- Link -->
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:8px;margin-bottom:16px">
+          <span style="font-size:12px;color:var(--accent);font-family:monospace;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${link}</span>
+          <button onclick="navigator.clipboard.writeText('${link}').then(()=>{this.textContent='✅';setTimeout(()=>this.textContent='📋',1500)})"
+            style="background:var(--bg4);border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--text);cursor:pointer;font-family:var(--font);font-size:12px;flex-shrink:0">📋</button>
+        </div>
+
+        <!-- Teléfono -->
+        <div style="margin-bottom:14px">
+          <label style="font-size:12px;color:var(--text3);font-weight:700;display:block;margin-bottom:6px">📞 TELÉFONO WHATSAPP (con código país)</label>
+          <input id="compartirTel" type="tel" value="${tel ? '504'+tel : ''}" placeholder="504XXXXXXXX"
+            style="width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none">
+        </div>
+
+        <!-- Mensaje -->
+        <div style="margin-bottom:16px">
+          <label style="font-size:12px;color:var(--text3);font-weight:700;display:block;margin-bottom:6px">💬 MENSAJE</label>
+          <textarea id="compartirMsg" rows="4"
+            style="width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:var(--font)">Hola ${nombre} 👋
+
+Tu cotización *${c.numero}* de Focus Store está lista.
+
+💰 Total: L ${parseFloat(c.total||0).toLocaleString('es-HN',{minimumFractionDigits:2})}
+📅 Válida hasta: ${c.fechaVencimiento || '—'}
+
+👉 Ver tu cotización aquí: ${link}
+
+Quedamos atentos ante cualquier consulta. 🙏</textarea>
+        </div>
+
+        <!-- Acciones -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button id="btnEnviarWapp" onclick="enviarWappCotizacion('${id}')"
+            style="flex:1;min-width:140px;padding:11px;background:#25d366;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            Enviar WhatsApp
+          </button>
+          <button onclick="document.getElementById('modalCompartirCot').remove()"
+            style="padding:11px 20px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--text2);font-size:14px;cursor:pointer;font-family:var(--font)">
+            Cerrar
+          </button>
+        </div>
+        <div id="compartirStatus" style="margin-top:12px;font-size:13px;text-align:center"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click', e => { if(e.target===m) m.remove(); });
+}
+
+async function enviarWappCotizacion(id) {
+  const c = cotizaciones.find(x => x.id === id);
+  if (!c) return;
+  const tel = document.getElementById('compartirTel').value.replace(/\D/g,'');
+  const msg = document.getElementById('compartirMsg').value.trim();
+  const btn = document.getElementById('btnEnviarWapp');
+  const st  = document.getElementById('compartirStatus');
+
+  if (!tel || tel.length < 8) { st.innerHTML = '<span style="color:var(--red)">⚠️ Ingresa un teléfono válido</span>'; return; }
+  if (!msg) { st.innerHTML = '<span style="color:var(--red)">⚠️ El mensaje está vacío</span>'; return; }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
+  st.innerHTML = '';
+
+  try {
+    const res = await fetch(`https://api.ultramsg.com/${ULTRA_INSTANCE}/messages/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ token: ULTRA_TOKEN, to: '+' + tel, body: msg })
+    });
+    const data = await res.json();
+    if (data.sent === 'true' || data.id) {
+      st.innerHTML = '<span style="color:var(--green)">✅ WhatsApp enviado correctamente</span>';
+      addHistorial(`Cotización ${c.numero} compartida por WhatsApp a +${tel}`, 'Cotizaciones');
+      setTimeout(() => document.getElementById('modalCompartirCot')?.remove(), 2000);
+    } else {
+      st.innerHTML = `<span style="color:var(--red)">❌ Error: ${data.error || JSON.stringify(data)}</span>`;
+      btn.disabled = false; btn.textContent = '📲 Reintentar';
+    }
+  } catch(e) {
+    st.innerHTML = `<span style="color:var(--red)">❌ Error de red: ${e.message}</span>`;
+    btn.disabled = false; btn.textContent = '📲 Reintentar';
+  }
 }
 
 function verDetalleCotizacion(id) {
