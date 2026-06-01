@@ -477,9 +477,10 @@
     </div>
 
     <div class="field">
-      <label for="email">Correo electrónico</label>
+      <label for="email">Correo electrónico <span style="color:#ff4757">*</span></label>
       <input type="email" id="email" placeholder="Ej: juan@correo.com" autocomplete="email" inputmode="email">
-      <span class="field-hint">Recibirá notificaciones de estado en este correo.</span>
+      <span class="field-hint">📧 <strong>Este campo es obligatorio.</strong> Le enviaremos notificaciones sobre el estado de su solicitud de soporte: confirmación, cotizaciones y cuando su equipo esté listo.</span>
+      <span class="field-error" id="err-email">Ingrese un correo electrónico válido.</span>
     </div>
 
     <div class="field">
@@ -869,6 +870,8 @@ function validateStep() {
   if (sid === 'step-1') {
     if (!v('fullName')) { err('fullName', 'err-fullName'); ok = false; }
     if (!v('phone'))    { err('phone',    'err-phone');    ok = false; }
+    const emailVal = v('email');
+    if (!emailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) { err('email', 'err-email'); ok = false; }
   }
 
   if (sid === 'step-2') {
