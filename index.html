@@ -5037,7 +5037,7 @@ function abrirEditarPendiente(id) {
   document.getElementById('epCostoUSD').value     = p.costoUSD||'';
   document.getElementById('epCostoExtra').value   = p.costoExtra||'';
   document.getElementById('epFlete').value        = p.fleteL||'';
-  document.getElementById('epAjuste').value       = p.ajusteManual||'';
+  document.getElementById('epAjuste').value       = p.ajusteManual ? +(p.ajusteManual * 100).toFixed(4) : '';
   document.getElementById('epDescuento').value    = p.descuento||'';
   document.getElementById('epUrl1').value         = p.url1||'';
   document.getElementById('epUrl2').value         = p.url2||'';
@@ -5059,7 +5059,7 @@ function leerFormEditarPendiente() {
     costoUSD:     parseFloat(document.getElementById('epCostoUSD').value)||0,
     costoExtra:   parseFloat(document.getElementById('epCostoExtra').value)||0,
     fleteL:       parseFloat(document.getElementById('epFlete').value)||0,
-    ajusteManual: parseFloat(document.getElementById('epAjuste').value)||0,
+    ajusteManual: (parseFloat(document.getElementById('epAjuste').value)||0) / 100,
     descuento:    parseFloat(document.getElementById('epDescuento').value)||0,
     url1:         document.getElementById('epUrl1').value,
     url2:         document.getElementById('epUrl2').value,
