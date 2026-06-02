@@ -3211,6 +3211,9 @@ async function sbSaveCotizacion(c) {
     observaciones:    c.observaciones   || '',
     subtotal_sin_isv: c.subtotalSinISV  || 0,
     total_isv:        c.totalISV        || 0,
+    descuento:        c.descuento       || 0,
+    descuento_tipo:   c.descuentoTipo   || '%',
+    descuento_valor:  c.descuentoValor  || 0,
     total:            c.total           || 0,
     estado:           c.estado          || 'activa',
     venta_id:         c.ventaId         || '',
@@ -10873,7 +10876,7 @@ async function guardarCotizacion() {
     descuentoTipo:  totales.descuentoTipo || '%',
     descuentoValor: totales.descuentoValor || 0,
     total:          totales.total,
-    estado:         'activa',
+    estado:         cEditandoId ? (cotizaciones.find(x=>x.id===cEditandoId)?.estado||'activa') : 'activa',
     ventaId:        '',
     fechaRegistro:  new Date().toISOString(),
     registradoPor:  currentUser ? currentUser.nombre : '—'
