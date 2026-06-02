@@ -9875,6 +9875,7 @@ async function cargarCombos() {
         codigo:         c.codigo         || '',
         categoria:      c.categoria      || '',
         nota:           c.nota           || '',
+        imagenUrl:      c.imagen_url     || '',
         precioFinal:    c.precio_final   || 0,
         totalIndividual:c.total_individual|| 0,
         creadoPor:      c.creado_por     || '',
@@ -10138,6 +10139,7 @@ async function guardarCombo() {
   const comboRow = {
     id: combo.id, nombre: combo.nombre, codigo: combo.codigo||'',
     categoria: combo.categoria||'', nota: combo.nota||'',
+    imagen_url: combo.imagenUrl || null,
     creado_por: combo.creadoPor, ultima_modif: combo.ultimaModif, activo: true
   };
   try {
@@ -10176,6 +10178,8 @@ function editarCombo(id) {
   document.getElementById('cCodigo').value = combo.codigo||'';
   document.getElementById('cCategoria').value = combo.categoria||'';
   document.getElementById('cNota').value = combo.nota||'';
+  const imgEl = document.getElementById('cImagenUrl');
+  if (imgEl) { imgEl.value = combo.imagenUrl||''; previsualizarImagenCombo(); }
   document.getElementById('cPrecioFinal').value = combo.precioFinal||'';
   renderComboItemsActuales();
   document.getElementById('comboFormCard').scrollIntoView({behavior:'smooth'});
@@ -10344,6 +10348,7 @@ async function renderCombos() {
           <button onclick="editarCombo('${combo.id}')" style="font-size:11px;font-weight:700;background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.4);border-radius:6px;padding:4px 10px;color:var(--gold);cursor:pointer;white-space:nowrap;font-family:var(--font)">✏️ Corregir</button>
         </div>` : ''}
         <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
+          ${combo.imagenUrl ? `<div style="flex-shrink:0;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:var(--bg3)"><img src="${combo.imagenUrl}" style="width:100%;height:100%;object-fit:contain" onerror="this.style.display='none'"></div>` : ''}
           <div style="flex:1;min-width:200px">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
               <span style="font-size:15px;font-weight:700">${combo.nombre}</span>
