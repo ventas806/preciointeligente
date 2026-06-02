@@ -3142,8 +3142,9 @@ async function sbSaveVenta(venta) {
     observaciones:    venta.observaciones  || '',
     maps_link:        venta.mapsLink        || '',
     saldo_pendiente:  venta.saldoPendiente  || 0,
-    fecha_registro:   venta.fechaRegistro  || new Date().toISOString(),
-    registrado_por:   venta.registradoPor  || '',
+    fecha_registro:   venta.fechaRegistro   || new Date().toISOString(),
+    fecha_liquidada:  venta.fechaLiquidada  || null,
+    registrado_por:   venta.registradoPor   || '',
     metodo_pago:      venta.metodoPago      || '',
     metodo_pago_label:venta.metodoPagoLabel || '',
     metodo_pago_obs:  venta.metodoPagoObs   || '',
@@ -6628,7 +6629,8 @@ function _mapVentaRow(v) {
     metodoPagoObs:   v.metodo_pago_obs || '',
     metodoEnvio:     v.metodo_envio   || '',
     promesaPago:     v.promesa_pago    || '',
-    fechaRegistro:   v.fecha_registro  || '',
+    fechaRegistro:   v.fecha_registro   || '',
+    fechaLiquidada:  v.fecha_liquidada  || '',
     registradoPor:   v.registrado_por  || '',
     nota:            v.nota            || '',
     tipoVenta:       v.tipo_venta      || 'formal',
@@ -7762,6 +7764,17 @@ async function guardarVenta() {
     tipoVenta: vTipoVenta || 'formal'
   };
 
+  // Si una venta con saldo pendiente queda saldada → marcar como "Parcial - Liquidada"
+  const ventaExistente = vEditandoId ? (ventas.find(x => x.id === vEditandoId) || {}) : {};
+  const teniaSaldo = (ventaExistente.saldoPendiente || 0) > 0;
+  const esParcialLiquidada = venta.saldoPendiente === 0 && (teniaSaldo || venta.abonos.length > 0);
+  venta.metodoPagoLabel = esParcialLiquidada
+    ? 'Parcial - Liquidada'
+    : ((parametros.metodosPago||[]).find(m=>m.id===metodoPagoId)?.label || metodoPagoId);
+  venta.fechaLiquidada = esParcialLiquidada
+    ? (ventaExistente.fechaLiquidada || new Date().toISOString().split('T')[0])
+    : (ventaExistente.fechaLiquidada || '');
+
   // ── Guardar en Supabase (fuente de verdad) ──
   mostrarCargando('☁️ Guardando venta en Supabase...');
   sbSaveVenta(venta)
@@ -7879,7 +7892,9 @@ function filtrarVentasPorPeriodo(lista, periodo, desde, hasta) {
     String(ahora.getDate()).padStart(2,'0');
 
   return lista.filter(v => {
-    const fechaStr = (v.fecha || '').substring(0, 10);
+    // Ventas parciales liquidadas → usar fecha_liquidada como referencia de período
+    const fechaBase = v.fechaLiquidada || v.fecha;
+    const fechaStr = (fechaBase || '').substring(0, 10);
 
     if (periodo === 'hoy') return fechaStr === hoyStr;
 
@@ -14110,7 +14125,9 @@ function calcularYRenderLiquidacion() {
 
   const ventasPeriodo = ventas.filter(v => {
     if (String(v.vendedorId) !== String(vendedorId)) return false;
-    const d = new Date(v.fecha + 'T12:00:00');
+    // Ventas ya liquidadas → usar fecha_liquidada para comisión en período correcto
+    const fechaRef = v.fechaLiquidada || v.fecha;
+    const d = new Date(fechaRef + 'T12:00:00');
     return d >= dInicio && d <= dFin;
   });
 
