@@ -10089,8 +10089,9 @@ function _renderCobrosInterno() {
   const q         = ((document.getElementById('cobrosBuscar') ||{}).value||'').toLowerCase().trim();
   const estadoFil = ((document.getElementById('cobrosEstado')||{}).value||'');
 
-  // Solo ventas parciales (crédito pendiente)
-  const esParcialFn = v => v.metodoPago === 'parcial' || (v.metodoPagoLabel||'').toLowerCase().includes('parcial');
+  // Solo ventas parciales con saldo pendiente > 0
+  const esParcialFn = v => (v.metodoPago === 'parcial' || (v.metodoPagoLabel||'').toLowerCase().includes('parcial'))
+    && (v.saldoPendiente || 0) > 0;
 
   const enriquecer = v => {
     const promesaStr  = v.promesaPago || '';
@@ -10131,7 +10132,7 @@ function _renderCobrosInterno() {
   const nVencidos = parciales.filter(v=>v.estado==='vencido').length;
   const nHoy      = parciales.filter(v=>v.estado==='hoy').length;
   const nProximos = parciales.filter(v=>v.estado==='proximo').length;
-  const totalPend = parciales.reduce((s,v)=>s+(v.saldoPendiente||v.total),0);
+  const totalPend = parciales.reduce((s,v)=>s+(v.saldoPendiente??v.total),0);
 
   const badge = document.getElementById('badgeCobros');
   const alertas = nVencidos + nHoy;
