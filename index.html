@@ -13168,7 +13168,16 @@ function buscarProdRapido(q) {
           <span style="font-size:10px;color:var(--text3)">Min: ${minStock}</span>
           <span id="stockSaving_${p.id}" style="font-size:10px;color:var(--accent3);display:none">💾...</span>
         </div>
-        <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px">
+        <!-- Campo imagen -->
+        <div style="margin-top:6px;display:flex;gap:4px;align-items:center">
+          <input type="url" id="imgInput_${p.id}" placeholder="🖼️ Pega URL de imagen..."
+            value="${p.imagen||''}"
+            style="flex:1;min-width:0;padding:3px 7px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:10px;outline:none"
+            onchange="actualizarImagenRapido('${p.id}', this.value)"
+            title="Pega el link de la imagen y presiona Enter">
+          <span id="imgSave_${p.id}" style="font-size:10px;color:var(--accent3);display:none;white-space:nowrap">💾</span>
+        </div>
+        <div style="margin-top:5px;display:flex;flex-direction:column;gap:4px">
           <button id="wixBtn_${p.id}" onclick="actualizarStockEnWixRapido('${p.id}','${p.sku}')"
             style="padding:4px 10px;background:linear-gradient(135deg,#00c8a0,#00a080);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;width:fit-content">
             🔄 Actualizar stock en Wix
@@ -13178,6 +13187,26 @@ function buscarProdRapido(q) {
       </div>
     </div>`;
   }).join('');
+}
+
+async function actualizarImagenRapido(prodId, url) {
+  const p = productos.find(x => x.id === prodId);
+  if (!p) return;
+  const saveEl = document.getElementById('imgSave_' + prodId);
+  if (saveEl) { saveEl.style.display = 'inline'; saveEl.textContent = '💾...'; }
+  p.imagen = url.trim();
+  p.ultimaModif = new Date().toISOString().replace('Z','').replace('T',' ').substring(0,19);
+  try {
+    await gsSave('Productos', p);
+    // Actualizar thumbnail en el panel
+    const imgEl = document.querySelector(`#imgInput_${prodId}`)?.closest('[style*="display:flex"]')?.previousElementSibling?.querySelector('img');
+    if (imgEl && url) imgEl.src = url;
+    if (saveEl) { saveEl.textContent = '✅'; setTimeout(()=>{ if(saveEl) saveEl.style.display='none'; }, 2000); }
+    showToast('🖼️ Imagen actualizada', 'success');
+  } catch(e) {
+    if (saveEl) { saveEl.textContent = '❌'; setTimeout(()=>{ if(saveEl) saveEl.style.display='none'; }, 2000); }
+    showToast('❌ Error al guardar imagen', 'error');
+  }
 }
 
 async function actualizarStockEnWixRapido(prodId, sku) {
