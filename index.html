@@ -11231,7 +11231,8 @@ function limpiarCotizacion() {
   const cdr = document.getElementById('cResDescRow'); if(cdr) cdr.style.display='none';
   const csdr = document.getElementById('cResSubtotalDescRow'); if(csdr) csdr.style.display='none';
   limpiarClienteCot();
-  ['cObservaciones'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const obsEl = document.getElementById('cObservaciones');
+  if (obsEl) obsEl.value = 'Entrega inmediata | Garantía de 3 meses\nPagos mediante depósito o transferencia a cuentas de ahorro a nombre de Focus Store:\nBAC: 745254091 | Ficohsa: 200013778678 | Banpaís: 213130031202 | Promerica: 10000001943188';
   const fd=document.getElementById('cFecha'); if(fd) fd.value=new Date().toISOString().split('T')[0];
   const fv=document.getElementById('cFechaVencimiento'); if(fv) fv.value='';
   renderItemsCotizacion();
