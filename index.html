@@ -505,19 +505,19 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
           <select id="epEstado"><option value="Nuevo">Nuevo</option><option value="Usado">Usado</option><option value="Open Box">Open Box</option></select>
         </div>
         <div class="form-field"><label>Nivel Compra</label>
-          <select id="epNivel"><option value="Excelente">Excelente</option><option value="Normal">Normal</option><option value="Alto">Alto</option></select>
+          <select id="epNivel" onchange="recalcPendientePreview()"><option value="Excelente">Excelente</option><option value="Normal">Normal</option><option value="Alto">Alto</option></select>
         </div>
-        <div class="form-field"><label>Costo Proveedor USD</label><input type="number" id="epCostoUSD" step="0.01"></div>
-        <div class="form-field"><label>Costo Extra USD</label><input type="number" id="epCostoExtra" step="0.01"></div>
-        <div class="form-field"><label>Flete LPS</label><input type="number" id="epFlete" step="0.01"></div>
-        <div class="form-field"><label>Ajuste Manual %</label><input type="number" id="epAjuste" step="0.1"></div>
-        <div class="form-field"><label>Descuento %</label><input type="number" id="epDescuento" step="0.1"></div>
+        <div class="form-field"><label>Costo Proveedor USD</label><input type="number" id="epCostoUSD" step="0.01" oninput="recalcPendientePreview()"></div>
+        <div class="form-field"><label>Costo Extra USD</label><input type="number" id="epCostoExtra" step="0.01" oninput="recalcPendientePreview()"></div>
+        <div class="form-field"><label>Flete LPS</label><input type="number" id="epFlete" step="0.01" oninput="recalcPendientePreview()"></div>
+        <div class="form-field"><label>Ajuste Manual %</label><input type="number" id="epAjuste" step="0.1" oninput="recalcPendientePreview()"></div>
+        <div class="form-field"><label>Descuento %</label><input type="number" id="epDescuento" step="0.1" oninput="recalcPendientePreview()"></div>
         <div class="form-field"><label>URL 1</label><input type="url" id="epUrl1"></div>
         <div class="form-field"><label>URL 2</label><input type="url" id="epUrl2"></div>
         <div class="form-field field-full"><label>Nota</label><input type="text" id="epNota"></div>
         <div class="form-field"><label>Cantidad Mínima</label><input type="number" id="epMinStock" min="0"></div>
         <div class="form-field"><label>Override Banda</label>
-          <select id="epOverrideBanda"><option value="">Automático</option><option value="Bajo">Bajo</option><option value="Medio">Medio</option><option value="Alto">Alto</option><option value="Premium">Premium</option></select>
+          <select id="epOverrideBanda" onchange="recalcPendientePreview()"><option value="">Automático</option><option value="Bajo">Bajo</option><option value="Medio">Medio</option><option value="Alto">Alto</option><option value="Premium">Premium</option></select>
         </div>
       </div>
       <div class="btn-row" style="margin-top:20px;justify-content:flex-end">
@@ -5067,6 +5067,22 @@ function leerFormEditarPendiente() {
     minStock:     parseInt(document.getElementById('epMinStock').value)||0,
     overrideBanda:document.getElementById('epOverrideBanda').value||''
   };
+}
+
+function recalcPendientePreview() {
+  const p = productosPendientes.find(x => x.id === pendienteEditandoId);
+  if (!p) return;
+  const edits = leerFormEditarPendiente();
+  const c = calcProd({ ...p, ...edits });
+  const el = document.getElementById('editPendPreview');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="background:rgba(61,106,255,.07);border:1px solid rgba(61,106,255,.2);border-radius:8px;padding:12px 16px;display:flex;gap:20px;flex-wrap:wrap">
+      <div><div style="font-size:10px;color:var(--text2);text-transform:uppercase;font-weight:600">Precio c/ISV</div><div style="font-size:18px;font-weight:800;color:var(--green)">${fmtLPS(c.precioConISV)}</div></div>
+      <div><div style="font-size:10px;color:var(--text2);text-transform:uppercase;font-weight:600">Precio Final c/Desc</div><div style="font-size:18px;font-weight:800;color:var(--accent3)">${fmtLPS(c.precioFinalDesc)}</div></div>
+      <div><div style="font-size:10px;color:var(--text2);text-transform:uppercase;font-weight:600">Banda</div><div style="font-size:16px;font-weight:700;color:var(--accent)">${c.bandaEfectiva}</div></div>
+      <div><div style="font-size:10px;color:var(--text2);text-transform:uppercase;font-weight:600">ROI</div><div style="font-size:16px;font-weight:700;color:${c.roi>=c.roiRef?'var(--green)':'var(--red)'}">${fmtPct(c.roi)}</div></div>
+    </div>`;
 }
 
 async function aprobarPendiente() {
