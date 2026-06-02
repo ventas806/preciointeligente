@@ -2436,6 +2436,13 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             <label>Descripción / Nota</label>
             <textarea id="cNota" placeholder="Descripción del combo, qué incluye, para qué sirve..." style="min-height:60px"></textarea>
           </div>
+          <div class="form-field field-full">
+            <label>Imagen del Combo (URL)</label>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <input type="url" id="cImagenUrl" placeholder="https://..." style="flex:1;min-width:220px" oninput="previsualizarImagenCombo()">
+              <img id="cImagenPreview" src="" alt="" style="width:64px;height:64px;object-fit:contain;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);display:none" onerror="this.style.display='none'">
+            </div>
+          </div>
         </div>
         <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
           <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);margin-bottom:12px">📦 Ítems del Combo</div>
@@ -3149,6 +3156,7 @@ async function sbSaveVenta(venta) {
       nombre:      it.descripcion || it.nombre || '',
       cantidad:    it.cantidad    || 1,
       precio_final:it.precioFinal || 0,
+      precio_lista:it.precioLista || it.precioFinal || 0,
       lleva_isv:   it.llevaISV    || false,
       isv_pct:     it.isvPct      || 0,
       costo_lps:   it.costoLPS    || 0,
@@ -3188,15 +3196,17 @@ async function sbSaveCotizacion(c) {
     vendedor_id:      c.vendedorId      || '',
     vendedor_nombre:  c.vendedorNombre  || '',
     items:            (c.items||[]).map(it=>({
-      sku:         it.sku         || '',
-      nombre:      it.descripcion || it.nombre || '',
-      cantidad:    it.cantidad    || 1,
-      precio_final:it.precioFinal || 0,
-      lleva_isv:   it.llevaISV   || false,
-      isv_pct:     it.isvPct     || 0,
-      producto_id: it.productoId || null,
-      imagen:      it.imagen     || null,
-      nota_item:   it.notaItem   || ''
+      sku:                it.sku              || '',
+      nombre:             it.descripcion      || it.nombre || '',
+      cantidad:           it.cantidad         || 1,
+      precio_final:       it.precioFinal      || 0,
+      precio_lista:       it.precioLista      || it.precioFinal || 0,
+      descuento_item_tipo:it.descuentoItemTipo|| '%',
+      lleva_isv:          it.llevaISV         || false,
+      isv_pct:            it.isvPct           || 0,
+      producto_id:        it.productoId       || null,
+      imagen:             it.imagen           || null,
+      nota_item:          it.notaItem         || ''
     })),
     observaciones:    c.observaciones   || '',
     subtotal_sin_isv: c.subtotalSinISV  || 0,
@@ -6613,15 +6623,17 @@ function _mapVentaRow(v) {
     tipoVenta:       v.tipo_venta      || 'formal',
     items: (v.venta_items || []).map(it => ({
       tipo:        it.producto_id ? 'catalogo' : 'manual',
-      productoId:  it.producto_id || null,
-      sku:         it.sku         || '',
-      descripcion: it.nombre      || it.descripcion || '',
-      nombre:      it.nombre      || '',
-      cantidad:    it.cantidad    || 1,
-      precioFinal: it.precio_final|| 0,
-      llevaISV:    it.lleva_isv   || false,
-      isvPct:      it.isv_pct     || 0,
-      costoLPS:    it.costo_lps   || 0
+      productoId:        it.producto_id        || null,
+      sku:               it.sku                || '',
+      descripcion:       it.nombre             || it.descripcion || '',
+      nombre:            it.nombre             || '',
+      cantidad:          it.cantidad           || 1,
+      precioFinal:       it.precio_final       || 0,
+      precioLista:       it.precio_lista       || it.precio_final || 0,
+      descuentoItemTipo: it.descuento_item_tipo || '%',
+      llevaISV:          it.lleva_isv          || false,
+      isvPct:            it.isv_pct            || 0,
+      costoLPS:          it.costo_lps          || 0
     })),
     abonos: (v.venta_abonos || []).map(a => ({
       _id:          a.id           || ('ab_'+Date.now()),
