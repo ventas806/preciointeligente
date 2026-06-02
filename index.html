@@ -212,6 +212,19 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); min-
 
 /* ====== TABLE ====== */
 .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+/* Scrollbar siempre visible en Chrome/Edge */
+.table-wrap::-webkit-scrollbar { height: 7px; }
+.table-wrap::-webkit-scrollbar-track { background: var(--bg3); border-radius: 4px; }
+.table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.table-wrap::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+/* Wrapper con scroll arriba Y abajo */
+.table-wrap-outer { display: flex; flex-direction: column; border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
+.table-wrap-outer .scroll-top { overflow-x: auto; overflow-y: hidden; height: 10px; }
+.table-wrap-outer .scroll-top::-webkit-scrollbar { height: 7px; }
+.table-wrap-outer .scroll-top::-webkit-scrollbar-track { background: var(--bg3); }
+.table-wrap-outer .scroll-top::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.table-wrap-outer .scroll-top div { height: 1px; }
+.table-wrap-outer .table-wrap { border: none; border-radius: 0; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 thead th { background: var(--bg3); color: var(--text2); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 12px 14px; text-align: left; position: sticky; top: 0; z-index: 2; white-space: nowrap; border-bottom: 1px solid var(--border); }
 tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; cursor: pointer; }
@@ -10981,6 +10994,11 @@ function renderHistorialCotizaciones() {
     }).join('')}
     </tbody>
   </table></div>`;
+  // Agregar barra de scroll arriba
+  requestAnimationFrame(() => {
+    const tw = el.querySelector('.table-wrap');
+    if (tw) agregarScrollArriba(tw);
+  });
 }
 
 // ── COMPARTIR COTIZACIÓN ─────────────────────────────────────────────────────
@@ -11633,6 +11651,29 @@ function imprimirReporteCobros(clienteForzado) {
   if (!win) { showToast('⚠️ Permite ventanas emergentes para imprimir','warn',4000); return; }
   win.document.write(html);
   win.document.close();
+}
+
+// ── Barra de scroll doble (arriba y abajo) para tablas anchas ──────────────
+function agregarScrollArriba(tableWrapEl) {
+  if (!tableWrapEl || tableWrapEl.dataset.scrollTop) return;
+  tableWrapEl.dataset.scrollTop = '1';
+  const outer = document.createElement('div');
+  outer.className = 'table-wrap-outer';
+  const scrollTop = document.createElement('div');
+  scrollTop.className = 'scroll-top';
+  const inner = document.createElement('div');
+  scrollTop.appendChild(inner);
+  tableWrapEl.parentNode.insertBefore(outer, tableWrapEl);
+  outer.appendChild(scrollTop);
+  outer.appendChild(tableWrapEl);
+  // Sincronizar scroll
+  let syncing = false;
+  scrollTop.addEventListener('scroll', () => { if (!syncing) { syncing=true; tableWrapEl.scrollLeft = scrollTop.scrollLeft; syncing=false; }});
+  tableWrapEl.addEventListener('scroll', () => { if (!syncing) { syncing=true; scrollTop.scrollLeft = tableWrapEl.scrollLeft; syncing=false; }});
+  // Actualizar ancho del div inner cuando cambia el contenido
+  const update = () => { inner.style.width = tableWrapEl.scrollWidth + 'px'; };
+  update();
+  new ResizeObserver(update).observe(tableWrapEl);
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
