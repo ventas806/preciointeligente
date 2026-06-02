@@ -11607,7 +11607,7 @@ function imprimirReporteCobros(clienteForzado) {
   @media print {
     body { padding: 8px 12px; }
     @page { size: letter portrait; margin: 8mm; }
-    button { display: none; }
+    .print-btn { display: none !important; margin: 0 !important; padding: 0 !important; height: 0 !important; }
   }
   .print-btn { margin-bottom: 16px; }
   .print-btn button { background: #1a237e; color: #fff; border: none; padding: 9px 22px; font-size: 13px; font-weight: 700; border-radius: 6px; cursor: pointer; }
