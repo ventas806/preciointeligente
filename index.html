@@ -5592,17 +5592,18 @@ function onMetodoPagoChange(limpiar = true) {
   if (!sel) return;
   const metodo = (parametros.metodosPago || []).find(m => m.id === sel.value);
   const esParcial = metodo && (metodo.id === 'parcial' || (metodo.label||'').toLowerCase().includes('parcial'));
+  const enModoAbono = document.getElementById('vBannerAbono')?.style.display !== 'none';
   // Mostrar/ocultar wrappers
   if (obsWrap) obsWrap.style.display = (metodo && metodo.observaciones) ? '' : 'none';
   if (proWrap) proWrap.style.display = (metodo && metodo.promesa)       ? '' : 'none';
-  if (aboWrap) aboWrap.style.display = esParcial ? '' : 'none';
+  if (aboWrap) aboWrap.style.display = (esParcial || enModoAbono)      ? '' : 'none';
   // Solo limpiar campos si el usuario cambió el método manualmente
   if (limpiar) {
     if (metodo && !metodo.observaciones && document.getElementById('vMetodoPagoObs'))
       document.getElementById('vMetodoPagoObs').value = '';
     if (metodo && !metodo.promesa && document.getElementById('vPromesaPago'))
       document.getElementById('vPromesaPago').value = '';
-    if (!esParcial) {
+    if (!esParcial && !enModoAbono) {
       vItemsAbonos = [];
       renderAbonosVenta();
     }
@@ -7788,11 +7789,12 @@ function calcResumenVenta() {
   const comision    = Math.max(0, utilidadAjustada * pctComision);
 
   // Si el método de pago es parcial y aún hay saldo → comisión se difiere
-  const metodoPago   = document.getElementById('vMetodoPago')?.value || '';
-  const esParcial    = metodoPago === 'parcial';
-  const totalAbonado = esParcial ? vItemsAbonos.reduce((s,a)=>s+(a.monto||0),0) : total;
-  const saldoPend    = Math.max(0, total - totalAbonado);
-  const comisionVis  = (esParcial && saldoPend > 0) ? 0 : comision;
+  const metodoPago      = document.getElementById('vMetodoPago')?.value || '';
+  const enModoAbonoCalc = document.getElementById('vBannerAbono')?.style.display !== 'none';
+  const esParcial       = metodoPago === 'parcial' || enModoAbonoCalc || vItemsAbonos.length > 0;
+  const totalAbonado    = esParcial ? vItemsAbonos.reduce((s,a)=>s+(a.monto||0),0) : total;
+  const saldoPend       = Math.max(0, total - totalAbonado);
+  const comisionVis     = (esParcial && saldoPend > 0) ? 0 : comision;
 
   // Ahorro total del cliente = descuentos por item + descuento general
   const ahorroItems = vItemsActuales.reduce((s, it) => {
@@ -8519,9 +8521,35 @@ ${v.metodoPagoLabel||v.metodoPago ? `
 ${v.promesaPago && esParcial ? `<div class="center small">Promesa de pago: <strong>${fmtD(v.promesaPago)}</strong></div>` : ''}
 
 <hr class="divider" style="margin:8px 0">
+
+<!-- Código de barras -->
+${(() => {
+  const refId = (v.id||'').replace(/[^A-Za-z0-9]/g,'').slice(-16).toUpperCase();
+  return `<div class="center" style="margin:6px 0">
+  <svg id="barcode"></svg>
+  <div class="center" style="font-size:10px;font-weight:700;margin-top:1px">${refId}</div>
+</div>
+<hr class="divider" style="margin:6px 0">`;
+})()}
+
 <div class="center small">¡Gracias por su compra!</div>
-<div class="center small" style="margin-top:2px;color:#555">${fmtNow()}</div>
+${parametros.firmaUrl ? `
+<div style="margin-top:10px;text-align:center">
+  <img src="${parametros.firmaUrl}" style="max-height:50px;max-width:160px;object-fit:contain" onerror="this.style.display='none'">
+</div>
+<div style="border-top:1px solid #333;margin:4px auto;width:160px;padding-top:3px;text-align:center;font-size:10px">Firma y Sello · Focus Store</div>
+<div style="height:40px;border-bottom:1px solid #333;margin:10px auto;width:160px"></div>
+<div style="text-align:center;font-size:10px;margin-top:3px">Firma del Cliente</div>
+` : ''}
 <br>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+<script>
+  const _refId = '${(v.id||'').replace(/[^A-Za-z0-9]/g,'').slice(-16).toUpperCase()}';
+  if (typeof JsBarcode !== 'undefined' && _refId) {
+    JsBarcode('#barcode', _refId, {format:'CODE128',width:1.8,height:40,displayValue:false,margin:2});
+  }
+<\/script>
 
 </body>
 </html>`;
@@ -8529,8 +8557,7 @@ ${v.promesaPago && esParcial ? `<div class="center small">Promesa de pago: <stro
   const win = window.open('', '_blank', 'width=320,height=600');
   win.document.write(html);
   win.document.close();
-  // Auto-print después de cargar
-  win.onload = () => { win.focus(); win.print(); };
+  win.onload = () => { setTimeout(() => { win.focus(); win.print(); }, 500); };
 }
 
 function compartirWhatsApp(id) {
