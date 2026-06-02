@@ -693,8 +693,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
       <div class="card">
         <div class="card-header">
           <div><div class="card-title">📦 Lista de Productos</div><div class="card-sub">Ordenado por última modificación</div></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <button id="btnRefreshProductos" class="btn btn-sm" onclick="refrescarProductos()" title="Recargar productos desde Supabase" style="background:var(--bg3);border:1px solid var(--accent3);color:var(--accent3);font-weight:700">🔄 Actualizar</button>
+          <div style="display:flex;gap:8px">
             <button class="btn btn-gold btn-sm" onclick="hacerBackup()">💾 Backup</button>
             <button class="btn btn-ghost btn-sm" onclick="exportarExcel()">⬇️ Exportar Excel</button>
             <label class="btn btn-primary btn-sm" style="cursor:pointer">
@@ -947,7 +946,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
       <div id="invPanelStock">
 
         <!-- Tarjetas resumen -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:24px" id="invCards">
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px" id="invCards">
           <div class="card" style="cursor:pointer;border-left:4px solid #00c8a0" onclick="invFiltrarEstado('en_stock')">
             <div style="font-size:11px;color:var(--text3);margin-bottom:4px">EN STOCK</div>
             <div id="invCntEnStock" style="font-size:28px;font-weight:800;color:#00c8a0">—</div>
@@ -2138,10 +2137,6 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 <div id="vComisionNota" style="display:none;margin-top:6px;font-size:11px;color:var(--gold);background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.2);border-radius:6px;padding:5px 8px">
                   ⏳ Se registrará en el mes en que se complete el pago
                 </div>
-                <div id="vSinCostoWarn" style="display:none;margin-top:7px;font-size:11px;color:#e65100;background:rgba(230,81,0,.09);border:1px solid rgba(230,81,0,.3);border-radius:6px;padding:6px 9px;cursor:pointer" onclick="vShowSub('nueva');document.getElementById('vProdBuscar')?.focus()">
-                  ⚠️ <strong>Producto(s) sin costo registrado</strong> — ROI no disponible.<br>
-                  <span style="font-size:10px;opacity:.85">Editá el producto en Inventario para agregar el costo.</span>
-                </div>
               </div>
 
               <div style="margin-bottom:12px">
@@ -2441,13 +2436,6 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             <label>Descripción / Nota</label>
             <textarea id="cNota" placeholder="Descripción del combo, qué incluye, para qué sirve..." style="min-height:60px"></textarea>
           </div>
-          <div class="form-field field-full">
-            <label>Imagen del Combo (URL)</label>
-            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-              <input type="url" id="cImagenUrl" placeholder="https://..." style="flex:1;min-width:220px" oninput="previsualizarImagenCombo()">
-              <img id="cImagenPreview" src="" alt="" style="width:64px;height:64px;object-fit:contain;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);display:none" onerror="this.style.display='none'">
-            </div>
-          </div>
         </div>
         <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
           <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);margin-bottom:12px">📦 Ítems del Combo</div>
@@ -2462,16 +2450,10 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
           <div class="calc-preview-title">💰 Resumen de Precio del Combo</div>
           <div class="calc-grid" id="comboPrecioGrid"></div>
           <div style="margin-top:12px">
-            <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
-              <div>
-                <div style="font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600">PRECIO COMBO (sin ISV)</div>
-                <input type="number" id="cPrecioFinal" placeholder="L 0.00" step="0.01" min="0" oninput="actualizarResumenCombo('precio')" style="width:180px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);color:var(--green);font-size:16px;font-weight:700;outline:none">
-              </div>
-              <div style="font-size:20px;color:var(--text3);padding-bottom:10px">⇄</div>
-              <div>
-                <div style="font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600">% DESCUENTO</div>
-                <input type="number" id="cPctDescuento" placeholder="0.0" step="0.1" min="0" max="100" oninput="actualizarResumenCombo('pct')" style="width:110px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);color:var(--gold);font-size:16px;font-weight:700;outline:none">
-              </div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600">PRECIO FINAL DEL COMBO (precio especial combo)</div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <input type="number" id="cPrecioFinal" placeholder="L 0.00" step="0.01" min="0" oninput="actualizarResumenCombo()" style="width:180px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);color:var(--green);font-size:16px;font-weight:700;outline:none">
+              <div style="font-size:12px;color:var(--text2)">← Escribe el precio al que lo venderás como combo</div>
             </div>
             <div id="comboAhorroInfo" style="margin-top:8px;font-size:13px;color:var(--text2)"></div>
           </div>
@@ -3147,9 +3129,6 @@ async function sbSaveVenta(venta) {
     subtotal_sin_isv: venta.subtotalSinISV || 0,
     total_isv:        venta.totalISV       || 0,
     total:            venta.total          || 0,
-    descuento:        venta.descuento      || 0,
-    descuento_tipo:   venta.descuentoTipo  || '%',
-    descuento_valor:  venta.descuentoValor || 0,
     utilidad_bruta:   venta.utilidadBruta  || 0,
     pct_comision:     venta.pctComision    || 0,
     comision:         venta.comision       || 0,
@@ -3165,13 +3144,11 @@ async function sbSaveVenta(venta) {
     promesa_pago:     venta.promesaPago      || null,
     nota:             (venta.nota            || '').substring(0, 12),
     tipo_venta:       venta.tipoVenta        || 'formal',
-    fecha_liquidada:  venta.fechaLiquidada   || null,
     items: (venta.items || []).map(it => ({
       sku:         it.sku         || '',
       nombre:      it.descripcion || it.nombre || '',
       cantidad:    it.cantidad    || 1,
       precio_final:it.precioFinal || 0,
-      precio_lista:it.precioLista || it.precioFinal || 0,
       lleva_isv:   it.llevaISV    || false,
       isv_pct:     it.isvPct      || 0,
       costo_lps:   it.costoLPS    || 0,
@@ -3211,24 +3188,19 @@ async function sbSaveCotizacion(c) {
     vendedor_id:      c.vendedorId      || '',
     vendedor_nombre:  c.vendedorNombre  || '',
     items:            (c.items||[]).map(it=>({
-      sku:                it.sku              || '',
-      nombre:             it.descripcion      || it.nombre || '',
-      cantidad:           it.cantidad         || 1,
-      precio_final:       it.precioFinal      || 0,
-      precio_lista:       it.precioLista      || it.precioFinal || 0,
-      descuento_item_tipo:it.descuentoItemTipo|| '%',
-      lleva_isv:          it.llevaISV         || false,
-      isv_pct:            it.isvPct           || 0,
-      producto_id:        it.productoId       || null,
-      imagen:             it.imagen           || null,
-      nota_item:          it.notaItem         || ''
+      sku:         it.sku         || '',
+      nombre:      it.descripcion || it.nombre || '',
+      cantidad:    it.cantidad    || 1,
+      precio_final:it.precioFinal || 0,
+      lleva_isv:   it.llevaISV   || false,
+      isv_pct:     it.isvPct     || 0,
+      producto_id: it.productoId || null,
+      imagen:      it.imagen     || null,
+      nota_item:   it.notaItem   || ''
     })),
     observaciones:    c.observaciones   || '',
     subtotal_sin_isv: c.subtotalSinISV  || 0,
     total_isv:        c.totalISV        || 0,
-    descuento:        c.descuento       || 0,
-    descuento_tipo:   c.descuentoTipo   || '%',
-    descuento_valor:  c.descuentoValor  || 0,
     total:            c.total           || 0,
     estado:           c.estado          || 'activa',
     venta_id:         c.ventaId         || '',
@@ -3255,35 +3227,24 @@ async function sbGetCotizaciones() {
     clienteEmail:     c.cliente_email     || '',
     vendedorId:       c.vendedor_id       || '',
     vendedorNombre:   c.vendedor_nombre   || '',
-    items:            (c.items||[]).map(it=>{
-      // precio_lista: usar el guardado; si no existe (registros viejos), calcular del catálogo
-      const prod = it.producto_id ? productos.find(p=>p.id===it.producto_id) : null;
-      const listaGuardada = it.precio_lista || 0;
-      const listaCatalogo = prod ? +calcProd(prod).precioConISV.toFixed(2) : 0;
-      const precioLista   = listaGuardada > 0 ? listaGuardada : (listaCatalogo || it.precio_final || 0);
-      return {
-        tipo:             it.producto_id ? 'catalogo' : 'manual',
-        productoId:       it.producto_id      || null,
-        sku:              it.sku              || '',
-        descripcion:      it.nombre           || '',
-        nombre:           it.nombre           || '',
-        cantidad:         it.cantidad         || 1,
-        precioFinal:      it.precio_final     || 0,
-        precioLista,
-        descuentoItemTipo:it.descuento_item_tipo || '%',
-        llevaISV:         it.lleva_isv        || false,
-        isvPct:           it.isv_pct          || 0,
-        imagen:           it.imagen           || (prod ? prod.imagen||null : null),
-        notaItem:         it.nota_item        || '',
-        _id:              'vi_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)
-      };
-    }),
+    items:            (c.items||[]).map(it=>({
+      tipo:        it.producto_id ? 'catalogo' : 'manual',
+      productoId:  it.producto_id  || null,
+      sku:         it.sku          || '',
+      descripcion: it.nombre       || '',
+      nombre:      it.nombre       || '',
+      cantidad:    it.cantidad     || 1,
+      precioFinal: it.precio_final || 0,
+      llevaISV:    it.lleva_isv   || false,
+      isvPct:      it.isv_pct     || 0,
+      imagen:      it.imagen      || (it.producto_id ? (productos.find(p=>p.id===it.producto_id)||{}).imagen||null : null),
+      notaItem:    it.nota_item   || '',
+      productoId:  it.producto_id || null,
+      _id:         'vi_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)
+    })),
     observaciones:    c.observaciones     || '',
     subtotalSinISV:   c.subtotal_sin_isv  || 0,
     totalISV:         c.total_isv         || 0,
-    descuento:        parseFloat(c.descuento)       || 0,
-    descuentoTipo:    c.descuento_tipo               || '%',
-    descuentoValor:   parseFloat(c.descuento_valor)  || 0,
     total:            c.total             || 0,
     estado:           c.estado            || 'activa',
     ventaId:          c.venta_id          || '',
@@ -3741,7 +3702,6 @@ async function doLogin() {
 }
 
 function doLogout() {
-  detenerRealtimeVentas();
   currentUser  = null;
   editingId    = null;
   // Resetear estado de carga para que la próxima sesión cargue todo de nuevo
@@ -3784,19 +3744,8 @@ function initApp() {
   // Cargar datos desde Google Sheets
   cargarDesdeSheetsYRenderizar();
 
-  // Auto-refresh productos cada 30 segundos en segundo plano
-  setInterval(() => sincronizarSilencioso(), 30 * 1000);
-
-  // Realtime + auto-refresh de ventas
-  iniciarRealtimeVentas();
-}
-
-async function refrescarProductos() {
-  const btn = document.getElementById('btnRefreshProductos');
-  if (btn) { btn.textContent = '⏳ Actualizando...'; btn.disabled = true; }
-  await sincronizarSilencioso();
-  if (btn) { btn.textContent = '🔄 Actualizar'; btn.disabled = false; }
-  showToast('✅ Tabla actualizada', 'success', 2000);
+  // Auto-refresh cada 2 minutos en segundo plano
+  setInterval(() => sincronizarSilencioso(), 2 * 60 * 1000);
 }
 
 async function sincronizarSilencioso() {
@@ -4178,7 +4127,7 @@ function showTab(name) {
   if(name==='aprobacion') renderAprobacion();
   if(name==='exportar') initTablaExportar();
   if(name==='etiquetas') initTablaEtiquetas();
-  if(name==='combos') { _combosCargados = false; renderCombos(); cancelarCombo(); }
+  if(name==='combos') { renderCombos(); cancelarCombo(); }
   if(name==='ventas') { initVentas(); }
   if(name==='cobros') { renderCobros(); }
   if(name==='cotizaciones') { initCotizaciones(); }
@@ -5536,18 +5485,17 @@ function onMetodoPagoChange(limpiar = true) {
   if (!sel) return;
   const metodo = (parametros.metodosPago || []).find(m => m.id === sel.value);
   const esParcial = metodo && (metodo.id === 'parcial' || (metodo.label||'').toLowerCase().includes('parcial'));
-  const enModoAbono = document.getElementById('vBannerAbono')?.style.display !== 'none';
   // Mostrar/ocultar wrappers
   if (obsWrap) obsWrap.style.display = (metodo && metodo.observaciones) ? '' : 'none';
   if (proWrap) proWrap.style.display = (metodo && metodo.promesa)       ? '' : 'none';
-  if (aboWrap) aboWrap.style.display = (esParcial || enModoAbono) ? '' : 'none';
+  if (aboWrap) aboWrap.style.display = esParcial ? '' : 'none';
   // Solo limpiar campos si el usuario cambió el método manualmente
   if (limpiar) {
     if (metodo && !metodo.observaciones && document.getElementById('vMetodoPagoObs'))
       document.getElementById('vMetodoPagoObs').value = '';
     if (metodo && !metodo.promesa && document.getElementById('vPromesaPago'))
       document.getElementById('vPromesaPago').value = '';
-    if (!esParcial && !enModoAbono) {
+    if (!esParcial) {
       vItemsAbonos = [];
       renderAbonosVenta();
     }
@@ -6350,7 +6298,6 @@ function initTablaExportar() {
 // ===== ETIQUETAS DYMO =====
 let etiqSeleccionados = new Set();
 let etiqProductosFiltrados = [];
-let etiqCombosFiltrados = [];
 
 function etiqToggleRow(id, e) {
   if(e.target.type==='checkbox') return;
@@ -6374,31 +6321,22 @@ function initTablaEtiquetas() {
   // Sin búsqueda → mostrar todos los productos
   const orden  = (document.getElementById('etiqFiltOrden')||{}).value||'modif';
 
-  const buscarLC = buscar.toLowerCase();
   const lista = !buscar
     ? [...productos].sort((a,b)=> orden==='ingreso' ? new Date(b.fechaIngreso)-new Date(a.fechaIngreso) : new Date(b.ultimaModif)-new Date(a.ultimaModif))
     : productos.filter(p =>
-        String(p.sku||'').toLowerCase().includes(buscarLC) ||
-        String(p.producto||'').toLowerCase().includes(buscarLC)
+        String(p.sku||'').toLowerCase().includes(buscar.toLowerCase()) ||
+        String(p.producto||'').toLowerCase().includes(buscar.toLowerCase())
       ).sort((a,b)=> orden==='ingreso' ? new Date(b.fechaIngreso)-new Date(a.fechaIngreso) : new Date(b.ultimaModif)-new Date(a.ultimaModif));
 
-  const listaC = !buscar
-    ? [...(combos||[])]
-    : (combos||[]).filter(c =>
-        (c.codigo||'').toLowerCase().includes(buscarLC) ||
-        (c.nombre||'').toLowerCase().includes(buscarLC)
-      );
-
   etiqProductosFiltrados = lista;
-  etiqCombosFiltrados = listaC;
 
-  if(!lista.length && !listaC.length) {
+  if(!lista.length) {
     tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text3)">${productos.length===0 ? '⏳ Sin productos cargados' : `Sin resultados para "${buscar}"`}</td></tr>`;
     actualizarContadorEtiq();
     return;
   }
 
-  const rowsProductos = lista.map(p => {
+  tbody.innerHTML = lista.map(p => {
     const c = calcProd(p);
     const precio = 'L ' + c.precioConISV.toLocaleString('es-HN', {minimumFractionDigits:2, maximumFractionDigits:2});
     const checked = etiqSeleccionados.has(p.id) ? 'checked' : '';
@@ -6422,50 +6360,11 @@ function initTablaEtiquetas() {
     </tr>`;
   }).join('');
 
-  const separadorCombos = listaC.length ? `<tr style="background:rgba(61,106,255,.06)">
-    <td colspan="9" style="padding:6px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent)">🎁 Combos</td>
-  </tr>` : '';
-
-  const rowsCombos = listaC.map(combo => {
-    const ckey = 'combo_' + combo.id;
-    const checked = etiqSeleccionados.has(ckey) ? 'checked' : '';
-    const skuCombo = String(combo.codigo||combo.id).replace(/[^A-Za-z0-9\-\.]/g,'').substring(0,30) || 'COMBO';
-    let stockDisp = Infinity;
-    (combo.items||[]).forEach(ci => {
-      const p = productos.find(x => x.id === ci.productoId);
-      if (p) { const d = Math.floor((parseInt(p.cantidad)||0)/(ci.cantidad||1)); if(d<stockDisp) stockDisp=d; }
-    });
-    if (stockDisp===Infinity) stockDisp=0;
-    const stockColor = stockDisp===0?'var(--red)':stockDisp<=2?'var(--gold)':'var(--green)';
-    const precioFmt = 'L ' + (combo.precioFinal||0).toLocaleString('es-HN',{minimumFractionDigits:2,maximumFractionDigits:2});
-    return `<tr onclick="etiqToggleRow('${ckey}',event)" style="cursor:pointer">
-      <td onclick="event.stopPropagation()"><input type="checkbox" class="etiqChk" data-id="${ckey}" ${checked} onchange="etiqToggleCheck('${ckey}',this)"></td>
-      <td class="td-sku" style="color:var(--accent)">${combo.codigo||'—'}</td>
-      <td class="td-name" style="max-width:220px;overflow:hidden;text-overflow:ellipsis">${combo.nombre||''}</td>
-      <td style="font-size:12px">Combo</td>
-      <td><span style="background:rgba(61,106,255,.15);color:var(--accent);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">🎁 Combo</span></td>
-      <td style="text-align:center;font-weight:700;color:${stockColor}">${stockDisp}</td>
-      <td style="font-size:12px;color:var(--text2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${combo.nota||''}">${combo.nota||'—'}</td>
-      <td class="td-price">${precioFmt}</td>
-      <td onclick="event.stopPropagation()">
-        <div style="background:#fff;padding:3px 6px;border-radius:4px;display:inline-block;border:1px solid #ccc">
-          <svg id="bc_prev_${ckey}" data-sku="${skuCombo}"></svg>
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
-
-  tbody.innerHTML = rowsProductos + separadorCombos + rowsCombos;
-
   setTimeout(() => {
     if(typeof JsBarcode !== 'undefined') {
       lista.forEach(p => {
         const s = String(p.sku||'').replace(/[^A-Za-z0-9\-\.]/g,'').substring(0,30) || '0000';
         try { JsBarcode(`#bc_prev_${p.id}`, s, {format:'CODE128', width:1.5, height:20, displayValue:false, margin:1}); } catch(e) {}
-      });
-      listaC.forEach(combo => {
-        const s = String(combo.codigo||combo.id).replace(/[^A-Za-z0-9\-\.]/g,'').substring(0,30) || 'COMBO';
-        try { JsBarcode(`#bc_prev_combo_${combo.id}`, s, {format:'CODE128', width:1.5, height:20, displayValue:false, margin:1}); } catch(e) {}
       });
     }
   }, 200);
@@ -6474,16 +6373,15 @@ function initTablaEtiquetas() {
 }
 
 function imprimirEtiquetas() {
-  const fmt = n => 'L ' + n.toLocaleString('es-HN', {minimumFractionDigits:2, maximumFractionDigits:2});
-  const selProductos = productos.filter(p => etiqSeleccionados.has(p.id));
-  const selCombos = (combos||[]).filter(c => etiqSeleccionados.has('combo_' + c.id));
-  if(!selProductos.length && !selCombos.length) { showToast('⚠️ Selecciona al menos un producto o combo','warn'); return; }
+  const seleccionados = productos.filter(p => etiqSeleccionados.has(p.id));
+  if(!seleccionados.length) { showToast('⚠️ Selecciona al menos un producto marcando el checkbox','warn'); return; }
 
-  const etiqProductosHTML = selProductos.map(p => {
+  const etiquetasHTML = seleccionados.map(p => {
     const c = calcProd(p);
-    const precioFinal = fmt(c.precioFinalDesc);
-    const precioAntes = fmt(c.precioConISV);
-    const tieneDesc   = c.precioFinalDesc < c.precioConISV;
+    const fmt = n => 'L ' + n.toLocaleString('es-HN', {minimumFractionDigits:2, maximumFractionDigits:2});
+    const precioFinal = fmt(c.precioFinalDesc);   // Col AA — precio principal (con descuento)
+    const precioAntes = fmt(c.precioConISV);       // Col X  — precio anterior tachado
+    const tieneDesc   = c.precioFinalDesc < c.precioConISV; // solo mostrar tachado si hay descuento
     const skuSafe = String(p.sku||'').replace(/[^A-Za-z0-9\-\.]/g,'').substring(0,30) || '0000';
     const nombre = String(p.producto||'').length > 42 ? String(p.producto).substring(0,42)+'…' : String(p.producto||'');
     return `<div class="etiqueta">
@@ -6495,21 +6393,6 @@ function imprimirEtiquetas() {
       </div>
     </div>`;
   }).join('');
-
-  const etiqCombosHTML = selCombos.map(combo => {
-    const skuSafe = String(combo.codigo||combo.id).replace(/[^A-Za-z0-9\-\.]/g,'').substring(0,30) || 'COMBO';
-    const nombre = String(combo.nombre||'').length > 42 ? String(combo.nombre).substring(0,42)+'…' : String(combo.nombre||'');
-    return `<div class="etiqueta">
-      <div class="etiq-nombre">${nombre}</div>
-      <svg class="etiq-barcode" id="bc_combo_${combo.id}" data-sku="${skuSafe}"></svg>
-      <div class="etiq-precios">
-        <div class="etiq-precio">${fmt(combo.precioFinal||0)}</div>
-      </div>
-    </div>`;
-  }).join('');
-
-  const etiquetasHTML = etiqProductosHTML + etiqCombosHTML;
-  const totalEtiq = selProductos.length + selCombos.length;
 
   const win = window.open('','_blank','width=500,height=700');
   if(!win) { showToast('⚠️ Permite ventanas emergentes en tu navegador para imprimir','warn'); return; }
@@ -6529,7 +6412,7 @@ function imprimirEtiquetas() {
     @media print{body{margin:0;}.no-print{display:none;}}
   </style></head><body>
   <div class="no-print" style="padding:12px;background:#f0f4ff;border-bottom:1px solid #ccd;font-family:Arial;font-size:13px;display:flex;gap:12px;align-items:center;">
-    <strong>🏷️ ${totalEtiq} etiqueta(s) · DYMO 1-1/8" × 3-1/2"</strong>
+    <strong>🏷️ ${seleccionados.length} etiqueta(s) · DYMO 1-1/8" × 3-1/2"</strong>
     <button onclick="window.print()" style="padding:8px 18px;background:#3d6aff;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🖨️ Imprimir</button>
     <span style="color:#666;font-size:12px;">Selecciona DYMO LabelWriter 450 y tamaño 30252.</span>
   </div>
@@ -6550,8 +6433,8 @@ function imprimirEtiquetas() {
 
 </body></html>`);
   win.document.close();
-  addHistorial(`Etiquetas impresas: ${selProductos.length} producto(s), ${selCombos.length} combo(s)`, 'Etiquetas');
-  showToast(`🖨️ Abriendo ${totalEtiq} etiqueta(s)`, 'success');
+  addHistorial(`Etiquetas impresas: ${seleccionados.length} producto(s)`, 'Etiquetas');
+  showToast(`🖨️ Abriendo ${seleccionados.length} etiqueta(s)`, 'success');
 }
 
 
@@ -6567,64 +6450,7 @@ let vItemsAbonos   = [];   // [{_id, monto, fecha, nota, registradoPor}]
 let vClienteSelId  = null;
 let vEditandoId    = null;
 let vTipoVenta     = 'formal';
-let _ventasCargadas  = false;
-let _ventasChannel   = null;
-let _ventasAutoTimer = null;
-let _ventasReloadPending = false;
-
-/* ─── Realtime + auto-refresh de ventas ─── */
-async function _recargarVentasSilencioso(evento) {
-  if (!currentUser) return;
-  if (_ventasReloadPending) return;   // debounce
-  _ventasReloadPending = true;
-  setTimeout(() => { _ventasReloadPending = false; }, 3000);
-
-  try {
-    _ventasCargadas = false;
-    await cargarVentasYClientes();
-
-    // Mostrar toast solo si es INSERT de OTRO usuario
-    if (evento?.eventType === 'INSERT') {
-      const nuevaVenta = ventas.find(v => v.id === evento.new?.id);
-      const vendNombre = nuevaVenta?.vendedorNombre || evento.new?.vendedor_nombre || 'un vendedor';
-      const total      = nuevaVenta ? fmtLPS(nuevaVenta.total) : '';
-      if (evento.new?.vendedor_id !== String(currentUser.id)) {
-        showToast(`🔔 Nueva venta — ${vendNombre} · ${total}`, 'info', 5000);
-      }
-    }
-
-    // Re-renderizar si la vista de historial está activa
-    const histEl = document.getElementById('vHistorialLista');
-    if (histEl && histEl.closest('#panelVentas')?.style.display !== 'none') {
-      renderHistorialVentas();
-    }
-  } catch(e) {
-    console.warn('⚠️ Auto-reload ventas falló:', e.message);
-  }
-}
-
-function iniciarRealtimeVentas() {
-  // 1. Supabase Realtime
-  try {
-    _ventasChannel = sb.channel('ventas-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ventas' },
-          (payload) => _recargarVentasSilencioso(payload))
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') console.log('✅ Realtime ventas activo');
-        else if (status === 'CHANNEL_ERROR') console.warn('⚠️ Realtime ventas no disponible, usando auto-refresh');
-      });
-  } catch(e) {
-    console.warn('⚠️ Realtime init falló:', e.message);
-  }
-
-  // 2. Fallback: auto-refresh cada 2 minutos
-  _ventasAutoTimer = setInterval(() => _recargarVentasSilencioso(null), 2 * 60 * 1000);
-}
-
-function detenerRealtimeVentas() {
-  if (_ventasChannel) { sb.removeChannel(_ventasChannel); _ventasChannel = null; }
-  if (_ventasAutoTimer) { clearInterval(_ventasAutoTimer); _ventasAutoTimer = null; }
-}
+let _ventasCargadas = false;
 
 // ── Guardar en Supabase (reemplaza localStorage) ──
 async function guardarVentasLS()   { /* ventas se guardan en sbSaveVenta() directamente */ }
@@ -6766,32 +6592,21 @@ function _mapVentaRow(v) {
     metodoEnvio:     v.metodo_envio   || '',
     promesaPago:     v.promesa_pago    || '',
     fechaRegistro:   v.fecha_registro  || '',
-    fechaLiquidada:  v.fecha_liquidada || '',
     registradoPor:   v.registrado_por  || '',
     nota:            v.nota            || '',
     tipoVenta:       v.tipo_venta      || 'formal',
-    descuento:       parseFloat(v.descuento)       || 0,
-    descuentoTipo:   v.descuento_tipo              || '%',
-    descuentoValor:  parseFloat(v.descuento_valor) || 0,
-    items: (v.venta_items || []).map(it => {
-      const prod = it.producto_id ? productos.find(p => p.id === it.producto_id) : null;
-      const listaGuardada = it.precio_lista || 0;
-      const listaCatalogo = prod ? +calcProd(prod).precioConISV.toFixed(2) : 0;
-      const precioLista = listaGuardada > 0 ? listaGuardada : (listaCatalogo || it.precio_final || 0);
-      return {
-        tipo:        it.producto_id ? 'catalogo' : 'manual',
-        productoId:  it.producto_id || null,
-        sku:         it.sku         || '',
-        descripcion: it.nombre      || it.descripcion || '',
-        nombre:      it.nombre      || '',
-        cantidad:    it.cantidad    || 1,
-        precioFinal: it.precio_final|| 0,
-        precioLista,
-        llevaISV:    it.lleva_isv   || false,
-        isvPct:      it.isv_pct     || 0,
-        costoLPS:    it.costo_lps   || 0
-      };
-    }),
+    items: (v.venta_items || []).map(it => ({
+      tipo:        it.producto_id ? 'catalogo' : 'manual',
+      productoId:  it.producto_id || null,
+      sku:         it.sku         || '',
+      descripcion: it.nombre      || it.descripcion || '',
+      nombre:      it.nombre      || '',
+      cantidad:    it.cantidad    || 1,
+      precioFinal: it.precio_final|| 0,
+      llevaISV:    it.lleva_isv   || false,
+      isvPct:      it.isv_pct     || 0,
+      costoLPS:    it.costo_lps   || 0
+    })),
     abonos: (v.venta_abonos || []).map(a => ({
       _id:          a.id           || ('ab_'+Date.now()),
       monto:        a.monto        || 0,
@@ -7376,137 +7191,31 @@ function buscarProductoVenta() {
   const q   = (document.getElementById('vProdBuscar').value || '').toLowerCase().trim();
   const res = document.getElementById('vProdResultados');
   if (!q) { res.style.display = 'none'; return; }
-
   const encontrados = productos.filter(p =>
     String(p.sku||'').toLowerCase().includes(q) ||
     String(p.producto||'').toLowerCase().includes(q)
   ).slice(0, 8);
-
-  const combosEncontrados = (combos||[]).filter(c =>
-    (c.nombre||'').toLowerCase().includes(q) ||
-    (c.codigo||'').toLowerCase().includes(q)
-  ).slice(0, 3);
-
-  if (!encontrados.length && !combosEncontrados.length) {
-    res.innerHTML = '<div style="padding:10px 14px;color:var(--text3);font-size:13px">Sin resultados — usa "+ Manual" para producto fuera de catálogo</div>';
-    res.style.display = 'block';
-    return;
-  }
-
-  let html = '';
-
-  if (encontrados.length) {
-    html += encontrados.map(p => {
-      const c      = calcProd(p);
-      const precio = c.precioFinalDesc;
-      const isv    = p.estado === 'Nuevo';
-      const thumb  = p.imagen
-        ? `<div class="prod-thumb" style="flex-shrink:0;width:40px;height:40px" onmouseenter="mostrarImgPreview('${p.imagen}',event)" onmouseleave="ocultarImgPreview()"><img src="${p.imagen}"></div>`
-        : `<div style="flex-shrink:0;width:40px;height:40px;border-radius:6px;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:20px">📦</div>`;
-      return `<div onclick="agregarProductoCatalogo('${p.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
-        ${thumb}
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.producto}</div>
-          <div style="font-size:11px;color:var(--text2)">SKU: ${p.sku} · ${isv?'Con ISV':'Sin ISV'} · Stock: ${p.cantidad}</div>
-        </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:14px;font-weight:700;color:var(--green)">${fmtLPS(precio)}</div>
-          <div style="font-size:10px;color:var(--text3)">precio sugerido</div>
-        </div>
-      </div>`;
-    }).join('');
-  }
-
-  if (combosEncontrados.length) {
-    html += `<div style="padding:6px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);background:var(--bg4);border-bottom:1px solid var(--border)">🎁 Combos</div>`;
-    html += combosEncontrados.map(combo => {
-      // Calcular combos armables
-      let stockDisp = Infinity;
-      (combo.items||[]).forEach(ci => {
-        const p = productos.find(x => x.id === ci.productoId);
-        if (p) {
-          const disp = Math.floor((parseInt(p.cantidad)||0) / (ci.cantidad||1));
-          if (disp < stockDisp) stockDisp = disp;
-        }
-      });
-      if (stockDisp === Infinity) stockDisp = 0;
-      const stockColor = stockDisp === 0 ? 'var(--red)' : stockDisp <= 2 ? 'var(--gold)' : 'var(--green)';
-      const nItems = (combo.items||[]).length;
-      return `<div onclick="agregarComboVenta('${combo.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
-        <div style="flex-shrink:0;width:40px;height:40px;border-radius:6px;background:rgba(61,106,255,.12);display:flex;align-items:center;justify-content:center;font-size:20px">🎁</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${combo.nombre}</div>
-          <div style="font-size:11px;color:var(--text2)">${nItems} producto${nItems!==1?'s':''} · Armables: <strong style="color:${stockColor}">${stockDisp}</strong></div>
-        </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:14px;font-weight:700;color:var(--green)">${fmtLPS(combo.precioFinal)}</div>
-          <div style="font-size:10px;color:var(--text3)">precio combo</div>
-        </div>
-      </div>`;
-    }).join('');
-  }
-
-  res.innerHTML = html;
+  if (!encontrados.length) { res.innerHTML = '<div style="padding:10px 14px;color:var(--text3);font-size:13px">Sin resultados — usa "+ Manual" para producto fuera de catálogo</div>'; res.style.display='block'; return; }
+  res.innerHTML = encontrados.map(p => {
+    const c      = calcProd(p);
+    const precio = c.precioFinalDesc;
+    const isv    = p.estado === 'Nuevo';
+    const thumb  = p.imagen
+      ? `<div class="prod-thumb" style="flex-shrink:0;width:40px;height:40px" onmouseenter="mostrarImgPreview('${p.imagen}',event)" onmouseleave="ocultarImgPreview()"><img src="${p.imagen}"></div>`
+      : `<div style="flex-shrink:0;width:40px;height:40px;border-radius:6px;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:20px">📦</div>`;
+    return `<div onclick="agregarProductoCatalogo('${p.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
+      ${thumb}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.producto}</div>
+        <div style="font-size:11px;color:var(--text2)">SKU: ${p.sku} · ${isv?'Con ISV':'Sin ISV'} · Stock: ${p.cantidad}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:14px;font-weight:700;color:var(--green)">${fmtLPS(precio)}</div>
+        <div style="font-size:10px;color:var(--text3)">precio sugerido</div>
+      </div>
+    </div>`;
+  }).join('');
   res.style.display = 'block';
-}
-
-function agregarComboVenta(comboId) {
-  const combo = combos.find(c => c.id === comboId);
-  if (!combo || !combo.items?.length) return;
-
-  // Stock disponible (combos armables)
-  let stockDisp = Infinity;
-  combo.items.forEach(ci => {
-    const p = productos.find(x => x.id === ci.productoId);
-    if (p) {
-      const disp = Math.floor((parseInt(p.cantidad)||0) / (ci.cantidad||1));
-      if (disp < stockDisp) stockDisp = disp;
-    }
-  });
-  if (stockDisp === Infinity) stockDisp = 0;
-  if (stockDisp === 0) {
-    showToast(`⚠️ Sin stock suficiente para armar el combo "${combo.nombre}"`, 'warning');
-  }
-
-  // Ratio proporcional para distribuir el precio del combo entre sus ítems
-  const totalConISV = combo.items.reduce((acc, ci) => {
-    const p = productos.find(x => x.id === ci.productoId);
-    return acc + (p ? calcProd(p).precioFinalDesc * (ci.cantidad||1) : 0);
-  }, 0);
-  const ratio = totalConISV > 0 ? combo.precioFinal / totalConISV : 1;
-
-  const stamp = Date.now();
-  combo.items.forEach((ci, idx) => {
-    const p = productos.find(x => x.id === ci.productoId);
-    if (!p) return;
-    const c = calcProd(p);
-    const isv = p.estado === 'Nuevo';
-    const isvPct = isv ? (parametros.isvNuevo || 0.15) : 0;
-    const precioConISVCombo = +(c.precioFinalDesc * ratio).toFixed(2);
-    const precioSinISV = isv ? precioConISVCombo / (1 + isvPct) : precioConISVCombo;
-    vItemsActuales.push({
-      tipo:         'catalogo',
-      productoId:   ci.productoId,
-      sku:          p.sku,
-      descripcion:  p.producto,
-      imagen:       p.imagen || null,
-      llevaISV:     isv,
-      isvPct,
-      precioBase:   precioSinISV,
-      precioLista:  +c.precioConISV.toFixed(2),
-      precioFinal:  precioConISVCombo,
-      costoLPS:     c.costoTotalLPS,
-      cantidad:     ci.cantidad || 1,
-      _id:          'vi_' + stamp + '_' + idx,
-      _comboId:     combo.id,
-      _comboNombre: combo.nombre
-    });
-  });
-
-  document.getElementById('vProdBuscar').value = '';
-  document.getElementById('vProdResultados').style.display = 'none';
-  renderItemsVenta();
-  showToast(`✅ Combo "${combo.nombre}" agregado — ${combo.items.length} producto${combo.items.length!==1?'s':''}`, 'success');
 }
 
 function agregarProductoCatalogo(prodId) {
@@ -7637,7 +7346,7 @@ function renderItemsVenta() {
             Lleva ISV (${(parametros.isvNuevo*100).toFixed(0)}%)
           </label>
           <span style="font-size:11px;color:${item.llevaISV?'var(--gold)':'var(--text3)'}">${isvLabel}</span>
-          ${item.llevaISV ? (() => { const _basePrice = item.precioFinal / (1 + (item.isvPct||0)); return `<span style="font-size:11px;color:var(--text3);background:rgba(255,255,255,.05);padding:2px 7px;border-radius:4px;border:1px solid var(--border)" title="Precio sin ISV">Precio sin ISV: ${fmtLPS(_basePrice)}</span>`; })() : ''}
+          ${item.llevaISV ? (() => { const _basePrice = item.precioFinal / (1 + (item.isvPct||0)); return `<span style="font-size:11px;color:var(--text3);background:rgba(255,255,255,.05);padding:2px 7px;border-radius:4px;border:1px solid var(--border)" title="Precio antes de ISV">Antes ISV: ${fmtLPS(_basePrice)}</span>`; })() : ''}
           ${esManual ? `
           <div style="display:flex;align-items:center;gap:4px">
             <span style="font-size:11px;color:var(--text3)">Costo L</span>
@@ -7743,14 +7452,13 @@ function ajustarPrecioItem(id, valorStr) {
 
   if (item.precioLista && item.precioLista > 0) {
     // Tiene precio lista → calcular descuento automáticamente
-    if (precioDeseado > item.precioLista) {
-      // El usuario subió el precio por encima de la lista → actualizar lista
-      item.precioLista = precioDeseado;
+    if (precioDeseado < item.precioLista) {
+      item.descuentoItemTipo = 'L'; // mostrar en Lempiras
     }
+    // Si precio deseado >= lista → sin descuento
     item.precioFinal = precioDeseado;
   } else {
-    // Sin precio lista (manual o sin referencia) → fijar como precio base
-    item.precioLista = precioDeseado;
+    // Sin precio lista (manual o sin referencia) → cambio directo
     item.precioFinal = precioDeseado;
   }
   // Actualizar base sin ISV
@@ -7823,10 +7531,9 @@ function calcResumenVenta() {
   const pctComision = (vendedor && vendedor.comision != null ? vendedor.comision : (parametros.comisionVentas || 10)) / 100;
   const comision    = Math.max(0, utilidadAjustada * pctComision);
 
-  // Si hay saldo pendiente (parcial o modo abono) → comisión se difiere
+  // Si el método de pago es parcial y aún hay saldo → comisión se difiere
   const metodoPago   = document.getElementById('vMetodoPago')?.value || '';
-  const enModoAbonoCalc = document.getElementById('vBannerAbono')?.style.display !== 'none';
-  const esParcial    = metodoPago === 'parcial' || enModoAbonoCalc || vItemsAbonos.length > 0;
+  const esParcial    = metodoPago === 'parcial';
   const totalAbonado = esParcial ? vItemsAbonos.reduce((s,a)=>s+(a.monto||0),0) : total;
   const saldoPend    = Math.max(0, total - totalAbonado);
   const comisionVis  = (esParcial && saldoPend > 0) ? 0 : comision;
@@ -7843,10 +7550,9 @@ function calcResumenVenta() {
   if (ahorroEl) ahorroEl.textContent = fmtLPS(ahorroTotal);
 
   // ROI = utilidad ajustada / costo real (costo no cambia por descuento)
-  const totalCostos  = subtotalSinISV - utilidadBruta; // costo original de los productos
-  const haySinCosto  = subtotalSinISV > 0 && vItemsActuales.some(it => !(it.costoLPS > 0));
-  const roiVenta     = totalCostos > 0 ? utilidadAjustada / totalCostos : 0;
-  const roiCls       = roiVenta >= 0.3 ? 'var(--green)' : roiVenta >= 0.2 ? 'var(--gold)' : 'var(--red)';
+  const totalCostos = subtotalSinISV - utilidadBruta; // costo original de los productos
+  const roiVenta    = totalCostos > 0 ? utilidadAjustada / totalCostos : 0;
+  const roiCls      = roiVenta >= 0.3 ? 'var(--green)' : roiVenta >= 0.2 ? 'var(--gold)' : 'var(--red)';
   const verRoiPanel = ['admin','gerencia'].includes(currentUser?.rol);
 
   const set = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
@@ -7860,7 +7566,7 @@ function calcResumenVenta() {
     } else {
       const tasasUsadas = [...new Set(vItemsActuales.filter(it => it.llevaISV && it.isvPct > 0).map(it => it.isvPct))];
       if (tasasUsadas.length === 1) {
-        isvPctEl.textContent = (tasasUsadas[0] * 100).toFixed(0) + '%';
+        isvPctEl.textContent = tasasUsadas[0] + '%';
       } else if (tasasUsadas.length > 1) {
         isvPctEl.textContent = 'mixto';
       } else {
@@ -7881,8 +7587,6 @@ function calcResumenVenta() {
   if (roiEl) { roiEl.textContent = fmtPct(roiVenta); roiEl.style.color = roiCls; }
   const notaEl = document.getElementById('vComisionNota');
   if (notaEl) notaEl.style.display = (esParcial && saldoPend > 0) ? '' : 'none';
-  const sinCostoEl = document.getElementById('vSinCostoWarn');
-  if (sinCostoEl) sinCostoEl.style.display = haySinCosto ? '' : 'none';
 
   // Saldo Pendiente en resumen
   const saldoResRow = document.getElementById('vResSaldoRow');
@@ -8007,6 +7711,7 @@ async function guardarVenta() {
     observaciones: (document.getElementById('vObservaciones').value||'').trim(),
     mapsLink:      (document.getElementById('vMapsLink')?.value||'').trim(),
     metodoPago:    metodoPagoId,
+    metodoPagoLabel: (parametros.metodosPago||[]).find(m=>m.id===metodoPagoId)?.label || metodoPagoId,
     metodoPagoObs:    metodoPagoObs,
     metodoEnvio:      metodoEnvio,
     promesaPago:      promesaPago,
@@ -8017,17 +7722,6 @@ async function guardarVenta() {
     nota: vEditandoId ? ((ventas.find(x=>x.id===vEditandoId)||{}).nota||'') : '',
     tipoVenta: vTipoVenta || 'formal'
   };
-
-  // Si una venta con saldo pendiente queda saldada → marcar como "Parcial - Liquidada"
-  const ventaExistente = vEditandoId ? (ventas.find(x => x.id === vEditandoId) || {}) : {};
-  const teniaSaldo = (ventaExistente.saldoPendiente || 0) > 0;
-  const esParcialLiquidada = venta.saldoPendiente === 0 && (teniaSaldo || venta.abonos.length > 0);
-  venta.metodoPagoLabel = esParcialLiquidada
-    ? 'Parcial - Liquidada'
-    : ((parametros.metodosPago||[]).find(m=>m.id===metodoPagoId)?.label || metodoPagoId);
-  venta.fechaLiquidada = esParcialLiquidada
-    ? (ventaExistente.fechaLiquidada || new Date().toISOString().split('T')[0])
-    : (ventaExistente.fechaLiquidada || '');
 
   // ── Guardar en Supabase (fuente de verdad) ──
   mostrarCargando('☁️ Guardando venta en Supabase...');
@@ -8146,9 +7840,7 @@ function filtrarVentasPorPeriodo(lista, periodo, desde, hasta) {
     String(ahora.getDate()).padStart(2,'0');
 
   return lista.filter(v => {
-    // Ventas parciales liquidadas → usar fecha_liquidada como referencia de período
-    const fechaBase = v.fechaLiquidada || v.fecha;
-    const fechaStr = (fechaBase || '').substring(0, 10);
+    const fechaStr = (v.fecha || '').substring(0, 10);
 
     if (periodo === 'hoy') return fechaStr === hoyStr;
 
@@ -8298,10 +7990,9 @@ function renderHistorialVentas() {
     </tr></thead>
     <tbody>
       ${lista.map(v => {
-        const costo      = v.subtotalSinISV - v.utilidadBruta - (v.descuento || 0);
-        const roi        = costo > 0 ? v.utilidadBruta / costo : 0;
-        const roiCls     = roi >= 0.3 ? 'var(--green)' : roi >= 0.2 ? 'var(--gold)' : 'var(--red)';
-        const sinCostoHist = costo <= 0 && (v.subtotalSinISV || 0) > 0;
+        const costo  = v.subtotalSinISV - v.utilidadBruta - (v.descuento || 0);
+        const roi    = costo > 0 ? v.utilidadBruta / costo : 0;
+        const roiCls = roi >= 0.3 ? 'var(--green)' : roi >= 0.2 ? 'var(--gold)' : 'var(--red)';
         const saldo  = v.saldoPendiente || 0;
         const fechaIng = v.fechaRegistro ? v.fechaRegistro.replace('T',' ').substring(0,16) : '';
 
@@ -8353,7 +8044,7 @@ function renderHistorialVentas() {
           <td>${v.metodoPago ? `<span style="font-size:11px;background:rgba(61,106,255,.1);border:1px solid rgba(61,106,255,.2);color:var(--accent);border-radius:10px;padding:2px 9px;white-space:nowrap">${v.metodoPagoLabel||v.metodoPago}</span>${v.promesaPago?`<div style="font-size:10px;color:var(--gold);margin-top:2px">📅 ${fmtFecha(v.promesaPago)}</div>`:''}` : '<span style="color:var(--text3);font-size:12px">—</span>'}</td>
           <td style="text-align:right;color:var(--green);font-weight:700">${fmtLPS(v.total)}</td>
           <td style="text-align:right">${v.metodoPago === 'parcial' && saldo > 0 ? `<span style="color:var(--red);font-weight:700">⚠️ ${fmtLPS(saldo)}</span>` : '<span style="color:var(--text3);font-size:12px">—</span>'}</td>
-          ${verRoi ? `<td style="text-align:right;font-weight:700;color:${roiCls}">${sinCostoHist ? '<span title="Productos sin costo registrado" style="font-size:11px;background:rgba(230,81,0,.12);color:#e65100;border:1px solid rgba(230,81,0,.3);border-radius:4px;padding:1px 6px;cursor:default">⚠️ Sin costo</span>' : fmtPct(roi)}</td>` : ''}
+          ${verRoi ? `<td style="text-align:right;font-weight:700;color:${roiCls}">${fmtPct(roi)}</td>` : ''}
           <td style="text-align:right;color:var(--accent3);font-weight:700">${fmtLPS(v.comision)}</td>
         </tr>`;
       }).join('')}
@@ -8441,25 +8132,27 @@ function imprimirReciboTermico(id) {
   const pad  = n  => String(n).padStart(2, '0');
   const fmtL = n  => 'L ' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   const fmtD = s  => { if (!s) return '—'; const [y,m,d] = s.split('-'); return `${pad(d)}/${pad(m)}/${y}`; };
+  const line = (w=42) => '─'.repeat(w);
   const ahora = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Tegucigalpa'}));
-  const fmtNow = () => `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}`;
+  const fmtNow = () => `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()}  ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}`;
 
+  const empresa = parametros.empresa || 'FOCUS STORE';
   const items   = v.items || [];
-  const totalItems = items.reduce((s, it) => s + (it.cantidad || 1), 0);
 
-  // Filas de productos — todo en negro fuerte, negrita
+  // Filas de productos
   const filasItems = items.map(it => {
-    const nombre = (it.descripcion || it.nombre || 'Producto');
+    const nombre = (it.descripcion || it.nombre || 'Producto').substring(0, 30);
     const qty    = it.cantidad || 1;
     const precio = it.precioFinal || 0;
     const sub    = precio * qty;
     return `
       <tr>
-        <td colspan="2" style="padding:2px 0 0;font-size:12px;font-weight:900;color:#000;word-break:break-word">${nombre}</td>
+        <td colspan="3" style="padding:1px 0;font-size:12px;word-break:break-word">${nombre}</td>
       </tr>
       <tr>
-        <td style="padding:0 0 5px;font-size:12px;font-weight:700;color:#000">${qty} x ${fmtL(precio)}</td>
-        <td style="text-align:right;padding:0 0 5px;font-size:12px;font-weight:900;color:#000">${fmtL(sub)}</td>
+        <td style="padding:0 0 4px;font-size:12px;color:#555">${qty} x ${fmtL(precio)}</td>
+        <td></td>
+        <td style="text-align:right;padding:0 0 4px;font-size:12px;font-weight:700">${fmtL(sub)}</td>
       </tr>`;
   }).join('');
 
@@ -8471,15 +8164,11 @@ function imprimirReciboTermico(id) {
   const saldo        = Math.max(0, totalVenta - totalAbonado);
   const esParcial    = v.metodoPago === 'parcial';
 
-  // ID corto para el código de barras (máx 20 chars, alfanumérico)
-  const refId = (v.id||'').replace(/[^A-Za-z0-9]/g,'').slice(-16).toUpperCase();
-
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Comprobante de Pago</title>
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+<title>Recibo</title>
 <style>
   * { margin:0;padding:0;box-sizing:border-box }
   body {
@@ -8494,24 +8183,20 @@ function imprimirReciboTermico(id) {
   .center { text-align:center }
   .right  { text-align:right }
   .bold   { font-weight:700 }
-  .bolder { font-weight:900 }
   .small  { font-size:11px }
-  .lbl    { font-size:11px;font-weight:700;color:#000 }
-  .val    { font-size:11px;font-weight:900;color:#000 }
-  .divider { border:none;border-top:1px dashed #000;margin:5px 0 }
+  .divider { border:none;border-top:1px dashed #333;margin:5px 0 }
   .divider-solid { border:none;border-top:2px solid #000;margin:5px 0 }
   table { width:100%;border-collapse:collapse }
   td { vertical-align:top }
-  .total-row td { font-size:13px;font-weight:900;color:#000;padding-top:3px }
-  .gran-total td { font-size:17px;font-weight:900;color:#000;padding-top:4px }
-  .saldo-row td { font-size:13px;font-weight:900;color:#000;padding-top:3px }
+  .total-row td { font-size:13px;font-weight:700;padding-top:3px }
+  .gran-total td { font-size:16px;font-weight:900;padding-top:4px }
+  .saldo-row td { font-size:13px;font-weight:700;color:#c00;padding-top:3px }
   .print-btn { margin:10px 0;text-align:center }
   .print-btn button { background:#222;color:#fff;border:none;padding:8px 20px;font-size:13px;font-weight:700;border-radius:5px;cursor:pointer }
-  #barcode { display:block;max-width:100%;height:50px }
   @media print {
     .print-btn { display:none }
-    body { width:74mm;margin:0 auto;padding:3mm 3mm 3mm 4mm }
-    @page { size:80mm auto;margin:2mm 3mm }
+    body { width:72mm;margin:0;padding:3mm 2mm }
+    @page { size:80mm auto;margin:0 }
   }
 </style>
 </head>
@@ -8520,33 +8205,31 @@ function imprimirReciboTermico(id) {
 <div class="print-btn"><button onclick="window.print()">🖨️ Imprimir</button></div>
 
 <!-- Encabezado -->
-<div class="center bolder" style="font-size:17px;letter-spacing:2px">COMPROBANTE DE PAGO</div>
-<div class="center bold" style="font-size:12px;letter-spacing:1px;margin-top:1px">Original</div>
-<div class="center small" style="margin-top:3px;font-weight:700">Fecha impresión: ${fmtNow()}</div>
+<div class="center bold" style="font-size:18px;letter-spacing:1px">${empresa}</div>
+<div class="center small" style="margin-top:2px">Fecha impresión: ${fmtNow()}</div>
 <hr class="divider-solid" style="margin:6px 0">
 
 <!-- Info venta -->
 <table>
-  <tr><td class="lbl">Ref:</td><td class="right val">${(v.id||'').slice(-12)}</td></tr>
-  <tr><td class="lbl">Fecha venta:</td><td class="right val">${fmtD(v.fecha)}</td></tr>
-  <tr><td class="lbl">Cliente:</td><td class="right val">${v.clienteNombre||'—'}</td></tr>
-  ${v.clienteTel ? `<tr><td class="lbl">Tel:</td><td class="right val">${v.clienteTel}</td></tr>` : ''}
-  ${v.vendedorNombre ? `<tr><td class="lbl">Vendedor:</td><td class="right val">${v.vendedorNombre}</td></tr>` : ''}
+  <tr><td class="small" style="color:#555">Ref:</td><td class="right small">${(v.id||'').slice(-12)}</td></tr>
+  <tr><td class="small" style="color:#555">Fecha venta:</td><td class="right small">${fmtD(v.fecha)}</td></tr>
+  <tr><td class="small" style="color:#555">Cliente:</td><td class="right small bold">${v.clienteNombre||'—'}</td></tr>
+  ${v.clienteTel ? `<tr><td class="small" style="color:#555">Tel:</td><td class="right small">${v.clienteTel}</td></tr>` : ''}
+  ${v.vendedorNombre ? `<tr><td class="small" style="color:#555">Vendedor:</td><td class="right small">${v.vendedorNombre}</td></tr>` : ''}
 </table>
 <hr class="divider" style="margin:5px 0">
 
 <!-- Productos -->
-<div style="font-size:12px;font-weight:900;color:#000;margin-bottom:3px">DETALLE</div>
+<div class="small bold" style="margin-bottom:3px">DETALLE</div>
 <table>${filasItems}</table>
 <hr class="divider">
 
 <!-- Totales -->
 <table>
   ${envio > 0 ? `
-  <tr><td class="lbl">Subtotal productos</td><td class="right val">${fmtL(subtotal)}</td></tr>
-  <tr><td class="lbl">Envío</td><td class="right val">${fmtL(envio)}</td></tr>` : ''}
-  ${v.descuento > 0 ? `<tr><td class="lbl">Descuento</td><td class="right val">- ${fmtL(v.descuento)}</td></tr>` : ''}
-  <tr><td class="lbl">Total Items</td><td class="right val">${totalItems}</td></tr>
+  <tr><td class="small">Subtotal productos</td><td class="right small">${fmtL(subtotal)}</td></tr>
+  <tr><td class="small">Envío</td><td class="right small">${fmtL(envio)}</td></tr>` : ''}
+  ${v.descuento > 0 ? `<tr><td class="small">Descuento</td><td class="right small" style="color:#c00">- ${fmtL(v.descuento)}</td></tr>` : ''}
 </table>
 <hr class="divider-solid" style="margin:4px 0">
 <table>
@@ -8556,55 +8239,29 @@ function imprimirReciboTermico(id) {
 ${esParcial ? `
 <hr class="divider" style="margin:5px 0">
 <table>
-  <tr class="total-row"><td>Total Abonado</td><td class="right" style="color:#000">${fmtL(totalAbonado)}</td></tr>
-  ${saldo > 0 ? `<tr class="saldo-row"><td>&#9888; SALDO PENDIENTE</td><td class="right">${fmtL(saldo)}</td></tr>` : ''}
+  <tr class="total-row"><td>Total Abonado</td><td class="right" style="color:green">${fmtL(totalAbonado)}</td></tr>
+  ${saldo > 0 ? `<tr class="saldo-row"><td>⚠ SALDO PENDIENTE</td><td class="right">${fmtL(saldo)}</td></tr>` : ''}
 </table>` : ''}
 
 ${v.metodoPagoLabel||v.metodoPago ? `
 <hr class="divider" style="margin:5px 0">
-<div class="bold" style="font-size:12px">Pago: <strong>${v.metodoPagoLabel||v.metodoPago}</strong></div>` : ''}
+<div class="center small">Pago: <strong>${v.metodoPagoLabel||v.metodoPago}</strong></div>` : ''}
 
-${v.promesaPago && esParcial ? `<div class="bold" style="font-size:12px">Promesa de pago: <strong>${fmtD(v.promesaPago)}</strong></div>` : ''}
+${v.promesaPago && esParcial ? `<div class="center small">Promesa de pago: <strong>${fmtD(v.promesaPago)}</strong></div>` : ''}
 
 <hr class="divider" style="margin:8px 0">
-<div class="center bold" style="font-size:12px">¡Gracias por su compra!</div>
-<div class="center bold" style="margin-top:2px;font-size:11px">${fmtNow()}</div>
-
-<!-- Código de barras -->
-<hr class="divider" style="margin:8px 0">
-<div style="text-align:center;margin:4px 0">
-  <svg id="barcode"></svg>
-</div>
-<div class="center" style="font-size:10px;font-weight:700;margin-top:1px">${refId}</div>
-<div style="margin-top:28px;padding:0 2mm">
-  <hr style="border:none;border-top:1px solid #000;margin:0">
-  <div style="text-align:center;font-size:11px;font-weight:700;margin-top:3px">Firma del Cliente</div>
-</div>
+<div class="center small">¡Gracias por su compra!</div>
+<div class="center small" style="margin-top:2px;color:#555">${fmtNow()}</div>
 <br>
 
-<script>
-  if (typeof JsBarcode !== 'undefined') {
-    try {
-      JsBarcode('#barcode', '${refId}', {
-        format: 'CODE128',
-        width: 1.5,
-        height: 45,
-        displayValue: false,
-        margin: 2,
-        lineColor: '#000',
-        background: '#fff'
-      });
-    } catch(e) {}
-  }
-<\/script>
 </body>
 </html>`;
 
-  const win = window.open('', '_blank', 'width=320,height=650');
+  const win = window.open('', '_blank', 'width=320,height=600');
   win.document.write(html);
   win.document.close();
-  // Auto-print después de que cargue el script del barcode
-  win.onload = () => { setTimeout(() => { win.focus(); win.print(); }, 500); };
+  // Auto-print después de cargar
+  win.onload = () => { win.focus(); win.print(); };
 }
 
 function compartirWhatsApp(id) {
@@ -9127,9 +8784,6 @@ function editarVenta(id, _modoAbono) {
     const bannerInfo = document.getElementById('vBannerAbonoInfo');
     if (banner) banner.style.display = '';
     if (bannerInfo) bannerInfo.textContent = `Cliente: ${v.clienteNombre}  ·  Ref: ${(v.id||'').slice(-10)}  ·  Total: ${fmtLPS(v.total||0)}`;
-    // En modo abono siempre mostrar la sección de abonos
-    const _aboWrap = document.getElementById('vAbonoWrap');
-    if (_aboWrap) _aboWrap.style.display = '';
     // Cambiar botón guardar a modo abono
     if (btn) { btn.textContent = '💾 Guardar Abono'; btn.style.background = 'var(--gold)'; btn.style.color = '#000'; }
     // Cambiar layout a 1 columna (la sección de pago ocupa todo el ancho)
@@ -9181,13 +8835,15 @@ function cancelarEdicionVenta() {
   vShowSub('lista');
 }
 
-async function eliminarVenta(id) {
+function eliminarVenta(id) {
   const v = ventas.find(x => x.id === id);
   if (!v) return;
   if (!confirm(`¿Eliminar la venta de "${v.clienteNombre}" por ${fmtLPS(v.total)}? Esta acción no se puede deshacer.`)) return;
-  const { error } = await sb.rpc('delete_venta', { p_user: currentUser?.user || '', p_venta_id: id });
-  if (error) { showToast('❌ Error al eliminar: ' + error.message, 'error'); return; }
   ventas = ventas.filter(x => x.id !== id);
+  // Eliminar en Supabase
+  sbExec(() => sb.from('ventas').delete().eq('id', id)).then(({error}) => {
+    if(error) console.warn('Error eliminando venta:', error.message);
+  });
   addHistorial(`Venta eliminada: ${v.clienteNombre} · ${fmtLPS(v.total)}`, 'Ventas');
   showToast('🗑️ Venta eliminada', 'success');
   renderHistorialVentas();
@@ -9910,19 +9566,19 @@ function pdfReporteEquipo() {
 
 let combos = []; // se cargan desde Supabase
 let _combosCargados = false;
-async function cargarCombos(forzar = false) {
-  if (_combosCargados && !forzar) return;
+async function cargarCombos() {
+  if (_combosCargados) return;
   try {
-    const u = currentUser?.user || '';
-    const { data, error } = await sb.rpc('get_combos', { p_user: u });
-    if (!error && Array.isArray(data)) {
+    const { data, error } = await sbExec(() => sb.from('combos')
+      .select('*, combo_items(*, productos(id,producto,cantidad))')
+      .eq('activo', true).order('ultima_modif', { ascending: false }));
+    if (!error && data) {
       combos = data.map(c => ({
         id:             c.id,
         nombre:         c.nombre         || '',
         codigo:         c.codigo         || '',
         categoria:      c.categoria      || '',
         nota:           c.nota           || '',
-        imagenUrl:      c.imagen_url     || '',
         precioFinal:    c.precio_final   || 0,
         totalIndividual:c.total_individual|| 0,
         creadoPor:      c.creado_por     || '',
@@ -9933,10 +9589,8 @@ async function cargarCombos(forzar = false) {
           precioSnapshot: it.precio_snapshot || 0
         }))
       }));
-      _combosCargados = true;
-    } else if (error) {
-      console.warn('Error cargando combos:', error.message);
     }
+    _combosCargados = true;
   } catch(e) { console.warn('Error cargando combos:', e); }
 }
 let editingComboId = null;
@@ -9956,8 +9610,6 @@ function nuevoCombo() {
   document.getElementById('cCategoria').value = '';
   document.getElementById('cNota').value = '';
   document.getElementById('cPrecioFinal').value = '';
-  document.getElementById('cImagenUrl').value = '';
-  document.getElementById('cImagenPreview').style.display = 'none';
   document.getElementById('comboItemBuscar').value = '';
   document.getElementById('comboItemResultados').style.display = 'none';
   renderComboItemsActuales();
@@ -9973,18 +9625,9 @@ function cancelarCombo() {
   document.getElementById('cCategoria').value = '';
   document.getElementById('cNota').value = '';
   document.getElementById('cPrecioFinal').value = '';
-  document.getElementById('cImagenUrl').value = '';
-  document.getElementById('cImagenPreview').style.display = 'none';
   document.getElementById('comboItemBuscar').value = '';
   document.getElementById('comboItemResultados').style.display = 'none';
   renderComboItemsActuales();
-}
-
-function previsualizarImagenCombo() {
-  const url = (document.getElementById('cImagenUrl').value||'').trim();
-  const img = document.getElementById('cImagenPreview');
-  if (url) { img.src = url; img.style.display = 'block'; }
-  else { img.style.display = 'none'; }
 }
 
 // ── Buscador de productos para añadir al combo ──
@@ -10005,13 +9648,12 @@ function buscarItemsCombo() {
     const c = calcProd(p);
     const precio = fmtLPS(c.precioFinalDesc);
     const yaEsta = comboItemsActuales.find(ci => ci.productoId === p.id);
-    return `<div onclick="agregarItemCombo('${p.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;transition:background .15s" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
-      ${p.imagen ? `<img src="${p.imagen}" style="width:40px;height:40px;object-fit:contain;border-radius:6px;background:var(--bg4);flex-shrink:0" onerror="this.style.display='none'">` : '<div style="width:40px;height:40px;background:var(--bg4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📦</div>'}
-      <div style="flex:1;min-width:0">
+    return `<div onclick="agregarItemCombo('${p.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;transition:background .15s" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
+      <div>
         <div style="font-size:13px;font-weight:600;color:var(--text)">${p.producto}</div>
-        <div style="font-size:11px;color:var(--text2)">SKU: ${p.sku} · ${p.categoria||'—'} · <span style="color:var(--gold)">Desc. máx: ${fmtPct(c.descMax)}</span></div>
+        <div style="font-size:11px;color:var(--text2)">SKU: ${p.sku} · ${p.categoria||'—'}</div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:13px;color:var(--green);font-weight:700">${precio}</span>
         ${yaEsta ? '<span style="font-size:11px;color:var(--accent3);font-weight:700">✓ En combo</span>' : '<span style="font-size:11px;color:var(--accent)">+ Añadir</span>'}
       </div>
@@ -10075,10 +9717,9 @@ function renderComboItemsActuales() {
       ? `<span style="color:var(--red);font-weight:700">⚠️ Pediste ${cant}, stock: ${stockDisp}</span>`
       : `<span style="color:var(--text3)">Stock: ${stockDisp}</span>`;
     return `<div style="display:flex;align-items:center;gap:12px;background:${bgColor};border:1px solid ${borderColor};border-radius:8px;padding:10px 14px;flex-wrap:wrap;transition:all .2s">
-      ${p.imagen ? `<img src="${p.imagen}" style="width:44px;height:44px;object-fit:contain;border-radius:6px;background:var(--bg4);flex-shrink:0" onerror="this.style.display='none'">` : ''}
       <div style="flex:1;min-width:180px">
         <div style="font-size:13px;font-weight:600">${p.producto}</div>
-        <div style="font-size:11px;color:var(--text2)">SKU: ${p.sku} · Precio ind.: ${fmtLPS(c.precioFinalDesc)} · <span style="color:#f0b429">Desc. máx: ${fmtPct(c.descMax)}</span> · ${stockLabel}</div>
+        <div style="font-size:11px;color:var(--text2)">SKU: ${p.sku} · Precio ind.: ${fmtLPS(c.precioFinalDesc)} · ${stockLabel}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <button onclick="cambiarCantidadItemCombo('${p.id}',-1)" style="width:28px;height:28px;background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;font-size:16px;font-weight:700">−</button>
@@ -10093,60 +9734,28 @@ function renderComboItemsActuales() {
   actualizarResumenCombo();
 }
 
-function actualizarResumenCombo(fuente) {
+function actualizarResumenCombo() {
   const grid = document.getElementById('comboPrecioGrid');
   const ahorroEl = document.getElementById('comboAhorroInfo');
-
-  // Compute totals in sinISV and conISV from current items
-  let totalConISV = 0, totalSinISV = 0;
-  if (comboItemsActuales.length > 0) {
-    comboItemsActuales.forEach(ci => {
-      const p = productos.find(x => x.id === ci.productoId);
-      if (!p) return;
-      const cp = calcProd(p);
-      const isvRate = p.estado === 'Nuevo' ? (parametros.isvNuevo || 0.15) : 0;
-      totalConISV += cp.precioFinalDesc * (ci.cantidad || 1);
-      totalSinISV += (cp.precioFinalDesc / (1 + isvRate)) * (ci.cantidad || 1);
-    });
-  } else if (editingComboId) {
-    const c = combos.find(x => x.id === editingComboId) || {};
-    totalConISV = c.totalIndividual || 0;
-    totalSinISV = totalConISV;
-  }
-
-  // Weighted ISV rate derived from totals
-  const isvPct = totalSinISV > 0 ? (totalConISV / totalSinISV - 1) : 0;
-
-  // cPrecioFinal holds sinISV value
-  let sinISVInput = parseFloat(document.getElementById('cPrecioFinal').value) || 0;
-  let pctDesc = parseFloat(document.getElementById('cPctDescuento').value) || 0;
-
-  if (fuente === 'pct' && totalSinISV > 0) {
-    sinISVInput = +(totalSinISV * (1 - pctDesc / 100)).toFixed(2);
-    document.getElementById('cPrecioFinal').value = pctDesc > 0 ? sinISVInput : '';
-  } else if (fuente === 'precio' && totalSinISV > 0 && sinISVInput > 0) {
-    pctDesc = +((1 - sinISVInput / totalSinISV) * 100).toFixed(1);
-    document.getElementById('cPctDescuento').value = pctDesc > 0 ? pctDesc : '';
-  }
-
-  const conISVFinal = sinISVInput > 0 ? +(sinISVInput * (1 + isvPct)).toFixed(2) : 0;
-  const isvAmount = conISVFinal - sinISVInput;
-  const ahorroSinISV = totalSinISV - sinISVInput;
-  const pctAhorro = totalSinISV > 0 && sinISVInput > 0 ? (ahorroSinISV / totalSinISV * 100) : 0;
-  const isvLabel = (isvPct * 100).toFixed(0) + '%';
+  const totalIndividual = comboItemsActuales.reduce((acc, ci) => {
+    const p = productos.find(x => x.id === ci.productoId);
+    if (!p) return acc;
+    return acc + calcProd(p).precioFinalDesc * (ci.cantidad||1);
+  }, 0);
+  const precioFinal = parseFloat(document.getElementById('cPrecioFinal').value) || 0;
+  const ahorro = totalIndividual - precioFinal;
+  const pctAhorro = totalIndividual > 0 && precioFinal > 0 ? (ahorro / totalIndividual * 100) : 0;
 
   grid.innerHTML = `
-    <div class="calc-item"><div class="calc-item-label">Suma Individual sin ISV</div><div class="calc-item-value" style="color:var(--text2)">${totalSinISV > 0 ? fmtLPS(totalSinISV) : '—'}</div></div>
-    <div class="calc-item"><div class="calc-item-label">Precio Combo sin ISV</div><div class="calc-item-value" style="color:var(--green)">${sinISVInput > 0 ? fmtLPS(sinISVInput) : '—'}</div></div>
-    <div class="calc-item"><div class="calc-item-label">ISV (${isvLabel})</div><div class="calc-item-value" style="color:var(--text3)">${conISVFinal > 0 ? fmtLPS(isvAmount) : '—'}</div></div>
-    <div class="calc-item"><div class="calc-item-label">Precio Final con ISV</div><div class="calc-item-value" style="color:var(--green);font-weight:700">${conISVFinal > 0 ? fmtLPS(conISVFinal) : '—'}</div></div>
-    <div class="calc-item"><div class="calc-item-label">Ahorro Cliente</div><div class="calc-item-value" style="color:${ahorroSinISV>0?'var(--accent3)':'var(--text3)'}">${ahorroSinISV > 0 ? fmtLPS(ahorroSinISV) : '—'}</div></div>
+    <div class="calc-item"><div class="calc-item-label">Suma Individual</div><div class="calc-item-value" style="color:var(--text2)">${fmtLPS(totalIndividual)}</div></div>
+    <div class="calc-item"><div class="calc-item-label">Precio Combo</div><div class="calc-item-value" style="color:var(--green)">${precioFinal > 0 ? fmtLPS(precioFinal) : '—'}</div></div>
+    <div class="calc-item"><div class="calc-item-label">Ahorro Cliente</div><div class="calc-item-value" style="color:${ahorro>0?'var(--accent3)':'var(--text3)'}">${ahorro > 0 ? fmtLPS(ahorro) : '—'}</div></div>
     <div class="calc-item"><div class="calc-item-label">% Descuento</div><div class="calc-item-value" style="color:${pctAhorro>0?'var(--gold)':'var(--text3)'}">${pctAhorro > 0 ? pctAhorro.toFixed(1)+'%' : '—'}</div></div>
   `;
-  if (sinISVInput > 0 && ahorroSinISV > 0) {
-    ahorroEl.innerHTML = `🎉 El cliente ahorra <strong style="color:var(--accent3)">${fmtLPS(ahorroSinISV)}</strong> comprando el combo (${pctAhorro.toFixed(1)}% menos que por separado).`;
-  } else if (sinISVInput > totalSinISV && totalSinISV > 0) {
-    ahorroEl.innerHTML = `<span style="color:var(--red)">⚠️ El precio del combo es mayor que la suma individual sin ISV (${fmtLPS(totalSinISV)}). Verifica el precio.</span>`;
+  if (precioFinal > 0 && ahorro > 0) {
+    ahorroEl.innerHTML = `🎉 El cliente ahorra <strong style="color:var(--accent3)">${fmtLPS(ahorro)}</strong> comprando el combo (${pctAhorro.toFixed(1)}% menos que por separado).`;
+  } else if (precioFinal > totalIndividual && totalIndividual > 0) {
+    ahorroEl.innerHTML = `<span style="color:var(--red)">⚠️ El precio del combo es mayor que la suma individual (${fmtLPS(totalIndividual)}). Verifica el precio.</span>`;
   } else {
     ahorroEl.innerHTML = '';
   }
@@ -10157,21 +9766,13 @@ async function guardarCombo() {
   const nombre = (document.getElementById('cNombre').value||'').trim();
   if (!nombre) { showToast('⚠️ Escribe un nombre para el combo','warn'); return; }
   if (!comboItemsActuales.length) { showToast('⚠️ Añade al menos un producto al combo','warn'); return; }
-  const sinISVInput = parseFloat(document.getElementById('cPrecioFinal').value)||0;
-  if (!sinISVInput) { showToast('⚠️ Ingresa el precio de venta del combo','warn'); return; }
+  const precioFinal = parseFloat(document.getElementById('cPrecioFinal').value)||0;
+  if (!precioFinal) { showToast('⚠️ Ingresa el precio de venta del combo','warn'); return; }
 
-  let totalConISV = 0, totalSinISV = 0;
-  comboItemsActuales.forEach(ci => {
+  const totalIndividual = comboItemsActuales.reduce((acc, ci) => {
     const p = productos.find(x => x.id === ci.productoId);
-    if (!p) return;
-    const cp = calcProd(p);
-    const isvRate = p.estado === 'Nuevo' ? (parametros.isvNuevo || 0.15) : 0;
-    totalConISV += cp.precioFinalDesc * (ci.cantidad || 1);
-    totalSinISV += (cp.precioFinalDesc / (1 + isvRate)) * (ci.cantidad || 1);
-  });
-  const isvPctGuardar = totalSinISV > 0 ? (totalConISV / totalSinISV - 1) : 0;
-  const precioFinal = +(sinISVInput * (1 + isvPctGuardar)).toFixed(2);
-  const totalIndividual = totalConISV;
+    return acc + (p ? calcProd(p).precioFinalDesc * (ci.cantidad||1) : 0);
+  }, 0);
 
   const combo = {
     id: editingComboId || 'combo_' + Date.now(),
@@ -10179,7 +9780,6 @@ async function guardarCombo() {
     codigo: (document.getElementById('cCodigo').value||'').trim(),
     categoria: (document.getElementById('cCategoria').value||'').trim(),
     nota: (document.getElementById('cNota').value||'').trim(),
-    imagenUrl: (document.getElementById('cImagenUrl').value||'').trim(),
     items: [...comboItemsActuales],
     precioFinal,
     totalIndividual,
@@ -10198,9 +9798,6 @@ async function guardarCombo() {
   const comboRow = {
     id: combo.id, nombre: combo.nombre, codigo: combo.codigo||'',
     categoria: combo.categoria||'', nota: combo.nota||'',
-    imagen_url: combo.imagenUrl||'',
-    precio_final: combo.precioFinal||0,
-    total_individual: combo.totalIndividual||0,
     creado_por: combo.creadoPor, ultima_modif: combo.ultimaModif, activo: true
   };
   try {
@@ -10225,7 +9822,6 @@ async function guardarCombo() {
   addHistorial(`Combo ${editingComboId ? 'editado' : 'creado'}: ${nombre} (${comboItemsActuales.length} ítems)`, 'Combos');
   showToast(editingComboId ? '✅ Combo actualizado' : '✅ Combo creado correctamente', 'success');
   cancelarCombo();
-  _combosCargados = false;
   renderCombos();
 }
 
@@ -10240,34 +9836,8 @@ function editarCombo(id) {
   document.getElementById('cCodigo').value = combo.codigo||'';
   document.getElementById('cCategoria').value = combo.categoria||'';
   document.getElementById('cNota').value = combo.nota||'';
-  // Convert stored conISV → sinISV for the price field
-  let totalConISVEdit = 0, totalSinISVEdit = 0;
-  (combo.items||[]).forEach(ci => {
-    const p = productos.find(x => x.id === ci.productoId);
-    if (!p) return;
-    const cp = calcProd(p);
-    const isvRate = p.estado === 'Nuevo' ? (parametros.isvNuevo || 0.15) : 0;
-    totalConISVEdit += cp.precioFinalDesc * (ci.cantidad || 1);
-    totalSinISVEdit += (cp.precioFinalDesc / (1 + isvRate)) * (ci.cantidad || 1);
-  });
-  const isvPctEdit = totalSinISVEdit > 0 ? (totalConISVEdit / totalSinISVEdit - 1) : 0;
-  const sinISVEdit = combo.precioFinal > 0 ? +(combo.precioFinal / (1 + isvPctEdit)).toFixed(2) : '';
-  document.getElementById('cPrecioFinal').value = sinISVEdit || '';
-  document.getElementById('cImagenUrl').value = combo.imagenUrl||'';
-  // Pre-fill % descuento using sinISV base
-  if (sinISVEdit > 0 && totalSinISVEdit > 0) {
-    const pct = +((1 - sinISVEdit / totalSinISVEdit) * 100).toFixed(1);
-    document.getElementById('cPctDescuento').value = pct > 0 ? pct : '';
-  } else {
-    document.getElementById('cPctDescuento').value = '';
-  }
-  previsualizarImagenCombo();
+  document.getElementById('cPrecioFinal').value = combo.precioFinal||'';
   renderComboItemsActuales();
-  // Always show price section when editing a combo that already has a price
-  if (combo.precioFinal > 0) {
-    document.getElementById('comboPrecioResumen').style.display = 'block';
-    actualizarResumenCombo();
-  }
   document.getElementById('comboFormCard').scrollIntoView({behavior:'smooth'});
 }
 
@@ -10281,7 +9851,6 @@ function eliminarCombo(id) {
     .then(({error}) => { if(error) console.warn('Error eliminando combo:', error.message); });
   addHistorial(`Combo eliminado: ${combo.nombre}`, 'Combos');
   showToast('🗑️ Combo eliminado','success');
-  _combosCargados = false;
   renderCombos();
 }
 
@@ -10435,7 +10004,6 @@ async function renderCombos() {
           <button onclick="editarCombo('${combo.id}')" style="font-size:11px;font-weight:700;background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.4);border-radius:6px;padding:4px 10px;color:var(--gold);cursor:pointer;white-space:nowrap;font-family:var(--font)">✏️ Corregir</button>
         </div>` : ''}
         <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
-          ${combo.imagenUrl ? `<img src="${combo.imagenUrl}" style="width:72px;height:72px;object-fit:contain;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);flex-shrink:0" onerror="this.style.display='none'">` : ''}
           <div style="flex:1;min-width:200px">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
               <span style="font-size:15px;font-weight:700">${combo.nombre}</span>
@@ -10506,7 +10074,7 @@ function _renderCobrosInterno() {
   const estadoFil = ((document.getElementById('cobrosEstado')||{}).value||'');
 
   // Solo ventas parciales (crédito pendiente)
-  const esParcialFn = v => (v.metodoPago === 'parcial' || (v.metodoPagoLabel||'').toLowerCase().includes('parcial')) && (v.saldoPendiente || 0) > 0;
+  const esParcialFn = v => v.metodoPago === 'parcial' || (v.metodoPagoLabel||'').toLowerCase().includes('parcial');
 
   const enriquecer = v => {
     const promesaStr  = v.promesaPago || '';
@@ -10866,39 +10434,28 @@ function poblarSelectorVendedorCot() {
 }
 
 function calcResumenCotizacion() {
-  let subtotalSinISV=0, totalISVOrig=0;
+  let subtotalSinISV=0, totalISV=0;
   cItemsActuales.forEach(item => {
     const cant   = item.cantidad||1;
     const precio = item.precioFinal||0;
     const isvPct = item.llevaISV ? item.isvPct : 0;
     const sinISV = item.llevaISV ? precio/(1+isvPct) : precio;
     subtotalSinISV += sinISV*cant;
-    totalISVOrig   += (precio-sinISV)*cant;
+    totalISV       += (precio-sinISV)*cant;
   });
-  // Total con ISV antes del descuento global
-  const subtotalConISV = subtotalSinISV + totalISVOrig;
 
-  // Descuento global:
-  //   % → aplica sobre totalConISV (equivalente a aplicar sobre sinISV, matemáticamente idéntico)
-  //   L fijos → aplica sobre base SIN ISV (el descuento NO incluye ISV)
+  // Descuento se aplica sobre subtotalSinISV; ISV se recalcula proporcional
   const descActivo = document.getElementById('cDescActivo')?.checked;
   const descTipo   = document.getElementById('cDescTipoBtn')?.textContent.trim() || '%';
   const descValor  = parseFloat(document.getElementById('cDescValor')?.value) || 0;
   let descMonto = 0;
-  let ratio = 1;
-  if (descActivo && descValor > 0) {
-    if (descTipo === '%') {
-      descMonto = +(Math.min(subtotalConISV * (descValor / 100), subtotalConISV)).toFixed(2);
-      ratio = subtotalConISV > 0 ? (subtotalConISV - descMonto) / subtotalConISV : 1;
-    } else {
-      // L fijos: descuento sobre base sin ISV → ratio afecta sinISV e ISV proporcionalmente
-      descMonto = +Math.min(descValor, subtotalSinISV).toFixed(2);
-      ratio = subtotalSinISV > 0 ? (subtotalSinISV - descMonto) / subtotalSinISV : 1;
-    }
+  if (descActivo && descValor > 0 && subtotalSinISV > 0) {
+    descMonto = descTipo === '%' ? subtotalSinISV * (descValor / 100) : descValor;
+    descMonto = Math.min(descMonto, subtotalSinISV);
   }
-  const subtotalSinISVFinal = +(subtotalSinISV * ratio).toFixed(2);
-  const isvAjustado         = +(totalISVOrig * ratio).toFixed(2);
-  const total               = +(subtotalSinISVFinal + isvAjustado).toFixed(2);
+  const subtotalDesc = subtotalSinISV - descMonto;
+  const isvAjustado  = subtotalSinISV > 0 ? totalISV * (subtotalDesc / subtotalSinISV) : 0;
+  const total = subtotalDesc + isvAjustado;
 
   // Ahorro total = descuentos por item + descuento general
   const cAhorroItems = cItemsActuales.reduce((s, it) => {
@@ -10919,9 +10476,11 @@ function calcResumenCotizacion() {
   // Etiqueta descuento con %
   const cDescLabelEl = el('cResDescLabel');
   if (cDescLabelEl) cDescLabelEl.textContent = descTipo === '%' && descValor > 0 ? `− Descuento (${descValor}%)` : '− Descuento';
-  // Fila "Subtotal con descuento" — ya no se necesita (el TOTAL muestra el resultado directo)
+  // Subtotal con descuento
   const cSubDescRow = el('cResSubtotalDescRow');
-  if (cSubDescRow) cSubDescRow.style.display = 'none';
+  if (cSubDescRow) cSubDescRow.style.display = descMonto > 0 ? 'flex' : 'none';
+  const cSubDescEl = el('cResSubtotalDesc');
+  if (cSubDescEl) cSubDescEl.textContent = fmtLPS(subtotalDesc);
   // ISV con % — mostrar tasa real si todos usan la misma, o "mixto"
   const cIsvPctEl = el('cResISVPct');
   if (cIsvPctEl) {
@@ -10929,11 +10488,11 @@ function calcResumenCotizacion() {
       cIsvPctEl.textContent = '0%';
     } else {
       const cTasas = [...new Set(cItemsActuales.filter(it => it.llevaISV && it.isvPct > 0).map(it => it.isvPct))];
-      cIsvPctEl.textContent = cTasas.length === 1 ? (cTasas[0]*100).toFixed(0)+'%' : cTasas.length > 1 ? 'mixto' : '15%';
+      cIsvPctEl.textContent = cTasas.length === 1 ? cTasas[0] + '%' : cTasas.length > 1 ? 'mixto' : '15%';
     }
   }
 
-  if(el('cResSubtotal')) el('cResSubtotal').textContent = fmtLPS(subtotalSinISVFinal); // base sin ISV (post-descuento)
+  if(el('cResSubtotal')) el('cResSubtotal').textContent = fmtLPS(subtotalSinISV);
   if(el('cResISV'))      el('cResISV').textContent      = fmtLPS(isvAjustado);
   if(el('cResTotal'))    el('cResTotal').textContent    = fmtLPS(total);
 
@@ -10951,7 +10510,7 @@ function calcResumenCotizacion() {
       vigEl.innerHTML = `⏳ Válida hasta: <strong>${fmtFecha(venc)}</strong>`;
     }
   }
-  return { subtotalSinISV: subtotalSinISVFinal, totalISV: isvAjustado, descuento: descMonto, descuentoTipo: descTipo, descuentoValor: descValor, total };
+  return { subtotalSinISV, totalISV: isvAjustado, descuento: descMonto, descuentoTipo: descTipo, descuentoValor: descValor, total };
 }
 
 function renderItemsCotizacion() {
@@ -11077,10 +10636,10 @@ function cAgregarManual() {
   const empty = document.getElementById('cItemsEmpty');
   if (empty) empty.style.display = 'none';
   renderItemsCotizacion();
-  // Enfocar el campo descripción del nuevo ítem (está al tope, index 0)
+  // Enfocar el campo descripción del nuevo item
   setTimeout(() => {
     const inputs = document.querySelectorAll('#cItemsLista input[type="text"]');
-    if (inputs.length) { inputs[0].focus(); inputs[0].scrollIntoView({behavior:'smooth', block:'nearest'}); }
+    if (inputs.length) inputs[inputs.length-1].focus();
   }, 50);
 }
 
@@ -11189,8 +10748,6 @@ function cAgregarProducto(prodId) {
   document.getElementById('cProdBuscar').value='';
   document.getElementById('cProdResultados').style.display='none';
   renderItemsCotizacion();
-  // Devolver foco al buscador (nuevo ítem queda arriba, no hace falta scroll abajo)
-  setTimeout(() => { const b = document.getElementById('cProdBuscar'); if(b) b.focus(); }, 50);
 }
 
 function buscarClienteCot(q) {
@@ -11329,8 +10886,7 @@ function editarCotizacion(id) {
   const _cdv=document.getElementById('cDescValor');   if(_cdv) _cdv.value=c.descuentoValor!=null?c.descuentoValor:(c.descuento||0);
   const _cdb=document.getElementById('cDescTipoBtn'); if(_cdb){const t=c.descuentoTipo||'%';_cdb.textContent=t;_cdb.style.color=t==='L'?'var(--accent3)':'var(--accent4)';}
   const _cdr=document.getElementById('cResDescRow');  if(_cdr) _cdr.style.display=c.descuento>0?'flex':'none';
-  // Recalcular resumen con descuento restaurado (renderItemsCotizacion lo llama sin descuento aún)
-  calcResumenCotizacion();
+  const _csdr=document.getElementById('cResSubtotalDescRow'); if(_csdr) _csdr.style.display=c.descuento>0?'flex':'none';
   document.getElementById('cPanelNueva').scrollIntoView({behavior:'smooth'});
   showToast('✏️ Editando cotización '+c.numero,'success');
 }
@@ -11645,77 +11201,19 @@ function imprimirCotizacion(id) {
   const firmaUrl  = parametros.firmaUrl  || '';
   const tsEmision = `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}`;
 
-  // ── Productos con imagen + descuentos ────────────────────────────────
+  // ── Productos con imagen ──────────────────────────────────────────────
   const tieneImagenes = (c.items||[]).some(it => it.imagen);
   const _bcUrl = (sku) => { try { const cv=document.createElement('canvas'); JsBarcode(cv,sku,{format:'CODE128',width:1.2,height:32,displayValue:false,margin:2}); return cv.toDataURL('image/png'); } catch(e){ return ''; } };
   const _bcMap = {}; (c.items||[]).forEach(it=>{ if(it.sku && !_bcMap[it.sku]) _bcMap[it.sku]=_bcUrl(it.sku); });
-
-  // Precio lista por ítem: usar precioLista del item si es mayor al final,
-  // o bien calcular desde catálogo si hay productoId
-  const _getListaPrice = (it) => {
-    if (it.precioLista && it.precioLista > it.precioFinal + 0.01) return it.precioLista;
-    if (it.productoId) {
-      const prod = productos.find(p => p.id === it.productoId);
-      if (prod) return +calcProd(prod).precioConISV.toFixed(2);
-    }
-    return 0;
-  };
-  // ── Cálculos para resumen fiscal ─────────────────────────────────────
-  // Subtotal a precio lista (con ISV, sin descuento alguno)
-  const subtotalLista = (c.items||[]).reduce((s,it)=>s+(_getListaPrice(it)||it.precioFinal)*(it.cantidad||1),0);
-  // Subtotal a precio final de cada ítem × qty (con ISV, antes del descuento global)
-  const subtotalItemsFinal = (c.items||[]).reduce((s,it)=>s+(it.precioFinal||0)*(it.cantidad||1),0);
-  // Ahorro por descuentos en ítems individuales
-  let ahorroItems = 0;
-  (c.items||[]).forEach(it => {
-    const lista = _getListaPrice(it);
-    if (lista > it.precioFinal + 0.01) ahorroItems += (lista - it.precioFinal) * (it.cantidad||1);
-  });
-  const countDescItems = (c.items||[]).filter(it=>_getListaPrice(it)>it.precioFinal+0.01).length;
-  // sinISV antes del descuento global (calculado desde ítems directamente)
-  const subtotalSinISVOrig = +((c.items||[]).reduce((s,it)=>{
-    const isvPct = it.isvPct||0.15;
-    const sinISV = (it.llevaISV&&isvPct>0) ? (it.precioFinal||0)/(1+isvPct) : (it.precioFinal||0);
-    return s + sinISV*(it.cantidad||1);
-  },0)).toFixed(2);
-  // Subtotal sin ISV real = total − ISV (valor post-descuento, para que sinISV + ISV = TOTAL ✓)
-  const subtotalSinISVFinal = +(c.total - c.totalISV).toFixed(2);
-  // Reducción efectiva de sinISV = diferencia real entre sinISVOrig y sinISVFinal.
-  // Garantiza que sinISVOrig − efectiva = sinISVFinal ✓ sin importar cómo se guardó el descuento.
-  const ahorroGlobal = c.descuento > 0 ? +Math.max(0, subtotalSinISVOrig - subtotalSinISVFinal).toFixed(2) : 0;
-  // Ahorro total = ítem discounts + global sinISV reduction (consistente con el desglose del texto)
-  const ahorroTotal  = +(ahorroItems + ahorroGlobal).toFixed(2);
-  // Exento e gravado proporcionales al ratio de descuento global
-  const _ratioDesc = subtotalItemsFinal > 0 ? c.total / subtotalItemsFinal : 1;
-  const importeExento  = +(((c.items||[]).reduce((s,it)=>(!it.llevaISV||!(it.isvPct>0))?s+(it.precioFinal||0)*(it.cantidad||1):s, 0)) * _ratioDesc).toFixed(2);
-  const importeGravado = +(Math.max(0, subtotalSinISVFinal - importeExento)).toFixed(2);
-
-  const itemsHtml=(c.items||[]).map((it,i)=>{
-    const lista    = _getListaPrice(it);
-    const isvPct   = it.isvPct || 0.15;
-    const isvLabel = it.llevaISV && it.isvPct > 0 ? 'SI' : 'NO';
-    const sinISVFactor = (it.llevaISV && isvPct > 0) ? 1/(1+isvPct) : 1;
-    const listaPriceSinISV  = (lista || it.precioFinal || 0) * sinISVFactor;
-    const precioFinalSinISV = (it.precioFinal || 0) * sinISVFactor;
-    const tieneDto = lista > it.precioFinal + 0.01;
-    const descuentoSinISV = tieneDto ? +(listaPriceSinISV - precioFinalSinISV).toFixed(4) : 0;
-    const precioUnitShow  = tieneDto ? listaPriceSinISV : precioFinalSinISV;
-    const totalSinISV     = +(precioFinalSinISV * (it.cantidad||1)).toFixed(2);
-    return `<tr style="${i%2===1?'background:#f8f8f8':''}">
+  const itemsHtml=(c.items||[]).map((it,i)=>`<tr style="${i%2===1?'background:#f8f8f8':''}">
     <td style="text-align:center;font-weight:700;color:#666">${i+1}</td>
     ${tieneImagenes?`<td style="text-align:center;padding:4px 6px">${it.imagen?`<img src="${it.imagen}" style="width:80px;height:80px;object-fit:contain;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;padding:3px" onerror="this.style.display='none'">`:'<span style="color:#ccc;font-size:24px">📦</span>'}</td>`:''}
     <td style="font-family:monospace;font-size:10px;color:#555">${it.sku||'—'}${(_bcMap[it.sku]?'<br><img src="'+_bcMap[it.sku]+'" style="max-width:100%;display:block">':'')}</td>
-    <td>
-      <strong style="font-size:12px">${it.descripcion||it.nombre||'—'}</strong>
-      ${it.notaItem?`<br><span style="font-size:10px;color:#555;font-style:italic">📝 ${it.notaItem}</span>`:''}
-    </td>
-    <td style="text-align:center;font-size:11px;color:${it.llevaISV?'#e65100':'#888'};font-weight:700">${isvLabel}</td>
+    <td><strong style="font-size:12px">${it.descripcion||it.nombre||'—'}</strong>${it.notaItem?`<br><span style="font-size:10px;color:#555;font-style:italic">${it.notaItem}</span>`:''}</td>
     <td style="text-align:center">${it.cantidad||1}</td>
-    <td style="text-align:right">${fmtL(precioUnitShow)}</td>
-    <td style="text-align:right;color:${descuentoSinISV>0?'#c0392b':'#aaa'}">${descuentoSinISV>0?'− '+fmtL(descuentoSinISV):'—'}</td>
-    <td style="text-align:right;font-weight:700;color:#1a237e">${fmtL(totalSinISV)}</td>
-  </tr>`;
-  }).join('');
+    <td style="text-align:right">${fmtL(it.precioFinal||0)}</td>
+    <td style="text-align:right;font-weight:700;color:#1a237e">${fmtL((it.precioFinal||0)*(it.cantidad||1))}</td>
+  </tr>`).join('');
 
   const fv=c.fechaVencimiento?fmtHN(new Date(c.fechaVencimiento+'T12:00:00')):'15 días desde emisión';
 
@@ -11808,38 +11306,19 @@ td{padding:5px 8px;font-size:11.5px;border-bottom:1px solid #e8e8e8;vertical-ali
     ${tieneImagenes?'<th style="width:64px;text-align:center">Img.</th>':''}
     <th style="width:100px">SKU</th>
     <th>Descripción</th>
-    <th style="width:38px;text-align:center">ISV</th>
     <th style="width:46px;text-align:center">Cant.</th>
-    <th style="width:95px;text-align:right">P. Unitario sin ISV</th>
-    <th style="width:100px;text-align:right">Desc. y Rebajas</th>
-    <th style="width:100px;text-align:right">Total</th>
+    <th style="width:100px;text-align:right">P. Unitario</th>
+    <th style="width:110px;text-align:right">Total</th>
   </tr></thead>
   <tbody>${itemsHtml}</tbody>
 </table>
 <div class="totals">
   <table>
-    <!-- Subtotal sin ISV = suma de columna Total (ítems a precio final sin ISV) -->
-    <tr><td style="color:#555">Subtotal sin ISV</td><td style="text-align:right">${fmtL(subtotalSinISVOrig)}</td></tr>
-    <!-- Descuento global — solo si aplica -->
-    ${c.descuento>0?`<tr><td style="color:#2e7d32">− Descuento global${c.descuentoTipo==='%'&&c.descuentoValor>0?' ('+c.descuentoValor+'%)':c.descuentoTipo==='L'?' (L fijos)':''}</td><td style="text-align:right;color:#2e7d32;font-weight:700">− ${fmtL(ahorroGlobal)}</td></tr>`:''}
-    <!-- Subtotal neto antes ISV (post-descuento: c.total − c.totalISV, garantiza sinISV+ISV=TOTAL) -->
-    <tr><td style="color:#555">Subtotal neto antes ISV</td><td style="text-align:right">${fmtL(subtotalSinISVFinal)}</td></tr>
-    <!-- Importe Gravado 15% -->
-    ${importeGravado>0?`<tr><td style="color:#555;font-size:11px;padding-left:14px">↳ Importe Gravado 15%</td><td style="text-align:right;font-size:11px">${fmtL(importeGravado)}</td></tr>`:''}
-    <!-- Importe Exento -->
-    ${importeExento>0.01?`<tr><td style="color:#555;font-size:11px;padding-left:14px">↳ Importe Exento</td><td style="text-align:right;font-size:11px">${fmtL(importeExento)}</td></tr>`:''}
-    <!-- ISV -->
+    <tr><td style="color:#555">Subtotal (sin ISV)</td><td style="text-align:right">${fmtL(c.subtotalSinISV)}</td></tr>
     <tr><td style="color:#555">ISV (15%)</td><td style="text-align:right">${fmtL(c.totalISV)}</td></tr>
-    <!-- TOTAL -->
     <tr class="total-final"><td><strong>TOTAL</strong></td><td style="text-align:right;color:#1a237e"><strong>${fmtL(c.total)}</strong></td></tr>
   </table>
 </div>
-${ahorroTotal>0.01?`<div style="display:flex;justify-content:flex-end;margin-top:6px">
-  <div style="font-size:10px;color:#777;border-top:1px dashed #c8e6c9;padding-top:4px">
-    Ahorro total del cliente:&nbsp;<span style="font-weight:700;color:#4caf50">${fmtL(ahorroTotal)}</span>
-    ${ahorroItems>0&&ahorroGlobal>0?`&nbsp;<span style="color:#aaa">(productos ${fmtL(ahorroItems)} + global ${fmtL(ahorroGlobal)})</span>`:''}
-  </div>
-</div>`:''}
 <div class="validity">⏳ <strong>Vigencia:</strong> Esta cotización es válida hasta el <strong>${fv}</strong>. Precios sujetos a disponibilidad de inventario.</div>
 ${c.observaciones?`<div class="obs">📝 <strong>Condiciones y Observaciones:</strong><br>${c.observaciones}</div>`:''}
 <div class="footer">
@@ -11903,7 +11382,7 @@ function imprimirReporteCobros(clienteForzado) {
     : ((document.getElementById('cobrosBuscar')||{}).value||'').toLowerCase().trim();
   const estadoFil = clienteForzado ? '' : ((document.getElementById('cobrosEstado')||{}).value||'');
 
-  const esParcialFn = v => (v.metodoPago === 'parcial' || (v.metodoPagoLabel||'').toLowerCase().includes('parcial')) && (v.saldoPendiente || 0) > 0;
+  const esParcialFn = v => v.metodoPago === 'parcial' || (v.metodoPagoLabel||'').toLowerCase().includes('parcial');
   const enriquecer  = v => {
     const promesaStr  = v.promesaPago || '';
     const promesaDate = promesaStr
@@ -11969,130 +11448,119 @@ function imprimirReporteCobros(clienteForzado) {
 
   const fmtL = n => 'L ' + (n||0).toLocaleString('es-HN',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-  // ── Construir filas por cliente ────────────────────────────────────────
-  const estadoLabel = { vencido:'Vencida', hoy:'Vence Hoy', sin_fecha:'Sin Fecha', proximo:'Próxima', vigente:'Vigente' };
+  // ── Construir tarjetas por cliente ────────────────────────────────────
+  const estadoBadge = { vencido:'background:#fde8e8;color:#c0392b;border:1px solid #e57373', hoy:'background:#fff3e0;color:#e65100;border:1px solid #ffb74d', sin_fecha:'background:#f5f5f5;color:#777;border:1px solid #ccc', proximo:'background:#fff8e1;color:#f57c00;border:1px solid #ffd54f', vigente:'background:#e8f5e9;color:#2e7d32;border:1px solid #81c784' };
+  const estadoLabel = { vencido:'VENCIDA', hoy:'VENCE HOY', sin_fecha:'SIN FECHA', proximo:'PRÓXIMA', vigente:'VIGENTE' };
 
   const seccionesHtml = Object.values(grupos).map(g => {
-    const subtotalSaldo = g.items.reduce((s,v)=>s+(v.saldoPendiente||0),0);
-    const subtotalTotal = g.items.reduce((s,v)=>s+(v.total||0),0);
-    const subtotalAbonado = g.items.reduce((s,v)=>s+((v.abonos||[]).reduce((a,b)=>a+(b.monto||0),0)),0);
+    const subtotalSaldo   = g.items.reduce((s,v) => s + (v.saldoPendiente||0), 0);
+    const subtotalTotal   = g.items.reduce((s,v) => s + (v.total||0), 0);
+    const subtotalAbonado = g.items.reduce((s,v) => s + ((v.abonos||[]).reduce((a,b) => a+(b.monto||0), 0)), 0);
 
-    const filas = g.items.map(v => {
-      const vencimStr  = v.promesaDate ? fmtHN(v.promesaDate) : '—';
-      const esvenc     = v.estado === 'vencido' || v.estado === 'hoy';
-      const items      = (v.items||[]).map(it => it.descripcion||it.nombre||'').filter(Boolean);
-      const descrip    = items.length ? items.slice(0,3).join(', ') + (items.length>3?` +${items.length-3} más`:'') : '—';
-      const abonos     = v.abonos || [];
-      const totalAbon  = abonos.reduce((s,a)=>s+(a.monto||0),0);
-      const saldo      = v.saldoPendiente || 0;
+    const tarjetas = g.items.map(v => {
+      const esvenc    = v.estado === 'vencido' || v.estado === 'hoy';
+      const abonos    = v.abonos || [];
+      const totalAbon = abonos.reduce((s,a) => s+(a.monto||0), 0);
+      const saldo     = v.saldoPendiente || 0;
+      const badge     = estadoBadge[v.estado] || estadoBadge.sin_fecha;
+      const label     = estadoLabel[v.estado]  || '—';
+      const vencimStr = v.promesaDate ? fmtHN(v.promesaDate) : '—';
 
-      // Fila principal de la venta
-      const filaVenta = `<tr>
-        <td>FAC</td>
-        <td style="font-family:monospace;font-size:10.5px">${(v.id||'').slice(-12)}</td>
-        <td>${fmtHN(new Date(v.fecha+'T12:00:00'))}</td>
-        <td style="color:${esvenc?'#c0392b':'#555'}">${vencimStr}</td>
-        <td style="color:${esvenc?'#c0392b':'#27ae60'};font-weight:600">${estadoLabel[v.estado]||'—'}</td>
-        <td style="font-size:11px;color:#555">${descrip}</td>
-        <td style="text-align:right;font-weight:700">${fmtL(v.total||0)}</td>
-        <td style="text-align:right;color:#27ae60;font-weight:600">${fmtL(totalAbon)}</td>
-        <td style="text-align:right;font-weight:700;color:${esvenc?'#c0392b':'#333'}">${fmtL(saldo)}</td>
-      </tr>`;
+      const itemsHtml = (v.items||[]).map(it => {
+        const nom  = it.descripcion || it.nombre || '—';
+        const qty  = it.cantidad || 1;
+        const pu   = it.precioFinal || 0;
+        const sub  = qty * pu;
+        return `<tr>
+          <td style="padding:4px 8px;font-family:monospace;font-size:10px;color:#888;width:100px">${it.sku||'—'}</td>
+          <td style="padding:4px 8px;font-size:11px;color:#333">${nom}</td>
+          <td style="padding:4px 8px;text-align:center;font-size:11px;width:45px">${qty}</td>
+          <td style="padding:4px 8px;text-align:right;font-size:11px;width:110px">${fmtL(pu)}</td>
+          <td style="padding:4px 8px;text-align:right;font-weight:600;font-size:11px;width:110px;color:#1a237e">${fmtL(sub)}</td>
+        </tr>`;
+      }).join('');
 
-      // Sub-tabla de detalle de productos
-      const filasDetalle = (v.items && v.items.length > 0)
-        ? `<tr style="background:#f8f8ff">
-            <td colspan="9" style="padding:4px 8px 8px 32px">
-              <table style="width:100%;border-collapse:collapse;font-size:10.5px">
-                <thead>
-                  <tr style="background:#e8eaf6">
-                    <th style="padding:3px 6px;text-align:center;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9;width:34px"></th>
-                    <th style="padding:3px 6px;text-align:left;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9;width:90px">SKU</th>
-                    <th style="padding:3px 6px;text-align:left;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9">Descripción</th>
-                    <th style="padding:3px 6px;text-align:center;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9;width:50px">Cant.</th>
-                    <th style="padding:3px 6px;text-align:right;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9;width:100px">P. Unitario</th>
-                    <th style="padding:3px 6px;text-align:right;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9;width:100px">Subtotal</th>
-                    <th style="padding:3px 6px;text-align:right;font-weight:700;color:#2e7d32;border-bottom:1px solid #c5cae9;width:90px">Ahorro</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${(() => {
-                    let totalAhorro = 0;
-                    const rows = v.items.map(it => {
-                      const _sku   = it.sku || '—';
-                      const _nom   = it.descripcion || it.nombre || '—';
-                      const _qty   = it.cantidad || 1;
-                      const _pUnit = it.precioFinal || 0;
-                      const _lista = it.precioLista && it.precioLista > _pUnit ? it.precioLista : _pUnit;
-                      const _sub   = _qty * _pUnit;
-                      const _ahorro = +( (_lista - _pUnit) * _qty ).toFixed(2);
-                      if (_ahorro > 0) totalAhorro += _ahorro;
-                      const _prod  = it.productoId ? productos.find(x => x.id === it.productoId) : null;
-                      const _img   = it.imagen || (_prod ? _prod.imagen : '') || '';
-                      const fotoCel = _img
-                        ? '<td style="padding:2px 4px;text-align:center;vertical-align:middle"><img src="'+_img+'" style="width:28px;height:28px;object-fit:contain;border-radius:3px;background:#f5f5f5" onerror="this.style.display=\'none\'"></td>'
-                        : '<td style="padding:2px 4px;text-align:center;vertical-align:middle;color:#ccc;font-size:14px">📦</td>';
-                      const ahorroCel = _ahorro > 0
-                        ? '<td style="padding:3px 6px;text-align:right;color:#2e7d32;font-weight:600">'+fmtL(_ahorro)+'</td>'
-                        : '<td style="padding:3px 6px;text-align:right;color:#bbb">—</td>';
-                      return '<tr style="border-bottom:1px solid #e0e0f0">'
-                        + fotoCel
-                        + '<td style="padding:3px 6px;font-family:monospace;font-size:10px;color:#666">'+_sku+'</td>'
-                        + '<td style="padding:3px 6px;color:#333">'+_nom+'</td>'
-                        + '<td style="padding:3px 6px;text-align:center;color:#333">'+_qty+'</td>'
-                        + '<td style="padding:3px 6px;text-align:right;color:#333">'+fmtL(_pUnit)+'</td>'
-                        + '<td style="padding:3px 6px;text-align:right;font-weight:600;color:#1a237e">'+fmtL(_sub)+'</td>'
-                        + ahorroCel
-                        + '</tr>';
-                    }).join('');
-                    const totalRow = totalAhorro > 0
-                      ? '<tr style="background:#f1f8f1;border-top:1px solid #a5d6a7">'
-                        + '<td colspan="5" style="padding:4px 6px;text-align:right;font-weight:700;color:#2e7d32;font-size:10.5px">🎉 Ahorro total en esta factura:</td>'
-                        + '<td style="padding:4px 6px;text-align:right"></td>'
-                        + '<td style="padding:4px 6px;text-align:right;font-weight:800;color:#2e7d32;font-size:11px">'+fmtL(totalAhorro)+'</td>'
-                        + '</tr>'
-                      : '';
-                    return rows + totalRow;
-                  })()}
-                </tbody>
-              </table>
-            </td>
-          </tr>`
-        : '';
+      const abonosHtml = abonos.length
+        ? abonos.map(a => `<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px;color:#2e7d32">
+            <span>✓ ${a.fecha ? fmtHN(new Date(a.fecha+'T12:00:00')) : '—'} &nbsp;·&nbsp; <em style="color:#555">${a.nota||'Sin nota'}</em></span>
+            <span style="font-weight:700">${fmtL(a.monto||0)}</span>
+          </div>`).join('')
+        : `<div style="font-size:11px;color:#aaa;font-style:italic">Sin abonos registrados</div>`;
 
-      // Sub-filas de abonos (si existen)
-      const filasAbonos = abonos.length
-        ? abonos.map((a,i) => `<tr style="background:#f9fff9">
-            <td colspan="2" style="padding:3px 8px 3px 24px;font-size:10.5px;color:#888">
-              ${i===0 ? '↳ <em>Abonos realizados:</em>' : ''}
-            </td>
-            <td style="font-size:10.5px;color:#555;padding:3px 8px">
-              ${a.fecha ? fmtHN(new Date(a.fecha+'T12:00:00')) : '—'}
-            </td>
-            <td colspan="4" style="font-size:10.5px;color:#555;padding:3px 8px">
-              ${a.nota ? `<em>${a.nota}</em>` : '<em style="color:#aaa">Sin nota</em>'}
-            </td>
-            <td style="text-align:right;font-size:10.5px;color:#27ae60;font-weight:600;padding:3px 8px">
-              ${fmtL(a.monto||0)}
-            </td>
-            <td></td>
-          </tr>`).join('')
-        : `<tr style="background:#fffaf9"><td colspan="9" style="padding:3px 8px 3px 24px;font-size:10.5px;color:#bbb"><em>↳ Sin abonos registrados</em></td></tr>`;
+      return `
+      <div style="border:1px solid ${esvenc?'#e57373':'#ddd'};border-left:4px solid ${esvenc?'#c0392b':'#9fa8da'};border-radius:6px;margin-bottom:12px;overflow:hidden;page-break-inside:avoid">
+        <!-- Encabezado de la factura -->
+        <div style="background:${esvenc?'#fde8e8':'#f5f7ff'};padding:8px 12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div>
+            <span style="font-family:monospace;font-weight:700;font-size:12px;color:#1a237e">FAC ${(v.id||'').slice(-12)}</span>
+            <span style="font-size:11px;color:#555;margin-left:12px">Emisión: ${fmtHN(new Date(v.fecha+'T12:00:00'))}</span>
+            <span style="font-size:11px;color:${esvenc?'#c0392b':'#555'};margin-left:12px">Vence: <strong>${vencimStr}</strong></span>
+          </div>
+          <span style="font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:20px;${badge}">${label}</span>
+        </div>
 
-      return filaVenta + filasDetalle + filasAbonos;
+        <!-- Productos -->
+        <div style="padding:0 12px">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="border-bottom:1px solid #e0e0e0">
+                <th style="padding:5px 8px;font-size:10px;color:#888;font-weight:700;text-align:left">SKU</th>
+                <th style="padding:5px 8px;font-size:10px;color:#888;font-weight:700;text-align:left">DESCRIPCIÓN</th>
+                <th style="padding:5px 8px;font-size:10px;color:#888;font-weight:700;text-align:center">CANT</th>
+                <th style="padding:5px 8px;font-size:10px;color:#888;font-weight:700;text-align:right">P. UNIT.</th>
+                <th style="padding:5px 8px;font-size:10px;color:#888;font-weight:700;text-align:right">SUBTOTAL</th>
+              </tr>
+            </thead>
+            <tbody>${itemsHtml}</tbody>
+          </table>
+        </div>
+
+        <!-- Abonos -->
+        <div style="padding:8px 12px;background:#f9fff9;border-top:1px dashed #c8e6c9">
+          <div style="font-size:10px;font-weight:700;color:#2e7d32;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Abonos realizados</div>
+          ${abonosHtml}
+        </div>
+
+        <!-- Totales de la factura -->
+        <div style="padding:8px 12px;background:${esvenc?'#fde8e8':'#f0f0f8'};border-top:1px solid ${esvenc?'#e57373':'#c5cae9'};display:flex;justify-content:flex-end;gap:32px">
+          <div style="text-align:right">
+            <div style="font-size:10px;color:#888;text-transform:uppercase">Total Venta</div>
+            <div style="font-size:13px;font-weight:700;color:#333">${fmtL(v.total||0)}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:10px;color:#888;text-transform:uppercase">Abonado</div>
+            <div style="font-size:13px;font-weight:700;color:#2e7d32">${fmtL(totalAbon)}</div>
+          </div>
+          <div style="text-align:right;min-width:120px">
+            <div style="font-size:10px;color:#888;text-transform:uppercase">Saldo Pendiente</div>
+            <div style="font-size:16px;font-weight:900;color:${esvenc?'#c0392b':'#1a237e'}">${fmtL(saldo)}</div>
+          </div>
+        </div>
+      </div>`;
     }).join('');
 
     return `
-      <tr class="cliente-header">
-        <td colspan="9"><strong>${g.nombre}</strong> &nbsp;·&nbsp; ${g.ciudad||'—'} &nbsp;·&nbsp; ${g.tel||'—'} &nbsp;·&nbsp; ${g.items.length} factura(s)</td>
-      </tr>
-      ${filas}
-      <tr class="subtotal-row">
-        <td colspan="6" style="text-align:right">Subtotal ${g.nombre}</td>
-        <td style="text-align:right">${fmtL(subtotalTotal)}</td>
-        <td style="text-align:right;color:#27ae60">${fmtL(subtotalAbonado)}</td>
-        <td style="text-align:right">${fmtL(subtotalSaldo)}</td>
-      </tr>`;
+      <!-- CLIENTE -->
+      <div style="margin-bottom:24px;page-break-inside:avoid">
+        <div style="background:#1a237e;color:#fff;padding:10px 14px;border-radius:6px 6px 0 0;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div>
+            <span style="font-size:14px;font-weight:900">${g.nombre}</span>
+            <span style="font-size:11px;opacity:.85;margin-left:12px">${g.ciudad||''}</span>
+            ${g.tel ? `<span style="font-size:11px;opacity:.85;margin-left:8px">· ${g.tel}</span>` : ''}
+            <span style="font-size:11px;opacity:.75;margin-left:8px">· ${g.items.length} factura(s)</span>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:10px;opacity:.75;text-transform:uppercase">Saldo Total</div>
+            <div style="font-size:18px;font-weight:900">${fmtL(subtotalSaldo)}</div>
+          </div>
+        </div>
+        ${tarjetas}
+        <div style="background:#e8eaf6;border:1px solid #9fa8da;border-radius:0 0 6px 6px;padding:8px 14px;display:flex;justify-content:flex-end;gap:32px">
+          <div style="text-align:right"><div style="font-size:10px;color:#555;text-transform:uppercase">Total Facturado</div><div style="font-weight:700">${fmtL(subtotalTotal)}</div></div>
+          <div style="text-align:right"><div style="font-size:10px;color:#555;text-transform:uppercase">Total Abonado</div><div style="font-weight:700;color:#2e7d32">${fmtL(subtotalAbonado)}</div></div>
+          <div style="text-align:right"><div style="font-size:10px;color:#1a237e;font-weight:700;text-transform:uppercase">Saldo ${g.nombre.split(' ')[0]}</div><div style="font-weight:900;font-size:15px;color:#1a237e">${fmtL(subtotalSaldo)}</div></div>
+        </div>
+      </div>`;
   }).join('');
 
   // ── Construir HTML de impresión ────────────────────────────────────────
@@ -12103,36 +11571,30 @@ function imprimirReporteCobros(clienteForzado) {
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Reporte de Cobros · Focus Store</title>
+<title>Estado de Cuenta · Focus Store</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, sans-serif; font-size: 12px; color: #222; background: #fff; padding: 18px 24px; }
-  h1 { font-size: 20px; font-weight: 900; color: #1a1a2e; margin-bottom: 2px; letter-spacing: 1px; }
-  .header-block { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-  .header-left p { font-size: 11.5px; color: #333; margin: 2px 0; }
+  h1 { font-size: 22px; font-weight: 900; color: #1a1a2e; margin-bottom: 2px; letter-spacing: 1px; }
+  .header-block { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .header-left p { font-size: 11.5px; color: #333; margin: 3px 0; }
   .header-right { text-align: right; font-size: 11.5px; color: #333; }
-  .divider { border: none; border-top: 2px solid #1a1a2e; margin: 8px 0; }
-  .divider2 { border: none; border-top: 1px solid #aaa; margin: 8px 0; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
-  th { background: #f0f0f5; padding: 6px 8px; text-align: left; font-size: 11px; font-weight: 700; color: #333; border-bottom: 2px solid #ccc; white-space: nowrap; }
-  td { padding: 5px 8px; font-size: 11.5px; border-bottom: 1px solid #e8e8e8; vertical-align: middle; }
-  tr.cliente-header td { background: #e8eaf6; font-size: 12px; font-weight: 700; padding: 6px 8px; border-top: 2px solid #9fa8da; color: #1a237e; }
-  tr.subtotal-row td { background: #f5f5f5; font-weight: 700; font-size: 12px; border-top: 1px solid #bbb; }
-  .gran-total { text-align: right; font-size: 20px; font-weight: 900; margin: 10px 0 4px; color: #1a1a2e; }
-  .resumen-grid { display: flex; gap: 32px; margin-top: 16px; }
-  .resumen-block { flex: 1; }
-  .resumen-block h3 { font-size: 12px; font-weight: 700; text-decoration: underline; margin-bottom: 8px; color: #222; }
-  .resumen-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid #ddd; }
-  .resumen-row.total { border-top: 2px solid #333; border-bottom: none; font-weight: 700; font-size: 13px; margin-top: 4px; padding-top: 6px; }
-  .gran-total-row { display: flex; justify-content: space-between; font-size: 15px; font-weight: 900; margin-top: 12px; border-top: 2px solid #333; padding-top: 6px; }
+  .divider { border: none; border-top: 3px solid #1a1a2e; margin: 10px 0 16px; }
+  .resumen-grid { display: flex; gap: 24px; margin-top: 20px; }
+  .resumen-block { flex: 1; background: #f5f7ff; border: 1px solid #c5cae9; border-radius: 8px; padding: 14px 16px; }
+  .resumen-block h3 { font-size: 12px; font-weight: 700; color: #1a237e; margin-bottom: 10px; text-transform: uppercase; letter-spacing: .5px; }
+  .resumen-row { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-bottom: 1px solid #ddd; }
+  .resumen-row.total { border-top: 2px solid #1a237e; border-bottom: none; font-weight: 700; font-size: 13px; margin-top: 4px; padding-top: 8px; color: #1a237e; }
+  .gran-total-box { background: #1a237e; color: #fff; border-radius: 8px; padding: 14px 20px; text-align: center; margin: 20px 0 8px; }
+  .gran-total-box .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: .8; }
+  .gran-total-box .monto { font-size: 28px; font-weight: 900; margin-top: 4px; }
   @media print {
-    body { padding: 10px 14px; }
-    @page { size: letter portrait; margin: 10mm; }
+    body { padding: 8px 12px; }
+    @page { size: letter portrait; margin: 8mm; }
     button { display: none; }
   }
-  .print-btn { margin-bottom: 14px; }
-  .print-btn button { background: #1a1a2e; color: #fff; border: none; padding: 8px 20px; font-size: 13px; font-weight: 700; border-radius: 6px; cursor: pointer; }
-  .print-btn button:hover { background: #2d2d5e; }
+  .print-btn { margin-bottom: 16px; }
+  .print-btn button { background: #1a237e; color: #fff; border: none; padding: 9px 22px; font-size: 13px; font-weight: 700; border-radius: 6px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -12141,55 +11603,38 @@ function imprimirReporteCobros(clienteForzado) {
 <div class="header-block">
   <div class="header-left">
     <h1>FOCUS STORE</h1>
-    <p><strong>${q ? `Reporte de Cobros — Cliente: "${q.toUpperCase()}"` : 'Reporte de Documentos Pendientes de Pago'}</strong></p>
-    <p>Filtro de estado: ${filtroDesc}${q ? '' : ' &nbsp;·&nbsp; Todos los clientes'}</p>
+    <p><strong>Estado de Cuenta${q ? ` — ${q.toUpperCase()}` : ' — Todos los clientes'}</strong></p>
+    <p style="color:#888">Filtro: ${filtroDesc}</p>
   </div>
   <div class="header-right">
     <p><strong>Emisor:</strong> ${emisor}</p>
-    <p><strong>Fecha de Impresión:</strong> ${fmtHNfull()}</p>
-    <p>Página 1 / 1</p>
+    <p><strong>Fecha:</strong> ${fmtHNfull()}</p>
   </div>
 </div>
 <hr class="divider">
 
-<table>
-  <thead>
-    <tr>
-      <th>Tipo</th>
-      <th>No. Doc.</th>
-      <th>Fecha Emisión</th>
-      <th>Fecha Vencim.</th>
-      <th>Status</th>
-      <th>Descripción</th>
-      <th style="text-align:right">Total Venta</th>
-      <th style="text-align:right">Total Abonado</th>
-      <th style="text-align:right">Saldo Pendiente</th>
-    </tr>
-  </thead>
-  <tbody>
-    ${seccionesHtml}
-  </tbody>
-</table>
+${seccionesHtml}
 
-<hr class="divider">
-<div class="gran-total">Gran Total &nbsp;&nbsp; ${fmtL(granTotal)}</div>
-<hr class="divider2">
+<div class="gran-total-box">
+  <div class="label">Gran Total por Cobrar</div>
+  <div class="monto">${fmtL(granTotal)}</div>
+</div>
 
 <div class="resumen-grid">
   <div class="resumen-block">
-    <h3>Resumen del Reporte</h3>
-    <div class="resumen-row"><span>Total Doc. No-Vencidos</span><span>${fmtL(totalVigente)}</span></div>
-    <div class="resumen-row"><span>Total Doc. Vencidos</span><span>${fmtL(totalVencido)}</span></div>
-    <div class="resumen-row total"><span>Monto Total por Cobrar</span><span>${fmtL(granTotal)}</span></div>
+    <h3>📊 Resumen</h3>
+    <div class="resumen-row"><span>No vencido</span><span>${fmtL(totalVigente)}</span></div>
+    <div class="resumen-row"><span>Vencido</span><span style="color:#c0392b">${fmtL(totalVencido)}</span></div>
+    <div class="resumen-row total"><span>Total por Cobrar</span><span>${fmtL(granTotal)}</span></div>
   </div>
   <div class="resumen-block">
-    <h3>Desglose de lo Vencido</h3>
-    <div class="resumen-row"><span>De 1 a 30 días</span><span>${fmtL(aging['1-30'])}</span></div>
-    <div class="resumen-row"><span>De 31 a 60 días</span><span>${fmtL(aging['31-60'])}</span></div>
-    <div class="resumen-row"><span>De 61 a 90 días</span><span>${fmtL(aging['61-90'])}</span></div>
-    <div class="resumen-row"><span>De 91 a 120 días</span><span>${fmtL(aging['91-120'])}</span></div>
+    <h3>⏱️ Desglose de lo Vencido</h3>
+    <div class="resumen-row"><span>1 – 30 días</span><span>${fmtL(aging['1-30'])}</span></div>
+    <div class="resumen-row"><span>31 – 60 días</span><span>${fmtL(aging['31-60'])}</span></div>
+    <div class="resumen-row"><span>61 – 90 días</span><span>${fmtL(aging['61-90'])}</span></div>
+    <div class="resumen-row"><span>91 – 120 días</span><span>${fmtL(aging['91-120'])}</span></div>
     <div class="resumen-row"><span>Más de 120 días</span><span>${fmtL(aging['+120'])}</span></div>
-    <div class="gran-total-row"><span>Gran Total</span><span>${fmtL(granTotal)}</span></div>
+    <div class="resumen-row total"><span>Gran Total</span><span>${fmtL(granTotal)}</span></div>
   </div>
 </div>
 
@@ -13679,7 +13124,7 @@ function buscarProdRapido(q) {
     const minStock = p.minStock || 0;
     const stockClr = stock > minStock ? '#00c8a0' : stock > 0 ? '#f5c842' : '#ff4757';
     return `<div style="display:flex;gap:10px;padding:10px 8px;border-bottom:1px solid var(--border2);align-items:flex-start">
-      <div data-thumb="${p.id}" style="flex-shrink:0;width:52px;height:52px;border-radius:6px;overflow:hidden;background:var(--bg3);display:flex;align-items:center;justify-content:center">
+      <div style="flex-shrink:0;width:52px;height:52px;border-radius:6px;overflow:hidden;background:var(--bg3);display:flex;align-items:center;justify-content:center">
         ${p.imagen
           ? `<img src="${p.imagen}" style="width:52px;height:52px;object-fit:contain">`
           : `<span style="font-size:22px">📦</span>`}
@@ -13706,32 +13151,12 @@ function buscarProdRapido(q) {
           <span style="font-size:10px;color:var(--text3)">Min: ${minStock}</span>
           <span id="stockSaving_${p.id}" style="font-size:10px;color:var(--accent3);display:none">💾...</span>
         </div>
-        <div style="margin-top:6px;display:flex;gap:4px;align-items:center">
-          <span style="font-size:10px;color:var(--text3);white-space:nowrap">🖼️ Foto:</span>
-          <input type="text" id="imgInput_${p.id}"
-            placeholder="Pega el link de la imagen..."
-            value="${p.imagen||''}"
-            style="flex:1;min-width:0;padding:3px 7px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text2);font-size:10px;outline:none"
-            oninput="prevImgRapido('${p.id}',this.value)"
-            onkeydown="if(event.key==='Enter')guardarImagenRapido('${p.id}')">
-          <button onclick="guardarImagenRapido('${p.id}')"
-            id="imgBtn_${p.id}"
-            style="padding:3px 8px;background:rgba(61,106,255,.2);border:1px solid rgba(61,106,255,.4);border-radius:6px;color:var(--accent);font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">
-            💾
-          </button>
-          <span id="imgMsg_${p.id}" style="font-size:10px;display:none"></span>
-        </div>
-        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          <button onclick="abrirModalDescVendedor('${p.id}')"
-            title="Calculadora de descuentos"
-            style="padding:4px 10px;background:linear-gradient(135deg,#f5c842,#e0a800);color:#000;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px">
-            💰 Calc. Descuento
-          </button>
+        <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px">
           <button id="wixBtn_${p.id}" onclick="actualizarStockEnWixRapido('${p.id}','${p.sku}')"
-            style="padding:4px 10px;background:linear-gradient(135deg,#00c8a0,#00a080);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">
+            style="padding:4px 10px;background:linear-gradient(135deg,#00c8a0,#00a080);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;width:fit-content">
             🔄 Actualizar stock en Wix
           </button>
-          <div id="wixMsg_${p.id}" style="font-size:11px;display:none;width:100%"></div>
+          <div id="wixMsg_${p.id}" style="font-size:11px;display:none"></div>
         </div>
       </div>
     </div>`;
@@ -13800,44 +13225,6 @@ async function actualizarStockRapido(prodId, nuevoValor) {
     if (typeof showToast === 'function') showToast(`✅ Stock actualizado: ${val}`, 'success');
   } catch(e) {
     if (saving) saving.style.display = 'none';
-    if (typeof showToast === 'function') showToast('❌ ' + e.message, 'error');
-  }
-}
-
-function prevImgRapido(prodId, url) {
-  // Actualiza la miniatura en tiempo real mientras pegan el link
-  const thumb = document.querySelector(`#prodRapidoResultados [data-thumb="${prodId}"]`);
-  if (!thumb) return;
-  const u = (url||'').trim();
-  if (u) {
-    thumb.innerHTML = `<img src="${u}" style="width:52px;height:52px;object-fit:contain" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" onload="this.style.display='';this.nextElementSibling.style.display='none'"><span style="font-size:22px;display:none">📦</span>`;
-  } else {
-    thumb.innerHTML = `<span style="font-size:22px">📦</span>`;
-  }
-  // Marcar botón como "listo para guardar"
-  const btn = document.getElementById('imgBtn_' + prodId);
-  if (btn) btn.style.background = 'rgba(0,200,160,.25)', btn.style.borderColor = 'rgba(0,200,160,.5)', btn.style.color = '#00c8a0';
-}
-
-async function guardarImagenRapido(prodId) {
-  const input = document.getElementById('imgInput_' + prodId);
-  const btn   = document.getElementById('imgBtn_'   + prodId);
-  const msg   = document.getElementById('imgMsg_'   + prodId);
-  if (!input) return;
-  const url = input.value.trim();
-  const p = (typeof productos !== 'undefined' ? productos : []).find(x => x.id === prodId);
-  if (!p) return;
-  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
-  if (msg) msg.style.display = 'none';
-  try {
-    p.imagen = url;
-    await sbSaveProducto(p);
-    if (msg) { msg.style.display = 'inline'; msg.style.color = '#00c8a0'; msg.textContent = '✅ Guardado'; setTimeout(() => { if(msg) msg.style.display='none'; }, 2500); }
-    if (btn) { btn.disabled = false; btn.textContent = '✅'; btn.style.background = 'rgba(0,200,160,.2)'; btn.style.borderColor = 'rgba(0,200,160,.4)'; btn.style.color = '#00c8a0'; }
-    if (typeof showToast === 'function') showToast('✅ Foto del producto actualizada', 'success');
-  } catch(e) {
-    if (msg) { msg.style.display = 'inline'; msg.style.color = '#ff4757'; msg.textContent = '❌ Error'; }
-    if (btn) { btn.disabled = false; btn.textContent = '💾'; }
     if (typeof showToast === 'function') showToast('❌ ' + e.message, 'error');
   }
 }
@@ -13954,14 +13341,14 @@ function renderTablaInventario() {
     const ordActivas = ordenesCompra.filter(o => o.productoId === p.id && ['pendiente','en_transito'].includes(o.estado));
     const enCamino = ordActivas.reduce((s, o) => s + (parseInt(o.cantidadOrdenada) || 0), 0);
     const imgCell = p.imagen
-      ? `<td style="text-align:center;padding:4px"><img src="${p.imagen}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:zoom-in;display:block;margin:0 auto" onmouseenter="mostrarImgPreview('${p.imagen}',event)" onmouseleave="ocultarImgPreview()"></td>`
-      : `<td style="text-align:center;color:var(--text3);font-size:20px">📦</td>`;
+      ? `<td style="text-align:center;padding:6px"><img src="${p.imagen}" style="width:160px;height:160px;object-fit:cover;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.4);cursor:zoom-in;display:block;margin:0 auto" onmouseenter="mostrarImgPreview('${p.imagen}',event)" onmouseleave="ocultarImgPreview()"></td>`
+      : `<td style="text-align:center;color:var(--text3);font-size:26px">📦</td>`;
     const rowOpacity = p.descontinuado ? 'opacity:.55;' : '';
     return `<tr style="${rowOpacity}">
       ${imgCell}
-      <td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.producto}">${p.producto}</td>
-      <td class="td-sku" onclick="copiarSKU('${p.sku}',this)" title="Clic para copiar SKU" style="cursor:pointer;font-size:11px" onmouseover="this.style.color='var(--accent3)'" onmouseout="this.style.color=''">${p.sku}</td>
-      <td style="color:var(--text2);font-size:11px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.categoria || '—'}</td>
+      <td style="font-weight:600;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.producto}">${p.producto}</td>
+      <td class="td-sku" onclick="copiarSKU('${p.sku}',this)" title="Clic para copiar SKU" style="cursor:pointer" onmouseover="this.style.color='var(--accent3)'" onmouseout="this.style.color=''">${p.sku}</td>
+      <td style="color:var(--text2)">${p.categoria || '—'}</td>
       <td style="text-align:center"><span class="badge badge-${(p.estado||'nuevo').toLowerCase().replace(' ','-')}">${p.estado||'—'}</span></td>
       <td style="text-align:center">${badgeEstadoStock(est)}</td>
       <td style="text-align:center;font-weight:700;color:${cant===0?'var(--red)':cant<=min?'var(--gold)':'var(--green)'}">${cant}</td>
@@ -14622,9 +14009,7 @@ function calcularYRenderLiquidacion() {
 
   const ventasPeriodo = ventas.filter(v => {
     if (String(v.vendedorId) !== String(vendedorId)) return false;
-    // Ventas ya liquidadas → usar fecha_liquidada para comisión en período correcto
-    const fechaRef = v.fechaLiquidada || v.fecha;
-    const d = new Date(fechaRef + 'T12:00:00');
+    const d = new Date(v.fecha + 'T12:00:00');
     return d >= dInicio && d <= dFin;
   });
 
