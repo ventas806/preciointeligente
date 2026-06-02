@@ -10948,7 +10948,7 @@ function renderHistorialCotizaciones() {
   el.innerHTML=`<div class="table-wrap"><table>
     <thead><tr>
       <th>Número</th><th>Fecha</th><th>Válida hasta</th>
-      <th>Cliente</th><th>RTN</th><th>Ciudad</th>
+      <th>Cliente</th><th>Ciudad</th>
       <th style="text-align:right">Total</th>
       <th>Estado</th><th>Acciones</th>
     </tr></thead>
@@ -10964,7 +10964,6 @@ function renderHistorialCotizaciones() {
         <td style="white-space:nowrap">${fmtFecha(c.fecha)}</td>
         <td style="white-space:nowrap">${c.fechaVencimiento?fmtFecha(c.fechaVencimiento):'—'} <span style="font-size:10px;color:${cfg.color}">(${diasLabel})</span></td>
         <td style="font-weight:600">${c.clienteNombre}</td>
-        <td style="font-family:monospace;font-size:11px;color:var(--text3)">${c.clienteRTN||'—'}</td>
         <td style="color:var(--text2)">${c.clienteCiudad||'—'}</td>
         <td style="text-align:right;font-weight:700;color:var(--accent3)">${fmtLPS(c.total)}</td>
         <td><span style="font-size:11px;font-weight:700;background:${cfg.bg};border:1px solid ${cfg.border};color:${cfg.color};border-radius:10px;padding:2px 9px;white-space:nowrap">${cfg.icon} ${cfg.label}</span></td>
