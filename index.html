@@ -3231,7 +3231,7 @@ async function sbSaveCotizacion(c) {
       lleva_isv:          it.llevaISV         || false,
       isv_pct:            it.isvPct           || 0,
       producto_id:        it.productoId       || null,
-      imagen:             it.imagen           || null,
+      imagen:             it.imagen           || (it.productoId ? (productos.find(p=>p.id===it.productoId)||{}).imagen||null : null),
       nota_item:          it.notaItem         || ''
     })),
     observaciones:    c.observaciones   || '',
