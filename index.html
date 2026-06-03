@@ -11513,7 +11513,7 @@ async function compartirCotizacion(id) {
         <!-- Teléfono -->
         <div style="margin-bottom:14px">
           <label style="font-size:12px;color:var(--text3);font-weight:700;display:block;margin-bottom:6px">📞 TELÉFONO WHATSAPP (con código país)</label>
-          <input id="compartirTel" type="tel" value="${tel ? '504'+tel : ''}" placeholder="504XXXXXXXX"
+          <input id="compartirTel" type="tel" value="${tel ? (tel.startsWith('504') ? tel : '504'+tel) : ''}" placeholder="504XXXXXXXX"
             style="width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none">
         </div>
 
