@@ -212,6 +212,17 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); min-
 
 /* ====== TABLE ====== */
 .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+.table-wrap::-webkit-scrollbar { height: 7px; }
+.table-wrap::-webkit-scrollbar-track { background: var(--bg3); border-radius: 4px; }
+.table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.table-wrap::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+.table-wrap-outer { display: flex; flex-direction: column; border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
+.table-wrap-outer .scroll-top { overflow-x: auto; overflow-y: hidden; height: 10px; }
+.table-wrap-outer .scroll-top::-webkit-scrollbar { height: 7px; }
+.table-wrap-outer .scroll-top::-webkit-scrollbar-track { background: var(--bg3); }
+.table-wrap-outer .scroll-top::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.table-wrap-outer .scroll-top div { height: 1px; }
+.table-wrap-outer .table-wrap { border: none; border-radius: 0; }
 /* Scrollbar siempre visible en Chrome/Edge */
 .table-wrap::-webkit-scrollbar { height: 7px; }
 .table-wrap::-webkit-scrollbar-track { background: var(--bg3); border-radius: 4px; }
@@ -12235,6 +12246,26 @@ function agregarScrollArriba(tableWrapEl) {
   scrollTop.addEventListener('scroll', () => { if (!syncing) { syncing=true; tableWrapEl.scrollLeft = scrollTop.scrollLeft; syncing=false; }});
   tableWrapEl.addEventListener('scroll', () => { if (!syncing) { syncing=true; scrollTop.scrollLeft = tableWrapEl.scrollLeft; syncing=false; }});
   // Actualizar ancho del div inner cuando cambia el contenido
+  const update = () => { inner.style.width = tableWrapEl.scrollWidth + 'px'; };
+  update();
+  new ResizeObserver(update).observe(tableWrapEl);
+}
+
+function agregarScrollArriba(tableWrapEl) {
+  if (!tableWrapEl || tableWrapEl.dataset.scrollTop) return;
+  tableWrapEl.dataset.scrollTop = '1';
+  const outer = document.createElement('div');
+  outer.className = 'table-wrap-outer';
+  const scrollTop = document.createElement('div');
+  scrollTop.className = 'scroll-top';
+  const inner = document.createElement('div');
+  scrollTop.appendChild(inner);
+  tableWrapEl.parentNode.insertBefore(outer, tableWrapEl);
+  outer.appendChild(scrollTop);
+  outer.appendChild(tableWrapEl);
+  let syncing = false;
+  scrollTop.addEventListener('scroll', () => { if (!syncing) { syncing=true; tableWrapEl.scrollLeft = scrollTop.scrollLeft; syncing=false; }});
+  tableWrapEl.addEventListener('scroll', () => { if (!syncing) { syncing=true; scrollTop.scrollLeft = tableWrapEl.scrollLeft; syncing=false; }});
   const update = () => { inner.style.width = tableWrapEl.scrollWidth + 'px'; };
   update();
   new ResizeObserver(update).observe(tableWrapEl);
