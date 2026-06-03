@@ -11996,130 +11996,98 @@ function imprimirReporteCobros(clienteForzado) {
 
   const fmtL = n => 'L ' + (n||0).toLocaleString('es-HN',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-  // ── Construir filas por cliente ────────────────────────────────────────
-  const estadoLabel = { vencido:'Vencida', hoy:'Vence Hoy', sin_fecha:'Sin Fecha', proximo:'Próxima', vigente:'Vigente' };
+  // ── Construir tarjetas por cliente ────────────────────────────────────
+  const estadoBadge = { vencido:'background:#fde8e8;color:#c0392b;border:1px solid #e57373', hoy:'background:#fff3e0;color:#e65100;border:1px solid #ffb74d', sin_fecha:'background:#f5f5f5;color:#777;border:1px solid #ccc', proximo:'background:#fff8e1;color:#f57c00;border:1px solid #ffd54f', vigente:'background:#e8f5e9;color:#2e7d32;border:1px solid #81c784' };
+  const estadoLabel = { vencido:'VENCIDA', hoy:'VENCE HOY', sin_fecha:'SIN FECHA', proximo:'PRÓXIMA', vigente:'VIGENTE' };
 
   const seccionesHtml = Object.values(grupos).map(g => {
     const subtotalSaldo = g.items.reduce((s,v)=>s+(v.saldoPendiente||0),0);
     const subtotalTotal = g.items.reduce((s,v)=>s+(v.total||0),0);
     const subtotalAbonado = g.items.reduce((s,v)=>s+((v.abonos||[]).reduce((a,b)=>a+(b.monto||0),0)),0);
 
-    const filas = g.items.map(v => {
-      const vencimStr  = v.promesaDate ? fmtHN(v.promesaDate) : '—';
-      const esvenc     = v.estado === 'vencido' || v.estado === 'hoy';
-      const items      = (v.items||[]).map(it => it.descripcion||it.nombre||'').filter(Boolean);
-      const descrip    = items.length ? items.slice(0,3).join(', ') + (items.length>3?` +${items.length-3} más`:'') : '—';
-      const abonos     = v.abonos || [];
-      const totalAbon  = abonos.reduce((s,a)=>s+(a.monto||0),0);
-      const saldo      = v.saldoPendiente || 0;
+    const tarjetas = g.items.map(v => {
+      const esvenc    = v.estado === 'vencido' || v.estado === 'hoy';
+      const abonos    = v.abonos || [];
+      const totalAbon = abonos.reduce((s,a) => s+(a.monto||0), 0);
+      const saldo     = v.saldoPendiente || 0;
+      const badge     = estadoBadge[v.estado] || estadoBadge.sin_fecha;
+      const label     = estadoLabel[v.estado] || '—';
+      const vencimStr = v.promesaDate ? fmtHN(v.promesaDate) : '—';
 
-      // Fila principal de la venta
-      const filaVenta = `<tr>
-        <td>FAC</td>
-        <td style="font-family:monospace;font-size:10.5px">${(v.id||'').slice(-12)}</td>
-        <td>${fmtHN(new Date(v.fecha+'T12:00:00'))}</td>
-        <td style="color:${esvenc?'#c0392b':'#555'}">${vencimStr}</td>
-        <td style="color:${esvenc?'#c0392b':'#27ae60'};font-weight:600">${estadoLabel[v.estado]||'—'}</td>
-        <td style="font-size:11px;color:#555">${descrip}</td>
-        <td style="text-align:right;font-weight:700">${fmtL(v.total||0)}</td>
-        <td style="text-align:right;color:#27ae60;font-weight:600">${fmtL(totalAbon)}</td>
-        <td style="text-align:right;font-weight:700;color:${esvenc?'#c0392b':'#333'}">${fmtL(saldo)}</td>
-      </tr>`;
+      const itemsHtml = (v.items||[]).map(it => {
+        const nom  = it.descripcion || it.nombre || '—';
+        const qty  = it.cantidad || 1;
+        const pu   = it.precioFinal || 0;
+        const sub  = qty * pu;
+        return `<tr>
+          <td style="padding:4px 8px;font-family:monospace;font-size:10px;color:#888;width:100px">${it.sku||'—'}</td>
+          <td style="padding:4px 8px;font-size:11px;color:#333">${nom}</td>
+          <td style="padding:4px 8px;text-align:center;font-size:11px;width:45px">${qty}</td>
+          <td style="padding:4px 8px;text-align:right;font-size:11px;width:110px">${fmtL(pu)}</td>
+          <td style="padding:4px 8px;text-align:right;font-weight:600;font-size:11px;width:110px;color:#1a237e">${fmtL(sub)}</td>
+        </tr>`;
+      }).join('');
 
-      // Sub-tabla de detalle de productos
-      const filasDetalle = (v.items && v.items.length > 0)
-        ? `<tr style="background:#f8f8ff">
-            <td colspan="9" style="padding:4px 8px 8px 32px">
-              <table style="width:100%;border-collapse:collapse;font-size:10.5px">
-                <thead>
-                  <tr style="background:#e8eaf6">
-                    <th style="padding:3px 6px;text-align:center;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9;width:34px"></th>
-                    <th style="padding:3px 6px;text-align:left;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9;width:90px">SKU</th>
-                    <th style="padding:3px 6px;text-align:left;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9">Descripción</th>
-                    <th style="padding:3px 6px;text-align:center;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9;width:50px">Cant.</th>
-                    <th style="padding:3px 6px;text-align:right;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9;width:100px">P. Unitario</th>
-                    <th style="padding:3px 6px;text-align:right;font-weight:700;color:#3c3c8c;border-bottom:1px solid #c5cae9;width:100px">Subtotal</th>
-                    <th style="padding:3px 6px;text-align:right;font-weight:700;color:#2e7d32;border-bottom:1px solid #c5cae9;width:90px">Ahorro</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${(() => {
-                    let totalAhorro = 0;
-                    const rows = v.items.map(it => {
-                      const _sku   = it.sku || '—';
-                      const _nom   = it.descripcion || it.nombre || '—';
-                      const _qty   = it.cantidad || 1;
-                      const _pUnit = it.precioFinal || 0;
-                      const _lista = it.precioLista && it.precioLista > _pUnit ? it.precioLista : _pUnit;
-                      const _sub   = _qty * _pUnit;
-                      const _ahorro = +( (_lista - _pUnit) * _qty ).toFixed(2);
-                      if (_ahorro > 0) totalAhorro += _ahorro;
-                      const _prod  = it.productoId ? productos.find(x => x.id === it.productoId) : null;
-                      const _img   = it.imagen || (_prod ? _prod.imagen : '') || '';
-                      const fotoCel = _img
-                        ? '<td style="padding:2px 4px;text-align:center;vertical-align:middle"><img src="'+_img+'" style="width:28px;height:28px;object-fit:contain;border-radius:3px;background:#f5f5f5" onerror="this.style.display=\'none\'"></td>'
-                        : '<td style="padding:2px 4px;text-align:center;vertical-align:middle;color:#ccc;font-size:14px">📦</td>';
-                      const ahorroCel = _ahorro > 0
-                        ? '<td style="padding:3px 6px;text-align:right;color:#2e7d32;font-weight:600">'+fmtL(_ahorro)+'</td>'
-                        : '<td style="padding:3px 6px;text-align:right;color:#bbb">—</td>';
-                      return '<tr style="border-bottom:1px solid #e0e0f0">'
-                        + fotoCel
-                        + '<td style="padding:3px 6px;font-family:monospace;font-size:10px;color:#666">'+_sku+'</td>'
-                        + '<td style="padding:3px 6px;color:#333">'+_nom+'</td>'
-                        + '<td style="padding:3px 6px;text-align:center;color:#333">'+_qty+'</td>'
-                        + '<td style="padding:3px 6px;text-align:right;color:#333">'+fmtL(_pUnit)+'</td>'
-                        + '<td style="padding:3px 6px;text-align:right;font-weight:600;color:#1a237e">'+fmtL(_sub)+'</td>'
-                        + ahorroCel
-                        + '</tr>';
-                    }).join('');
-                    const totalRow = totalAhorro > 0
-                      ? '<tr style="background:#f1f8f1;border-top:1px solid #a5d6a7">'
-                        + '<td colspan="5" style="padding:4px 6px;text-align:right;font-weight:700;color:#2e7d32;font-size:10.5px">🎉 Ahorro total en esta factura:</td>'
-                        + '<td style="padding:4px 6px;text-align:right"></td>'
-                        + '<td style="padding:4px 6px;text-align:right;font-weight:800;color:#2e7d32;font-size:11px">'+fmtL(totalAhorro)+'</td>'
-                        + '</tr>'
-                      : '';
-                    return rows + totalRow;
-                  })()}
-                </tbody>
-              </table>
-            </td>
-          </tr>`
-        : '';
+      const abonosHtml = abonos.length
+        ? abonos.map(a => `<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px;color:#2e7d32">
+            <span>✓ ${a.fecha ? fmtHN(new Date(a.fecha+'T12:00:00')) : '—'} &nbsp;·&nbsp; <em style="color:#555">${a.nota||'Sin nota'}</em></span>
+            <span style="font-weight:700">${fmtL(a.monto||0)}</span>
+          </div>`).join('')
+        : `<div style="font-size:11px;color:#aaa;font-style:italic">Sin abonos registrados</div>`;
 
-      // Sub-filas de abonos (si existen)
-      const filasAbonos = abonos.length
-        ? abonos.map((a,i) => `<tr style="background:#f9fff9">
-            <td colspan="2" style="padding:3px 8px 3px 24px;font-size:10.5px;color:#888">
-              ${i===0 ? '↳ <em>Abonos realizados:</em>' : ''}
-            </td>
-            <td style="font-size:10.5px;color:#555;padding:3px 8px">
-              ${a.fecha ? fmtHN(new Date(a.fecha+'T12:00:00')) : '—'}
-            </td>
-            <td colspan="4" style="font-size:10.5px;color:#555;padding:3px 8px">
-              ${a.nota ? `<em>${a.nota}</em>` : '<em style="color:#aaa">Sin nota</em>'}
-            </td>
-            <td style="text-align:right;font-size:10.5px;color:#27ae60;font-weight:600;padding:3px 8px">
-              ${fmtL(a.monto||0)}
-            </td>
-            <td></td>
-          </tr>`).join('')
-        : `<tr style="background:#fffaf9"><td colspan="9" style="padding:3px 8px 3px 24px;font-size:10.5px;color:#bbb"><em>↳ Sin abonos registrados</em></td></tr>`;
-
-      return filaVenta + filasDetalle + filasAbonos;
+      return `<div style="border:1px solid ${esvenc?'#e57373':'#ddd'};border-left:4px solid ${esvenc?'#c0392b':'#9fa8da'};border-radius:6px;margin-bottom:12px;overflow:hidden;page-break-inside:avoid">
+        <div style="background:${esvenc?'#fde8e8':'#f5f7ff'};padding:8px 12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div>
+            <span style="font-family:monospace;font-weight:700;font-size:12px;color:#1a237e">FAC ${(v.id||'').slice(-12)}</span>
+            <span style="font-size:11px;color:#555;margin-left:12px">Emisión: ${fmtHN(new Date(v.fecha+'T12:00:00'))}</span>
+            <span style="font-size:11px;color:${esvenc?'#c0392b':'#555'};margin-left:12px">Vence: <strong>${vencimStr}</strong></span>
+          </div>
+          <span style="font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:20px;${badge}">${label}</span>
+        </div>
+        <div style="padding:0 12px">
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="border-bottom:1px solid #e0e0e0">
+              <th style="padding:5px 8px;font-size:10px;color:#888;font-weight:700;text-align:left">SKU</th>
+              <th style="padding:5px 8px;font-size:10px;color:#888;font-weight:700;text-align:left">DESCRIPCIÓN</th>
+              <th style="padding:5px 8px;font-size:10px;color:#888;font-weight:700;text-align:center">CANT</th>
+              <th style="padding:5px 8px;font-size:10px;color:#888;font-weight:700;text-align:right">P. UNIT.</th>
+              <th style="padding:5px 8px;font-size:10px;color:#888;font-weight:700;text-align:right">SUBTOTAL</th>
+            </tr></thead>
+            <tbody>${itemsHtml}</tbody>
+          </table>
+        </div>
+        <div style="padding:8px 12px;background:#f9fff9;border-top:1px dashed #c8e6c9">
+          <div style="font-size:10px;font-weight:700;color:#2e7d32;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Abonos realizados</div>
+          ${abonosHtml}
+        </div>
+        <div style="padding:8px 12px;background:${esvenc?'#fde8e8':'#f0f0f8'};border-top:1px solid ${esvenc?'#e57373':'#c5cae9'};display:flex;justify-content:flex-end;gap:32px">
+          <div style="text-align:right"><div style="font-size:10px;color:#888;text-transform:uppercase">Total Venta</div><div style="font-size:13px;font-weight:700;color:#333">${fmtL(v.total||0)}</div></div>
+          <div style="text-align:right"><div style="font-size:10px;color:#888;text-transform:uppercase">Abonado</div><div style="font-size:13px;font-weight:700;color:#2e7d32">${fmtL(totalAbon)}</div></div>
+          <div style="text-align:right;min-width:120px"><div style="font-size:10px;color:#888;text-transform:uppercase">Saldo Pendiente</div><div style="font-size:16px;font-weight:900;color:${esvenc?'#c0392b':'#1a237e'}">${fmtL(saldo)}</div></div>
+        </div>
+      </div>`;
     }).join('');
 
-    return `
-      <tr class="cliente-header">
-        <td colspan="9"><strong>${g.nombre}</strong> &nbsp;·&nbsp; ${g.ciudad||'—'} &nbsp;·&nbsp; ${g.tel||'—'} &nbsp;·&nbsp; ${g.items.length} factura(s)</td>
-      </tr>
-      ${filas}
-      <tr class="subtotal-row">
-        <td colspan="6" style="text-align:right">Subtotal ${g.nombre}</td>
-        <td style="text-align:right">${fmtL(subtotalTotal)}</td>
-        <td style="text-align:right;color:#27ae60">${fmtL(subtotalAbonado)}</td>
-        <td style="text-align:right">${fmtL(subtotalSaldo)}</td>
-      </tr>`;
+    return `<div style="margin-bottom:24px">
+      <div style="background:#1a237e;color:#fff;padding:10px 14px;border-radius:6px 6px 0 0;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div>
+          <span style="font-size:14px;font-weight:900">${g.nombre}</span>
+          <span style="font-size:11px;opacity:.85;margin-left:12px">${g.ciudad||''}</span>
+          ${g.tel ? `<span style="font-size:11px;opacity:.85;margin-left:8px">· ${g.tel}</span>` : ''}
+          <span style="font-size:11px;opacity:.75;margin-left:8px">· ${g.items.length} factura(s)</span>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10px;opacity:.75;text-transform:uppercase">Saldo Total</div>
+          <div style="font-size:18px;font-weight:900">${fmtL(subtotalSaldo)}</div>
+        </div>
+      </div>
+      ${tarjetas}
+      <div style="background:#e8eaf6;border:1px solid #9fa8da;border-radius:0 0 6px 6px;padding:8px 14px;display:flex;justify-content:flex-end;gap:32px">
+        <div style="text-align:right"><div style="font-size:10px;color:#555;text-transform:uppercase">Total Facturado</div><div style="font-weight:700">${fmtL(subtotalTotal)}</div></div>
+        <div style="text-align:right"><div style="font-size:10px;color:#555;text-transform:uppercase">Total Abonado</div><div style="font-weight:700;color:#2e7d32">${fmtL(subtotalAbonado)}</div></div>
+        <div style="text-align:right"><div style="font-size:10px;color:#1a237e;font-weight:700;text-transform:uppercase">Saldo ${g.nombre.split(' ')[0]}</div><div style="font-weight:900;font-size:15px;color:#1a237e">${fmtL(subtotalSaldo)}</div></div>
+      </div>
+    </div>`;
   }).join('');
 
   // ── Construir HTML de impresión ────────────────────────────────────────
@@ -12130,36 +12098,30 @@ function imprimirReporteCobros(clienteForzado) {
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Reporte de Cobros · Focus Store</title>
+<title>Estado de Cuenta · Focus Store</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, sans-serif; font-size: 12px; color: #222; background: #fff; padding: 18px 24px; }
-  h1 { font-size: 20px; font-weight: 900; color: #1a1a2e; margin-bottom: 2px; letter-spacing: 1px; }
-  .header-block { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-  .header-left p { font-size: 11.5px; color: #333; margin: 2px 0; }
+  h1 { font-size: 22px; font-weight: 900; color: #1a1a2e; margin-bottom: 2px; letter-spacing: 1px; }
+  .header-block { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .header-left p { font-size: 11.5px; color: #333; margin: 3px 0; }
   .header-right { text-align: right; font-size: 11.5px; color: #333; }
-  .divider { border: none; border-top: 2px solid #1a1a2e; margin: 8px 0; }
-  .divider2 { border: none; border-top: 1px solid #aaa; margin: 8px 0; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
-  th { background: #f0f0f5; padding: 6px 8px; text-align: left; font-size: 11px; font-weight: 700; color: #333; border-bottom: 2px solid #ccc; white-space: nowrap; }
-  td { padding: 5px 8px; font-size: 11.5px; border-bottom: 1px solid #e8e8e8; vertical-align: middle; }
-  tr.cliente-header td { background: #e8eaf6; font-size: 12px; font-weight: 700; padding: 6px 8px; border-top: 2px solid #9fa8da; color: #1a237e; }
-  tr.subtotal-row td { background: #f5f5f5; font-weight: 700; font-size: 12px; border-top: 1px solid #bbb; }
-  .gran-total { text-align: right; font-size: 20px; font-weight: 900; margin: 10px 0 4px; color: #1a1a2e; }
-  .resumen-grid { display: flex; gap: 32px; margin-top: 16px; }
-  .resumen-block { flex: 1; }
-  .resumen-block h3 { font-size: 12px; font-weight: 700; text-decoration: underline; margin-bottom: 8px; color: #222; }
-  .resumen-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid #ddd; }
-  .resumen-row.total { border-top: 2px solid #333; border-bottom: none; font-weight: 700; font-size: 13px; margin-top: 4px; padding-top: 6px; }
-  .gran-total-row { display: flex; justify-content: space-between; font-size: 15px; font-weight: 900; margin-top: 12px; border-top: 2px solid #333; padding-top: 6px; }
+  .divider { border: none; border-top: 3px solid #1a1a2e; margin: 10px 0 16px; }
+  .resumen-grid { display: flex; gap: 24px; margin-top: 20px; }
+  .resumen-block { flex: 1; background: #f5f7ff; border: 1px solid #c5cae9; border-radius: 8px; padding: 14px 16px; }
+  .resumen-block h3 { font-size: 12px; font-weight: 700; color: #1a237e; margin-bottom: 10px; text-transform: uppercase; letter-spacing: .5px; }
+  .resumen-row { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-bottom: 1px solid #ddd; }
+  .resumen-row.total { border-top: 2px solid #1a237e; border-bottom: none; font-weight: 700; font-size: 13px; margin-top: 4px; padding-top: 8px; color: #1a237e; }
+  .gran-total-box { background: #1a237e; color: #fff; border-radius: 8px; padding: 14px 20px; text-align: center; margin: 20px 0 8px; }
+  .gran-total-box .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: .8; }
+  .gran-total-box .monto { font-size: 28px; font-weight: 900; margin-top: 4px; }
   @media print {
-    body { padding: 10px 14px; }
-    @page { size: letter portrait; margin: 10mm; }
-    button { display: none; }
+    body { padding: 8px 12px; }
+    @page { size: letter portrait; margin: 8mm; }
+    .print-btn { display: none !important; margin: 0 !important; padding: 0 !important; height: 0 !important; }
   }
-  .print-btn { margin-bottom: 14px; }
-  .print-btn button { background: #1a1a2e; color: #fff; border: none; padding: 8px 20px; font-size: 13px; font-weight: 700; border-radius: 6px; cursor: pointer; }
-  .print-btn button:hover { background: #2d2d5e; }
+  .print-btn { margin-bottom: 16px; }
+  .print-btn button { background: #1a237e; color: #fff; border: none; padding: 9px 22px; font-size: 13px; font-weight: 700; border-radius: 6px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -12168,55 +12130,38 @@ function imprimirReporteCobros(clienteForzado) {
 <div class="header-block">
   <div class="header-left">
     <h1>FOCUS STORE</h1>
-    <p><strong>${q ? `Reporte de Cobros — Cliente: "${q.toUpperCase()}"` : 'Reporte de Documentos Pendientes de Pago'}</strong></p>
-    <p>Filtro de estado: ${filtroDesc}${q ? '' : ' &nbsp;·&nbsp; Todos los clientes'}</p>
+    <p><strong>Estado de Cuenta${q ? ` — ${q.toUpperCase()}` : ' — Todos los clientes'}</strong></p>
+    <p style="color:#888">Filtro: ${filtroDesc}</p>
   </div>
   <div class="header-right">
     <p><strong>Emisor:</strong> ${emisor}</p>
-    <p><strong>Fecha de Impresión:</strong> ${fmtHNfull()}</p>
-    <p>Página 1 / 1</p>
+    <p><strong>Fecha:</strong> ${fmtHNfull()}</p>
   </div>
 </div>
 <hr class="divider">
 
-<table>
-  <thead>
-    <tr>
-      <th>Tipo</th>
-      <th>No. Doc.</th>
-      <th>Fecha Emisión</th>
-      <th>Fecha Vencim.</th>
-      <th>Status</th>
-      <th>Descripción</th>
-      <th style="text-align:right">Total Venta</th>
-      <th style="text-align:right">Total Abonado</th>
-      <th style="text-align:right">Saldo Pendiente</th>
-    </tr>
-  </thead>
-  <tbody>
-    ${seccionesHtml}
-  </tbody>
-</table>
+${seccionesHtml}
 
-<hr class="divider">
-<div class="gran-total">Gran Total &nbsp;&nbsp; ${fmtL(granTotal)}</div>
-<hr class="divider2">
+<div class="gran-total-box">
+  <div class="label">Gran Total por Cobrar</div>
+  <div class="monto">${fmtL(granTotal)}</div>
+</div>
 
 <div class="resumen-grid">
   <div class="resumen-block">
-    <h3>Resumen del Reporte</h3>
-    <div class="resumen-row"><span>Total Doc. No-Vencidos</span><span>${fmtL(totalVigente)}</span></div>
-    <div class="resumen-row"><span>Total Doc. Vencidos</span><span>${fmtL(totalVencido)}</span></div>
-    <div class="resumen-row total"><span>Monto Total por Cobrar</span><span>${fmtL(granTotal)}</span></div>
+    <h3>📊 Resumen</h3>
+    <div class="resumen-row"><span>No vencido</span><span>${fmtL(totalVigente)}</span></div>
+    <div class="resumen-row"><span>Vencido</span><span style="color:#c0392b">${fmtL(totalVencido)}</span></div>
+    <div class="resumen-row total"><span>Total por Cobrar</span><span>${fmtL(granTotal)}</span></div>
   </div>
   <div class="resumen-block">
-    <h3>Desglose de lo Vencido</h3>
-    <div class="resumen-row"><span>De 1 a 30 días</span><span>${fmtL(aging['1-30'])}</span></div>
-    <div class="resumen-row"><span>De 31 a 60 días</span><span>${fmtL(aging['31-60'])}</span></div>
-    <div class="resumen-row"><span>De 61 a 90 días</span><span>${fmtL(aging['61-90'])}</span></div>
-    <div class="resumen-row"><span>De 91 a 120 días</span><span>${fmtL(aging['91-120'])}</span></div>
+    <h3>⏱️ Desglose de lo Vencido</h3>
+    <div class="resumen-row"><span>1 – 30 días</span><span>${fmtL(aging['1-30'])}</span></div>
+    <div class="resumen-row"><span>31 – 60 días</span><span>${fmtL(aging['31-60'])}</span></div>
+    <div class="resumen-row"><span>61 – 90 días</span><span>${fmtL(aging['61-90'])}</span></div>
+    <div class="resumen-row"><span>91 – 120 días</span><span>${fmtL(aging['91-120'])}</span></div>
     <div class="resumen-row"><span>Más de 120 días</span><span>${fmtL(aging['+120'])}</span></div>
-    <div class="gran-total-row"><span>Gran Total</span><span>${fmtL(granTotal)}</span></div>
+    <div class="resumen-row total"><span>Gran Total</span><span>${fmtL(granTotal)}</span></div>
   </div>
 </div>
 
