@@ -12960,9 +12960,14 @@ function renderWixMgrTabla() {
     html += '<td style="padding:8px 12px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + nombreSafe + '">';
     html += '<a href="https://www.focusstore.net' + p.url + '" target="_blank" style="color:var(--text);text-decoration:none">' + nombreSafe + '</a></td>';
     html += '<td style="padding:8px;font-family:monospace;font-size:11px;color:var(--text2)">' + (p.sku || '-') + '</td>';
-    var cols = (p.colecciones || []);
-    var colsHtml = cols.length ? '<span style="font-size:12px;color:var(--text)">' + cols.join(', ') + '</span>' : '<span style="color:var(--text3);font-size:11px">—</span>';
-    html += '<td style="padding:8px;max-width:180px;font-size:12px">' + colsHtml + '</td>';
+    var enLiq = p.enLiquidacion || false;
+    var liqCol = p.liqColId || '';
+    html += '<td style="padding:8px;text-align:center">' +
+      '<input type="checkbox"' + (enLiq ? ' checked' : '') +
+      ' title="' + (enLiq ? 'Quitar de Liquidación' : 'Agregar a Liquidación') + '"' +
+      ' style="cursor:pointer;width:16px;height:16px;accent-color:#f5a623"' +
+      ' onchange="toggleLiquidacionWix(\'' + p.id + '\',this.checked,\'' + liqCol + '\')">' +
+      '</td>';
     html += '<td style="padding:8px;text-align:center;font-weight:600;color:' + stockColor + '">' + p.stock + '</td>';
     html += '<td style="padding:8px;text-align:right;font-family:monospace;font-size:12px">' + precio + '</td>';
     html += '<td style="padding:8px;text-align:center;font-size:12px;color:var(--text2)">' + fecha + '</td>';
@@ -12971,6 +12976,22 @@ function renderWixMgrTabla() {
     html += '</tr>';
   }
   tbody.innerHTML = html;
+}
+
+async function toggleLiquidacionWix(productId, agregar) {
+  try {
+    var result = await sb.functions.invoke('wix-sync', {
+      body: { action: 'toggle_liquidacion', product_ids: [productId], agregar: agregar }
+    });
+    if (result.error || !result.data?.ok) throw new Error('Error al actualizar');
+    showToast(agregar ? '✅ Agregado a Liquidación en Wix' : '🗑️ Quitado de Liquidación en Wix', 'success');
+    var prod = _wixMgrData.find(function(p){ return p.id === productId; });
+    if (prod) prod.enLiquidacion = agregar;
+  } catch(e) {
+    showToast('❌ Error: ' + e.message, 'error');
+    var row = document.getElementById('wixRow_' + productId);
+    if (row) { var chk = row.querySelector('input[style*="accent-color"]'); if (chk) chk.checked = !agregar; }
+  }
 }
 
 function eliminarWixByDataAttr(el) {
@@ -13266,7 +13287,7 @@ function exportarWixManagerExcel() {
                   </th>
                   <th style="padding:10px 12px;text-align:left;color:#8892aa;font-weight:500">Producto</th>
                   <th style="padding:10px 8px;text-align:left;color:#8892aa;font-weight:500">SKU</th>
-                  <th style="padding:10px 8px;text-align:left;color:#8892aa;font-weight:500">Categoría Wix</th>
+                  <th style="padding:10px 8px;text-align:center;color:#f5a623;font-weight:500" title="Productos en Liquidación en Wix">🏷️ Liquidación</th>
                   <th style="padding:10px 8px;text-align:center;color:#8892aa;font-weight:500">Stock</th>
                   <th style="padding:10px 8px;text-align:right;color:#8892aa;font-weight:500">Precio</th>
                   <th style="padding:10px 8px;text-align:center;color:#8892aa;font-weight:500">Ingresado</th>
