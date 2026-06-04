@@ -13137,12 +13137,20 @@ async function agregarSeleccionALiquidacion() {
 function exportarWixManagerExcel() {
   if (!_wixMgrFiltrado.length) { showToast('No hay datos para exportar', 'warn'); return; }
   var wb = XLSX.utils.book_new();
-  var rows = [['Producto','SKU','Stock','Precio HNL','Fecha ingreso','Días en Wix','Visible','URL']];
+  var rows = [['Producto','SKU','Stock','Precio HNL','Fecha ingreso','Últ. modificación Wix','Días en Wix','En Liquidación','Visible','URL']];
   _wixMgrFiltrado.forEach(function(p) {
-    rows.push([p.nombre, p.sku, p.stock, p.precio, p.createdDate ? p.createdDate.substring(0,10) : '', p.dias, p.visible ? 'Sí' : 'No', 'https://www.focusstore.net' + p.url]);
+    rows.push([
+      p.nombre, p.sku, p.stock, p.precio,
+      p.createdDate ? p.createdDate.substring(0,10) : '',
+      p.lastUpdated ? p.lastUpdated.substring(0,10) : '',
+      p.dias,
+      p.enLiquidacion ? 'Sí' : 'No',
+      p.visible ? 'Sí' : 'No',
+      'https://www.focusstore.net' + p.url
+    ]);
   });
   var ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [{wch:45},{wch:18},{wch:8},{wch:12},{wch:14},{wch:10},{wch:8},{wch:50}];
+  ws['!cols'] = [{wch:45},{wch:18},{wch:8},{wch:12},{wch:14},{wch:18},{wch:10},{wch:14},{wch:8},{wch:50}];
   XLSX.utils.book_append_sheet(wb, ws, 'Productos Wix');
   XLSX.writeFile(wb, 'FocusStore_Wix_' + new Date().toISOString().slice(0,10) + '.xlsx');
 }
