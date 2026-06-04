@@ -12961,12 +12961,16 @@ function renderWixMgrTabla() {
     html += '<a href="https://www.focusstore.net' + p.url + '" target="_blank" style="color:var(--text);text-decoration:none">' + nombreSafe + '</a></td>';
     html += '<td style="padding:8px;font-family:monospace;font-size:11px;color:var(--text2)">' + (p.sku || '-') + '</td>';
     var enLiq = p.enLiquidacion || false;
-    var liqCol = p.liqColId || '';
-    html += '<td style="padding:8px;text-align:center">' +
-      '<input type="checkbox"' + (enLiq ? ' checked' : '') +
-      ' title="' + (enLiq ? 'Quitar de Liquidación' : 'Agregar a Liquidación') + '"' +
-      ' style="cursor:pointer;width:16px;height:16px;accent-color:#f5a623"' +
-      ' onchange="toggleLiquidacionWix(\'' + p.id + '\',this.checked,\'' + liqCol + '\')">' +
+    html += '<td style="padding:6px 8px;text-align:center">' +
+      '<button onclick="toggleLiquidacionWix(\'' + p.id + '\',' + !enLiq + ')" ' +
+      'id="liqBtn_' + p.id + '" ' +
+      'title="' + (enLiq ? 'Quitar de Liquidación en Wix' : 'Agregar a Liquidación en Wix') + '" ' +
+      'style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:none;' +
+      (enLiq
+        ? 'background:rgba(245,166,35,.2);color:#f5a623;border:1px solid rgba(245,166,35,.5)'
+        : 'background:var(--bg3);color:var(--text3);border:1px solid var(--border)') + '">' +
+      (enLiq ? '🏷️ Sí' : '— No') +
+      '</button>' +
       '</td>';
     html += '<td style="padding:8px;text-align:center;font-weight:600;color:' + stockColor + '">' + p.stock + '</td>';
     html += '<td style="padding:8px;text-align:right;font-family:monospace;font-size:12px">' + precio + '</td>';
@@ -12979,18 +12983,28 @@ function renderWixMgrTabla() {
 }
 
 async function toggleLiquidacionWix(productId, agregar) {
+  var btn = document.getElementById('liqBtn_' + productId);
+  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
   try {
     var result = await sb.functions.invoke('wix-sync', {
       body: { action: 'toggle_liquidacion', product_ids: [productId], agregar: agregar }
     });
-    if (result.error || !result.data?.ok) throw new Error('Error al actualizar');
-    showToast(agregar ? '✅ Agregado a Liquidación en Wix' : '🗑️ Quitado de Liquidación en Wix', 'success');
+    if (result.error || !result.data?.ok) throw new Error('Error al actualizar en Wix');
+    showToast(agregar ? '🏷️ Agregado a Liquidación en Wix' : '✅ Quitado de Liquidación en Wix', 'success');
     var prod = _wixMgrData.find(function(p){ return p.id === productId; });
     if (prod) prod.enLiquidacion = agregar;
+    if (btn) {
+      btn.textContent = agregar ? '🏷️ Sí' : '— No';
+      btn.title = agregar ? 'Quitar de Liquidación' : 'Agregar a Liquidación';
+      btn.onclick = function(){ toggleLiquidacionWix(productId, !agregar); };
+      btn.style.background = agregar ? 'rgba(245,166,35,.2)' : 'var(--bg3)';
+      btn.style.color = agregar ? '#f5a623' : 'var(--text3)';
+      btn.style.border = agregar ? '1px solid rgba(245,166,35,.5)' : '1px solid var(--border)';
+      btn.disabled = false;
+    }
   } catch(e) {
-    showToast('❌ Error: ' + e.message, 'error');
-    var row = document.getElementById('wixRow_' + productId);
-    if (row) { var chk = row.querySelector('input[style*="accent-color"]'); if (chk) chk.checked = !agregar; }
+    showToast('❌ ' + e.message, 'error');
+    if (btn) { btn.textContent = agregar ? '— No' : '🏷️ Sí'; btn.disabled = false; }
   }
 }
 
