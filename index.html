@@ -999,6 +999,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             <option value="">Todas las categorías</option>
           </select>
           <button class="btn btn-ghost btn-sm" onclick="invFiltrarEstado('')">✕ Limpiar filtro</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportarInventarioExcel()" title="Exportar a Excel" style="margin-left:auto;color:#1abc9c;border-color:#1abc9c">📥 Excel</button>
         </div>
 
         <!-- Tabla -->
@@ -14018,6 +14019,82 @@ function renderTablaInventario() {
       </td>
     </tr>`;
   }).join('');
+}
+
+function exportarInventarioExcel() {
+  const q       = (document.getElementById('invBuscar')?.value || '').toLowerCase().trim();
+  const filtEst = document.getElementById('invFiltEstado')?.value || '';
+  const filtCat = document.getElementById('invFiltCat')?.value || '';
+  const mostrandoDesc = filtEst === 'descontinuado';
+
+  const ESTADO_LABEL = {
+    en_stock:      'En Stock',
+    bajo:          'Bajo en Stock',
+    agotado:       'Agotado · Sin Pedido',
+    en_camino:     'Agotado · En Camino',
+    descontinuado: 'Descontinuado',
+  };
+
+  let lista = productos.filter(p => {
+    if (mostrandoDesc) return p.descontinuado === true;
+    if (p.descontinuado) return false;
+    if (q && !p.producto.toLowerCase().includes(q) && !p.sku.toLowerCase().includes(q)) return false;
+    if (filtCat && p.categoria !== filtCat) return false;
+    const est = calcEstadoStock(p);
+    if (filtEst && est !== filtEst) return false;
+    return true;
+  });
+
+  const orden = { agotado: 0, en_camino: 1, bajo: 2, en_stock: 3 };
+  lista.sort((a, b) => orden[calcEstadoStock(a)] - orden[calcEstadoStock(b)]);
+
+  // Encabezados
+  const filas = [
+    ['Producto','SKU','Categoría','Condición','Estado Stock','Cantidad','Mínimo','En Camino','Próx. Llegada','Costo USD','URL Referencia','URL Tienda']
+  ];
+
+  lista.forEach(p => {
+    const est = calcEstadoStock(p);
+    const ordActivas = ordenesCompra.filter(o => o.productoId === p.id && ['pendiente','en_transito'].includes(o.estado));
+    const enCamino = ordActivas.reduce((s, o) => s + (parseInt(o.cantidadOrdenada) || 0), 0);
+    const proxFecha = ordActivas.filter(o => o.estado === 'en_transito' && o.fechaEstimada).map(o => o.fechaEstimada).sort()[0] || '';
+    const proxFormato = proxFecha ? proxFecha.split('-').reverse().join('/') : '';
+
+    filas.push([
+      p.producto || '',
+      p.sku || '',
+      p.categoria || '',
+      p.estado || '',
+      ESTADO_LABEL[est] || est,
+      parseInt(p.cantidad) || 0,
+      parseInt(p.minStock) || 0,
+      enCamino || 0,
+      proxFormato,
+      p.costoUSD ? parseFloat(p.costoUSD) : '',
+      p.url1 || '',
+      p.url2 || '',
+    ]);
+  });
+
+  // Generar CSV con BOM para Excel
+  const bom = '﻿';
+  const csv = bom + filas.map(f =>
+    f.map(v => {
+      const s = String(v === null || v === undefined ? '' : v);
+      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g,'""')}"` : s;
+    }).join(',')
+  ).join('\r\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const hoy  = new Date().toISOString().slice(0,10);
+  const label = filtEst ? `_${filtEst}` : '';
+  a.href     = url;
+  a.download = `Inventario${label}_${hoy}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`📥 Exportado ${lista.length} productos`, 'success');
 }
 
 async function toggleDescontinuado(id, valor) {
