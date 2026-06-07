@@ -12224,41 +12224,56 @@ window.addEventListener('DOMContentLoaded',()=>{
 });
 
 // ── Verificador automático de nueva versión ──────────────────────
+// Usa localStorage (persiste entre pestañas y sesiones) para detectar
+// cuando el navegador sirve una versión vieja desde caché.
 function iniciarVerificadorVersion() {
+  const STORAGE_KEY = '_appEtagLS';
+
+  const mostrarBanner = () => {
+    if (document.getElementById('versionBanner')) return; // ya visible
+    const banner = document.createElement('div');
+    banner.id = 'versionBanner';
+    banner.innerHTML = `
+      <div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;
+        background:linear-gradient(135deg,#1a2540,#0d1530);border:1px solid rgba(61,106,255,.6);
+        border-radius:12px;padding:14px 20px;display:flex;align-items:center;gap:14px;
+        box-shadow:0 8px 32px rgba(0,0,0,.6);min-width:320px;max-width:480px">
+        <span style="font-size:22px">🔄</span>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700;color:#fff">Nueva versión disponible</div>
+          <div style="font-size:12px;color:#8892aa;margin-top:2px">Recarga para obtener los últimos cambios</div>
+        </div>
+        <button onclick="localStorage.removeItem('${STORAGE_KEY}'); location.href = location.pathname + '?v=' + Date.now()"
+          style="background:linear-gradient(135deg,#3d6aff,#2d5aef);color:#fff;border:none;border-radius:8px;
+          padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit">
+          Actualizar
+        </button>
+        <button onclick="this.closest('#versionBanner').remove()"
+          style="background:none;border:none;color:#8892aa;cursor:pointer;font-size:18px;padding:0 2px;line-height:1">✕</button>
+      </div>`;
+    document.body.appendChild(banner);
+  };
+
   const _checkVersion = async () => {
     try {
-      const r = await fetch(location.href + '?_=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
+      const r = await fetch(location.pathname + '?_=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
       const serverEtag = r.headers.get('etag') || r.headers.get('last-modified') || '';
-      const stored = sessionStorage.getItem('_appEtag');
-      if (!stored) { sessionStorage.setItem('_appEtag', serverEtag); return; }
-      if (serverEtag && serverEtag !== stored) {
-        // Nueva versión disponible
-        const banner = document.createElement('div');
-        banner.id = 'versionBanner';
-        banner.innerHTML = `
-          <div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;
-            background:linear-gradient(135deg,#1a2540,#0d1530);border:1px solid rgba(61,106,255,.6);
-            border-radius:12px;padding:14px 20px;display:flex;align-items:center;gap:14px;
-            box-shadow:0 8px 32px rgba(0,0,0,.6);min-width:320px;max-width:480px">
-            <span style="font-size:22px">🔄</span>
-            <div style="flex:1">
-              <div style="font-size:13px;font-weight:700;color:#fff">Nueva versión disponible</div>
-              <div style="font-size:12px;color:#8892aa;margin-top:2px">Recarga para obtener los últimos cambios</div>
-            </div>
-            <button onclick="sessionStorage.removeItem('_appEtag'); location.href = location.pathname + '?v=' + Date.now()"
-              style="background:linear-gradient(135deg,#3d6aff,#2d5aef);color:#fff;border:none;border-radius:8px;
-              padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit">
-              Actualizar
-            </button>
-            <button onclick="this.closest('#versionBanner').remove()"
-              style="background:none;border:none;color:#8892aa;cursor:pointer;font-size:18px;padding:0 2px;line-height:1">✕</button>
-          </div>`;
-        document.body.appendChild(banner);
+      if (!serverEtag) return; // GitHub Pages no devolvió ETag, ignorar
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (!stored) {
+        // Primera vez: guardar ETag actual y listo
+        localStorage.setItem(STORAGE_KEY, serverEtag);
+        return;
+      }
+      if (serverEtag !== stored) {
+        // El servidor tiene una versión más nueva que la que tenemos guardada
+        mostrarBanner();
       }
     } catch(e) { /* silencioso si no hay red */ }
   };
-  // Verificar cada 5 minutos
-  setTimeout(_checkVersion, 5000); // primera vez a los 5 seg
+
+  // Verificar a los 3 segundos de cargar y luego cada 5 minutos
+  setTimeout(_checkVersion, 3000);
   setInterval(_checkVersion, 5 * 60 * 1000);
 }
 
