@@ -499,41 +499,58 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
 
 <!-- MODAL EDITAR PENDIENTE -->
 <div class="modal-overlay" id="modalEditarPendiente">
-  <div class="modal" style="max-width:600px">
+  <div class="modal" style="max-width:860px;width:95vw">
     <div class="modal-header">
       <div class="modal-title">✏️ Revisar y Aprobar Producto</div>
       <button class="modal-close" onclick="cerrarModal('modalEditarPendiente')">✕</button>
     </div>
-    <div class="modal-body">
-      <div id="editPendPreview" style="margin-bottom:16px"></div>
-      <div class="form-grid fg2" style="gap:14px" id="editPendForm">
-        <div class="form-field"><label>SKU</label><input type="text" id="epSku"></div>
-        <div class="form-field"><label>Cantidad</label><input type="number" id="epCantidad"></div>
-        <div class="form-field field-full"><label>Nombre del Producto</label><input type="text" id="epProducto"></div>
-        <div class="form-field"><label>Categoría</label><input type="text" id="epCategoria"></div>
-        <div class="form-field"><label>Sub Categoría</label><input type="text" id="epSubcategoria"></div>
-        <div class="form-field"><label>Estado</label>
-          <select id="epEstado"><option value="Nuevo">Nuevo</option><option value="Usado">Usado</option><option value="Open Box">Open Box</option></select>
+    <div class="modal-body" style="padding:0;overflow:hidden">
+      <div style="display:flex;min-height:0">
+
+        <!-- ── COLUMNA IZQUIERDA: Formulario scrollable ── -->
+        <div style="flex:1;padding:20px;overflow-y:auto;max-height:78vh">
+          <div class="form-grid fg2" style="gap:14px" id="editPendForm">
+            <div class="form-field"><label>SKU</label><input type="text" id="epSku"></div>
+            <div class="form-field"><label>Cantidad</label><input type="number" id="epCantidad"></div>
+            <div class="form-field field-full"><label>Nombre del Producto</label><input type="text" id="epProducto"></div>
+            <div class="form-field"><label>Categoría</label><input type="text" id="epCategoria"></div>
+            <div class="form-field"><label>Sub Categoría</label><input type="text" id="epSubcategoria"></div>
+            <div class="form-field"><label>Estado</label>
+              <select id="epEstado" onchange="recalcPendientePreview()"><option value="Nuevo">Nuevo</option><option value="Usado">Usado</option><option value="Open Box">Open Box</option></select>
+            </div>
+            <div class="form-field"><label>Nivel Compra</label>
+              <select id="epNivel" onchange="recalcPendientePreview()"><option value="Excelente">Excelente</option><option value="Normal">Normal</option><option value="Alto">Alto</option></select>
+            </div>
+            <div class="form-field"><label>Costo Proveedor USD</label><input type="number" id="epCostoUSD" step="0.01" oninput="recalcPendientePreview()"></div>
+            <div class="form-field"><label>Costo Extra USD</label><input type="number" id="epCostoExtra" step="0.01" oninput="recalcPendientePreview()"></div>
+            <div class="form-field"><label>Flete LPS</label><input type="number" id="epFlete" step="0.01" oninput="recalcPendientePreview()"></div>
+            <div class="form-field"><label>Ajuste Manual %</label><input type="number" id="epAjuste" step="0.1" oninput="recalcPendientePreview()"></div>
+            <div class="form-field"><label>Descuento %</label><input type="number" id="epDescuento" step="0.1" oninput="recalcPendientePreview()"></div>
+            <div class="form-field"><label>URL 1</label><input type="url" id="epUrl1"></div>
+            <div class="form-field"><label>URL 2</label><input type="url" id="epUrl2"></div>
+            <div class="form-field field-full"><label>Nota</label><input type="text" id="epNota"></div>
+            <div class="form-field"><label>Cantidad Mínima</label><input type="number" id="epMinStock" min="0"></div>
+            <div class="form-field"><label>Override Banda</label>
+              <select id="epOverrideBanda" onchange="recalcPendientePreview()"><option value="">Automático</option><option value="Bajo">Bajo</option><option value="Medio">Medio</option><option value="Alto">Alto</option><option value="Premium">Premium</option></select>
+            </div>
+          </div>
+          <div class="btn-row" style="margin-top:20px;justify-content:flex-end">
+            <button class="btn btn-danger" onclick="rechazarPendiente()">❌ Rechazar</button>
+            <button class="btn btn-success" onclick="aprobarPendiente()">✅ Aprobar Producto</button>
+          </div>
         </div>
-        <div class="form-field"><label>Nivel Compra</label>
-          <select id="epNivel" onchange="recalcPendientePreview()"><option value="Excelente">Excelente</option><option value="Normal">Normal</option><option value="Alto">Alto</option></select>
+
+        <!-- ── COLUMNA DERECHA: Preview fija ── -->
+        <div id="editPendPreview"
+          style="width:220px;min-width:220px;background:rgba(0,0,0,.18);border-left:1px solid rgba(61,106,255,.18);
+                 padding:20px 16px;display:flex;flex-direction:column;gap:12px;
+                 position:sticky;top:0;align-self:flex-start;max-height:78vh;overflow-y:auto">
+          <!-- Contenido inyectado por recalcPendientePreview() -->
+          <div style="color:var(--text3);font-size:12px;text-align:center;margin-top:40px">
+            Completa los campos de costo para ver el preview
+          </div>
         </div>
-        <div class="form-field"><label>Costo Proveedor USD</label><input type="number" id="epCostoUSD" step="0.01" oninput="recalcPendientePreview()"></div>
-        <div class="form-field"><label>Costo Extra USD</label><input type="number" id="epCostoExtra" step="0.01" oninput="recalcPendientePreview()"></div>
-        <div class="form-field"><label>Flete LPS</label><input type="number" id="epFlete" step="0.01" oninput="recalcPendientePreview()"></div>
-        <div class="form-field"><label>Ajuste Manual %</label><input type="number" id="epAjuste" step="0.1" oninput="recalcPendientePreview()"></div>
-        <div class="form-field"><label>Descuento %</label><input type="number" id="epDescuento" step="0.1" oninput="recalcPendientePreview()"></div>
-        <div class="form-field"><label>URL 1</label><input type="url" id="epUrl1"></div>
-        <div class="form-field"><label>URL 2</label><input type="url" id="epUrl2"></div>
-        <div class="form-field field-full"><label>Nota</label><input type="text" id="epNota"></div>
-        <div class="form-field"><label>Cantidad Mínima</label><input type="number" id="epMinStock" min="0"></div>
-        <div class="form-field"><label>Override Banda</label>
-          <select id="epOverrideBanda"><option value="">Automático</option><option value="Bajo">Bajo</option><option value="Medio">Medio</option><option value="Alto">Alto</option><option value="Premium">Premium</option></select>
-        </div>
-      </div>
-      <div class="btn-row" style="margin-top:20px;justify-content:flex-end">
-        <button class="btn btn-danger" onclick="rechazarPendiente()">❌ Rechazar</button>
-        <button class="btn btn-success" onclick="aprobarPendiente()">✅ Aprobar Producto</button>
+
       </div>
     </div>
   </div>
@@ -5139,13 +5156,46 @@ function recalcPendientePreview() {
   const c = calcProd({ ...p, ...edits });
   const el = document.getElementById('editPendPreview');
   if (!el) return;
+
+  const bandaColor = { Bajo:'#e67e22', Medio:'#3d6aff', Alto:'#00c8a0', Premium:'#a29bfe' }[c.bandaEfectiva] || 'var(--accent)';
+  const roiOk = c.roi >= c.roiRef;
+
   el.innerHTML = `
-    <div style="background:rgba(61,106,255,.07);border:1px solid rgba(61,106,255,.2);border-radius:8px;padding:12px 16px;display:flex;gap:20px;flex-wrap:wrap">
-      <div><div style="font-size:10px;color:var(--text2);text-transform:uppercase;font-weight:600">Precio c/ISV</div><div style="font-size:18px;font-weight:800;color:var(--green)">${fmtLPS(c.precioConISV)}</div></div>
-      <div><div style="font-size:10px;color:var(--text2);text-transform:uppercase;font-weight:600">Precio Final c/Desc</div><div style="font-size:18px;font-weight:800;color:var(--accent3)">${fmtLPS(c.precioFinalDesc)}</div></div>
-      <div><div style="font-size:10px;color:var(--text2);text-transform:uppercase;font-weight:600">Banda</div><div style="font-size:16px;font-weight:700;color:var(--accent)">${c.bandaEfectiva}</div></div>
-      <div><div style="font-size:10px;color:var(--text2);text-transform:uppercase;font-weight:600">ROI</div><div style="font-size:16px;font-weight:700;color:${c.roi>=c.roiRef?'var(--green)':'var(--red)'}">${fmtPct(c.roi)}</div></div>
-    </div>`;
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Vista Previa</div>
+
+    <div style="background:rgba(61,106,255,.08);border:1px solid rgba(61,106,255,.18);border-radius:10px;padding:14px 12px">
+      <div style="font-size:10px;color:var(--text2);text-transform:uppercase;font-weight:600;margin-bottom:4px">Precio c/ISV</div>
+      <div style="font-size:22px;font-weight:800;color:var(--green);line-height:1">${fmtLPS(c.precioConISV)}</div>
+    </div>
+
+    <div style="background:rgba(61,106,255,.08);border:1px solid rgba(61,106,255,.18);border-radius:10px;padding:14px 12px">
+      <div style="font-size:10px;color:var(--text2);text-transform:uppercase;font-weight:600;margin-bottom:4px">Precio Final c/Desc</div>
+      <div style="font-size:20px;font-weight:800;color:var(--accent3);line-height:1">${fmtLPS(c.precioFinalDesc)}</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div style="background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px 10px;text-align:center">
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-weight:600;margin-bottom:4px">Banda</div>
+        <div style="font-size:15px;font-weight:800;color:${bandaColor}">${c.bandaEfectiva}</div>
+      </div>
+      <div style="background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px 10px;text-align:center">
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-weight:600;margin-bottom:4px">ROI</div>
+        <div style="font-size:15px;font-weight:800;color:${roiOk?'var(--green)':'var(--red)'}">${fmtPct(c.roi)}</div>
+      </div>
+    </div>
+
+    <div style="background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px">
+      <div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-weight:600;margin-bottom:6px">Costo Total</div>
+      <div style="font-size:13px;color:var(--text2)">USD <span style="font-weight:700;color:var(--text)">${c.costoTotalUSD ? '$'+Number(c.costoTotalUSD).toFixed(2) : '—'}</span></div>
+      <div style="font-size:13px;color:var(--text2);margin-top:2px">LPS <span style="font-weight:700;color:var(--text)">${fmtLPS(c.costoTotalLPS)}</span></div>
+    </div>
+
+    <div style="background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px">
+      <div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-weight:600;margin-bottom:6px">Desc. Máximo</div>
+      <div style="font-size:16px;font-weight:700;color:var(--gold)">${c.descMax ? fmtPct(c.descMax) : '—'}</div>
+    </div>
+
+    <div style="font-size:10px;color:var(--text3);text-align:center;padding-top:4px">🔄 Se actualiza en tiempo real</div>`;
 }
 
 async function aprobarPendiente() {
