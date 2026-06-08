@@ -631,6 +631,9 @@
         </div>
       </div>
 
+      <!-- ── Fecha límite de diagnóstico ──────────────────── -->
+      <div class="card" id="diagnosisDeadlineCard" style="display:none;padding:16px"></div>
+
       <!-- ── Fecha límite de reparación ────────────────────── -->
       <div class="card" id="deadlineCard" style="display:none;padding:16px"></div>
 
@@ -944,6 +947,9 @@ function renderTicket(t, history, msgs, notes) {
   const link = base + 'portal.html?token=' + encodeURIComponent(t.access_token);
   document.getElementById('portalLinkBox').textContent = link;
 
+  // Fecha límite de diagnóstico
+  renderDiagnosisDeadlineCard(t);
+
   // Fecha límite de reparación
   renderDeadlineCard(t);
 
@@ -955,6 +961,89 @@ function renderTicket(t, history, msgs, notes) {
 
   // Notes
   renderNotes(notes);
+}
+
+/* ── Fecha límite de diagnóstico ────────────────────────────── */
+function renderDiagnosisDeadlineCard(t) {
+  const el = document.getElementById('diagnosisDeadlineCard');
+  if (!el) return;
+
+  if (t.status !== 'en_diagnostico') { el.style.display = 'none'; return; }
+
+  el.style.display = 'block';
+  const isAdmin  = ['admin','supervisor'].includes(session?.role);
+  const deadline = t.diagnosis_expected_at;
+
+  if (!deadline) {
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">🔍 Plazo de diagnóstico</span>
+        ${isAdmin ? `<button class="btn btn-ghost" style="font-size:11px;padding:3px 10px" onclick="toggleDiagDeadlineEdit(true)">✏️ Establecer</button>` : ''}
+      </div>
+      <div style="font-size:13px;color:var(--muted);font-style:italic">Sin plazo establecido (se calculó automáticamente al asignar técnico)</div>
+      ${isAdmin ? diagDeadlineEditForm() : ''}`;
+    return;
+  }
+
+  const today    = new Date().toISOString().split('T')[0];
+  const dLine    = new Date(deadline + 'T12:00:00');
+  const diffMs   = dLine.getTime() - Date.now();
+  const diffDays = Math.ceil(diffMs / 86400000);
+  const isPast   = diffDays < 0;
+  const isToday  = diffDays === 0;
+  const isTomorrow = diffDays === 1;
+
+  const fmtDeadline = dLine.toLocaleDateString('es-HN', { dateStyle: 'long' });
+  let statusColor = '#2ed573';
+  let statusMsg   = `✅ Faltan <strong>${diffDays}</strong> día(s)`;
+  if (isPast)     { statusColor = '#ff4757'; statusMsg = `🔴 <strong>${Math.abs(diffDays)}</strong> día(s) de retraso en diagnóstico`; }
+  if (isToday)    { statusColor = '#ff9f43'; statusMsg = `⚠️ <strong>Vence hoy</strong>`; }
+  if (isTomorrow) { statusColor = '#f5c842'; statusMsg = `⏰ <strong>Vence mañana</strong>`; }
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">🔍 Plazo de diagnóstico</span>
+      ${isAdmin ? `<button class="btn btn-ghost" style="font-size:11px;padding:3px 10px" onclick="toggleDiagDeadlineEdit(true)">✏️ Editar</button>` : ''}
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:18px;font-weight:800;color:${statusColor}">${fmtDeadline}</span>
+      <span style="font-size:13px;color:${statusColor}">${statusMsg}</span>
+    </div>
+    ${isAdmin ? diagDeadlineEditForm(deadline) : ''}`;
+}
+
+function diagDeadlineEditForm(current = '') {
+  return `
+    <div id="diagDeadlineEditForm" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Nueva fecha límite de diagnóstico:</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="date" id="diagDeadlineInput" value="${current}" min="${new Date().toISOString().split('T')[0]}"
+          style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--fg);font-size:13px">
+        <button class="btn btn-primary" style="padding:7px 16px;font-size:13px" onclick="saveDiagnosisDeadline()">Guardar</button>
+        <button class="btn btn-ghost"   style="padding:7px 12px;font-size:13px" onclick="toggleDiagDeadlineEdit(false)">Cancelar</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">⚠️ Al cambiar la fecha se reinician los avisos automáticos al técnico.</div>
+    </div>`;
+}
+
+function toggleDiagDeadlineEdit(show) {
+  const f = document.getElementById('diagDeadlineEditForm');
+  if (f) f.style.display = show ? 'block' : 'none';
+}
+
+async function saveDiagnosisDeadline() {
+  const val = document.getElementById('diagDeadlineInput')?.value;
+  if (!val) { showToast('⚠️ Selecciona una fecha'); return; }
+  try {
+    const { error } = await sb.from('sp_tickets').update({
+      diagnosis_expected_at:               val,
+      diagnosis_deadline_warning_sent_at:  null,  // resetear aviso 1 día antes
+      last_diagnosis_overdue_alert_at:     null   // resetear recordatorios diarios
+    }).eq('id', ticketId);
+    if (error) throw error;
+    showToast('✅ Plazo de diagnóstico actualizado');
+    setTimeout(() => location.reload(), 600);
+  } catch(ex) { showToast('⚠️ Error: ' + ex.message); }
 }
 
 /* ── Fecha límite de reparación ─────────────────────────────── */
@@ -1327,7 +1416,15 @@ async function assignTech(btn) {
     const earlyStatuses = ['solicitud_recibida','equipo_en_camino','equipo_recibido'];
     const autoDiag = techId && earlyStatuses.includes(ticketData?.status);
     const updatePayload = { assigned_to: techId };
-    if (autoDiag) updatePayload.status = 'en_diagnostico';
+    if (autoDiag) {
+      updatePayload.status = 'en_diagnostico';
+      // Auto-calcular fecha límite de diagnóstico (3 días por defecto)
+      const diagDeadline = new Date();
+      diagDeadline.setDate(diagDeadline.getDate() + 3);
+      updatePayload.diagnosis_expected_at              = diagDeadline.toISOString().split('T')[0];
+      updatePayload.diagnosis_deadline_warning_sent_at = null;
+      updatePayload.last_diagnosis_overdue_alert_at    = null;
+    }
 
     const { error } = await sb.from('sp_tickets').update(updatePayload).eq('id', ticketId);
     if (error) throw error;
