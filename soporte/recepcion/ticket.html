@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -942,9 +942,8 @@ function renderTicket(t, history, msgs, notes) {
     if (t.shipping_notes) { document.getElementById('shNotes').textContent = t.shipping_notes;   document.getElementById('shNotesRow').style.display = 'block'; }
   }
 
-  // Portal link (recepcion/ticket.html → soporte/portal.html)
-  const base = location.origin + location.pathname.replace('recepcion/ticket.html', '');
-  const link = base + 'portal.html?token=' + encodeURIComponent(t.access_token);
+  // Portal link — dominio oficial del cliente
+  const link = 'https://soporte.focusstore.net/portal.html?token=' + encodeURIComponent(t.access_token);
   document.getElementById('portalLinkBox').textContent = link;
 
   // Fecha límite de diagnóstico
@@ -1452,7 +1451,7 @@ async function assignTech(btn) {
           await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ to: tech.phone,
-              message: `🔧 *Focus Store Soporte*\n\nHola ${tech.full_name}, se te asignó un ticket.\n\n🎫 *Ticket:* #${tNum}\n💻 *Equipo:* ${brand} ${model}\n🔍 *Falla:* ${fault.substring(0,150)}\n\nRevísalo en tu panel:\nhttps://ventas806.github.io/preciointeligente/soporte/tecnico/index.html`
+              message: `🔧 *Focus Store Soporte*\n\nHola ${tech.full_name}, se te asignó un ticket.\n\n🎫 *Ticket:* #${tNum}\n💻 *Equipo:* ${brand} ${model}\n🔍 *Falla:* ${fault.substring(0,150)}\n\nRevísalo en tu panel:\nhttps://soporte.focusstore.net/tecnico/index.html`
             })
           });
         } catch (_) {}
@@ -1508,8 +1507,7 @@ async function sendMessage() {
     const cu  = ticketData?.sp_customers;
     const eq  = ticketData?.sp_equipment;
     const num = ticketData?.ticket_number || ticketId;
-    const portalBase = location.origin + location.pathname.replace('recepcion/ticket.html', '');
-    const portalLink = portalBase + 'portal.html?token=' + encodeURIComponent(ticketData?.access_token || '');
+    const portalLink = 'https://soporte.focusstore.net/portal.html?token=' + encodeURIComponent(ticketData?.access_token || '');
 
     if (cu) {
       // WhatsApp — parámetro correcto: "message"
@@ -1920,7 +1918,7 @@ async function sendClientQuote(btn) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             to: cu.phone,
-            message: `💰 *Focus Store Soporte*\n\nHola ${cu.full_name}, tu cotización para el Ticket *#${tNum}* está lista.\n\n💻 *Equipo:* ${brand} ${model}\n💵 *Total:* L. ${totalFmt}\n\n✅ Aprueba o rechaza en:\nhttps://ventas806.github.io/preciointeligente/soporte/portal.html?token=${accessToken}`
+            message: `💰 *Focus Store Soporte*\n\nHola ${cu.full_name}, tu cotización para el Ticket *#${tNum}* está lista.\n\n💻 *Equipo:* ${brand} ${model}\n💵 *Total:* L. ${totalFmt}\n\n✅ Aprueba o rechaza en:\nhttps://soporte.focusstore.net/portal.html?token=${accessToken}`
           })
         });
       } catch (_) { /* no bloquea */ }
@@ -1967,7 +1965,7 @@ async function approveInternalQuote(qId) {
           await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ to: tech.phone,
-              message: `✅ *Focus Store — Cotización Aprobada*\n\nHola ${tech.full_name}, tu cotización para el Ticket *#${tNum}* fue aprobada por Focus Store.\n\n💻 Equipo: ${brand} ${model}\n\nPronto te avisaremos para iniciar la reparación cuando el cliente confirme.\n🔗 https://ventas806.github.io/preciointeligente/soporte/tecnico/index.html` })
+              message: `✅ *Focus Store — Cotización Aprobada*\n\nHola ${tech.full_name}, tu cotización para el Ticket *#${tNum}* fue aprobada por Focus Store.\n\n💻 Equipo: ${brand} ${model}\n\nPronto te avisaremos para iniciar la reparación cuando el cliente confirme.\n🔗 https://soporte.focusstore.net/tecnico/index.html` })
           });
         } catch(_) {}
       }
@@ -2031,7 +2029,7 @@ async function confirmReject() {
             await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ to: tech.phone,
-                message: `❌ *Focus Store — Cotización Rechazada*\n\nHola ${tech.full_name}, tu cotización para el Ticket *#${tNum}* fue rechazada.\n\n💻 Equipo: ${brand} ${model}\n📝 Motivo: "${reason}"\n\nRevisa el ticket en tu panel:\nhttps://ventas806.github.io/preciointeligente/soporte/tecnico/index.html` })
+                message: `❌ *Focus Store — Cotización Rechazada*\n\nHola ${tech.full_name}, tu cotización para el Ticket *#${tNum}* fue rechazada.\n\n💻 Equipo: ${brand} ${model}\n📝 Motivo: "${reason}"\n\nRevisa el ticket en tu panel:\nhttps://soporte.focusstore.net/tecnico/index.html` })
             });
           } catch(_) {}
         }
@@ -2353,7 +2351,7 @@ async function doNextStep() {
       showToast('📬 Equipo recibido — cliente notificado'); setTimeout(() => location.reload(), 800);
     }
   } else if (action === 'ver_panel_tecnico') {
-    window.open('https://ventas806.github.io/preciointeligente/soporte/tecnico/index.html', '_blank');
+    window.open('https://soporte.focusstore.net/tecnico/index.html', '_blank');
   } else if (action === 'asignar') {
     document.getElementById('techSelect')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     document.getElementById('techSelect')?.focus();

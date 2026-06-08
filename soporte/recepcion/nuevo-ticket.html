@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -574,7 +574,7 @@ async function submitTicket() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               to: tech.phone,
-              message: `🔧 *Focus Store Soporte*\n\nHola ${tech.full_name}, se te asignó un nuevo ticket.\n\n🎫 *Ticket:* #${ticket.ticket_number}\n💻 *Equipo:* ${v('brand')} ${v('model')}\n🔍 *Falla:* ${v('fault').substring(0, 150)}\n\nRevísalo en tu panel:\nhttps://ventas806.github.io/preciointeligente/soporte/tecnico/index.html`
+              message: `🔧 *Focus Store Soporte*\n\nHola ${tech.full_name}, se te asignó un nuevo ticket.\n\n🎫 *Ticket:* #${ticket.ticket_number}\n💻 *Equipo:* ${v('brand')} ${v('model')}\n🔍 *Falla:* ${v('fault').substring(0, 150)}\n\nRevísalo en tu panel:\nhttps://soporte.focusstore.net/tecnico/index.html`
             })
           });
         } catch (_) { /* no bloquea */ }
@@ -606,7 +606,7 @@ async function submitTicket() {
       } catch (_) { /* no bloquea */ }
     }
     if (clientPhone) {
-      const portalLink = `https://ventas806.github.io/preciointeligente/soporte/portal.html?token=${ticket.access_token}`;
+      const portalLink = `https://soporte.focusstore.net/portal.html?token=${ticket.access_token}`;
       try {
         await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
           method: 'POST',

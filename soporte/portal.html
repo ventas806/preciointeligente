@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -972,7 +972,7 @@ async function confirmReject() {
         .in('role', ['admin', 'supervisor'])
         .eq('is_active', true);
 
-      const waMsg = `❌ *Cliente rechazó cotización — Focus Store*\n\n*${name}* rechazó la cotización del Ticket *#${tNum}*.\n\n💻 Equipo: ${eq?.brand||''} ${eq?.model||''}\n📝 Motivo: "${reason}"\n\nRevisa el ticket para tomar acción:\nhttps://ventas806.github.io/preciointeligente/soporte/recepcion/ticket.html?id=${ticketData.id}&_v=${Date.now()}`;
+      const waMsg = `❌ *Cliente rechazó cotización — Focus Store*\n\n*${name}* rechazó la cotización del Ticket *#${tNum}*.\n\n💻 Equipo: ${eq?.brand||''} ${eq?.model||''}\n📝 Motivo: "${reason}"\n\nRevisa el ticket para tomar acción:\nhttps://soporte.focusstore.net/recepcion/ticket.html?id=${ticketData.id}&_v=${Date.now()}`;
 
       for (const admin of (admins || [])) {
         if (admin.phone) {
