@@ -410,7 +410,7 @@
   </div>
 </div>
 
-<!-- Error -->
+<!-- Error: token inválido -->
 <div class="container" id="errorView" style="display:none">
   <div class="centered">
     <div class="big-icon">🔒</div>
@@ -419,6 +419,23 @@
     Comuníquese con Focus Store para asistencia.</p>
     <br>
     <p style="font-size:12px;color:var(--muted)">Plaza Premier, 2do nivel · Col. Humuya · Tegucigalpa</p>
+  </div>
+</div>
+
+<!-- Error: fallo de red / JS -->
+<div class="container" id="errorNetView" style="display:none">
+  <div class="centered">
+    <div class="big-icon">📡</div>
+    <h2>Error de conexión</h2>
+    <p>No se pudo cargar la información del ticket.<br>
+    Verifica tu conexión a internet e intenta de nuevo.</p>
+    <br>
+    <button onclick="location.reload()"
+      style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:12px 28px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">
+      🔄 Reintentar
+    </button>
+    <br><br>
+    <p style="font-size:12px;color:var(--muted)">Si el problema persiste, comuníquese con Focus Store.</p>
   </div>
 </div>
 
@@ -640,9 +657,10 @@ async function loadTicket() {
       .eq('access_token', token)
       .single();
 
+    // Token no encontrado en BD → enlace inválido
     if (error || !t) { showView('error'); return; }
 
-    // Check expiry
+    // Token expirado → enlace expirado
     if (new Date(t.token_expires_at) < new Date()) { showView('error'); return; }
 
     ticketData   = t;
@@ -682,8 +700,9 @@ async function loadTicket() {
     showView('main');
 
   } catch (ex) {
-    console.error(ex);
-    showView('error');
+    // Error de red o JavaScript — mostrar pantalla de reintento
+    console.error('Portal error:', ex);
+    showView('errorNet');
   }
 }
 
@@ -977,9 +996,10 @@ async function confirmReject() {
    HELPERS
 ═══════════════════════════════════════════════════════════════ */
 function showView(v) {
-  document.getElementById('loadingView').style.display = 'none';
-  document.getElementById('errorView').style.display   = v === 'error' ? 'block' : 'none';
-  document.getElementById('mainView').style.display    = v === 'main'  ? 'block' : 'none';
+  document.getElementById('loadingView').style.display    = 'none';
+  document.getElementById('errorView').style.display      = v === 'error'    ? 'block' : 'none';
+  document.getElementById('errorNetView').style.display   = v === 'errorNet' ? 'block' : 'none';
+  document.getElementById('mainView').style.display       = v === 'main'     ? 'block' : 'none';
 }
 
 function fmt(n)     { return Number(n).toLocaleString('es-HN', { minimumFractionDigits: 2 }); }
