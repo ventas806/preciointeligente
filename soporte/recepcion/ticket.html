@@ -628,6 +628,9 @@
         </div>
       </div>
 
+      <!-- ── Fecha límite de reparación ────────────────────── -->
+      <div class="card" id="deadlineCard" style="display:none;padding:16px"></div>
+
       <!-- ── Customer info ─────────────────────────────────── -->
       <div class="card">
         <div class="card-header"><h3>Cliente</h3></div>
@@ -938,6 +941,9 @@ function renderTicket(t, history, msgs, notes) {
   const link = base + 'portal.html?token=' + encodeURIComponent(t.access_token);
   document.getElementById('portalLinkBox').textContent = link;
 
+  // Fecha límite de reparación
+  renderDeadlineCard(t);
+
   // Timeline
   renderTimeline(history);
 
@@ -946,6 +952,91 @@ function renderTicket(t, history, msgs, notes) {
 
   // Notes
   renderNotes(notes);
+}
+
+/* ── Fecha límite de reparación ─────────────────────────────── */
+function renderDeadlineCard(t) {
+  const el = document.getElementById('deadlineCard');
+  if (!el) return;
+
+  const inRepair = ['aprobado_reparacion','en_reparacion','en_pruebas'].includes(t.status);
+  if (!inRepair) { el.style.display = 'none'; return; }
+
+  el.style.display = 'block';
+  const isAdmin = ['admin','supervisor'].includes(session?.role);
+  const deadline = t.repair_expected_at;
+
+  if (!deadline) {
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">📅 Fecha límite</span>
+        ${isAdmin ? `<button class="btn btn-ghost" style="font-size:11px;padding:3px 10px" onclick="toggleDeadlineEdit(true)">✏️ Establecer</button>` : ''}
+      </div>
+      <div style="font-size:13px;color:var(--muted);font-style:italic">Sin fecha límite establecida</div>
+      ${isAdmin ? deadlineEditForm() : ''}`;
+    return;
+  }
+
+  const today     = new Date().toISOString().split('T')[0];
+  const dLine     = new Date(deadline + 'T12:00:00');
+  const nowDate   = new Date();
+  const diffMs    = dLine.getTime() - nowDate.getTime();
+  const diffDays  = Math.ceil(diffMs / 86400000);
+  const isPast    = diffDays < 0;
+  const isToday   = diffDays === 0;
+  const isTomorrow= diffDays === 1;
+
+  const fmtDeadline = dLine.toLocaleDateString('es-HN',{dateStyle:'long'});
+  let statusColor = '#2ed573';   // verde
+  let statusMsg   = `✅ Faltan <strong>${diffDays}</strong> día(s)`;
+  if (isPast)    { statusColor = '#ff4757'; statusMsg = `🔴 <strong>${Math.abs(diffDays)}</strong> día(s) de retraso`; }
+  if (isToday)   { statusColor = '#ff9f43'; statusMsg = `⚠️ <strong>Vence hoy</strong>`; }
+  if (isTomorrow){ statusColor = '#f5c842'; statusMsg = `⏰ <strong>Vence mañana</strong>`; }
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">📅 Fecha límite de entrega</span>
+      ${isAdmin ? `<button class="btn btn-ghost" style="font-size:11px;padding:3px 10px" onclick="toggleDeadlineEdit(true)">✏️ Editar</button>` : ''}
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:18px;font-weight:800;color:${statusColor}">${fmtDeadline}</span>
+      <span style="font-size:13px;color:${statusColor}">${statusMsg}</span>
+    </div>
+    ${isAdmin ? deadlineEditForm(deadline) : ''}`;
+}
+
+function deadlineEditForm(current = '') {
+  return `
+    <div id="deadlineEditForm" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Nueva fecha límite:</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="date" id="deadlineInput" value="${current}" min="${new Date().toISOString().split('T')[0]}"
+          style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--fg);font-size:13px">
+        <button class="btn btn-primary" style="padding:7px 16px;font-size:13px" onclick="saveDeadline()">Guardar</button>
+        <button class="btn btn-ghost"   style="padding:7px 12px;font-size:13px" onclick="toggleDeadlineEdit(false)">Cancelar</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">⚠️ Al cambiar la fecha se reinician los avisos automáticos al técnico.</div>
+    </div>`;
+}
+
+function toggleDeadlineEdit(show) {
+  const f = document.getElementById('deadlineEditForm');
+  if (f) f.style.display = show ? 'block' : 'none';
+}
+
+async function saveDeadline() {
+  const val = document.getElementById('deadlineInput')?.value;
+  if (!val) { showToast('⚠️ Selecciona una fecha'); return; }
+  try {
+    const { error } = await sb.from('sp_tickets').update({
+      repair_expected_at: val,
+      deadline_warning_sent_at: null,   // resetear aviso para que se dispare con la nueva fecha
+      last_overdue_alert_at: null       // resetear recordatorios de atraso
+    }).eq('id', ticketId);
+    if (error) throw error;
+    showToast('✅ Fecha límite actualizada');
+    setTimeout(() => location.reload(), 600);
+  } catch(ex) { showToast('⚠️ Error: ' + ex.message); }
 }
 
 function renderTimeline(history) {
@@ -1710,6 +1801,20 @@ async function approveInternalQuote(qId) {
       status: 'aprobada', approved_at: new Date().toISOString(), approved_by: session.id
     }).eq('id', qId);
     if (error) throw error;
+
+    // Calcular y guardar fecha límite automáticamente (días estimados de la cotización del técnico)
+    if (quoteInternal) {
+      const totalDays = (quoteInternal.repair_days || 0) + (quoteInternal.parts_days || 0) + (quoteInternal.testing_days || 0);
+      if (totalDays > 0) {
+        const deadline = new Date();
+        deadline.setDate(deadline.getDate() + totalDays);
+        const deadlineStr = deadline.toISOString().split('T')[0]; // YYYY-MM-DD
+        await sb.from('sp_tickets').update({
+          repair_expected_at: deadlineStr,
+          deadline_warning_sent_at: null  // resetear para que dispare el aviso cuando corresponda
+        }).eq('id', ticketId);
+      }
+    }
 
     // Notificar al técnico que su cotización fue aprobada por el admin
     const techId = ticketData?.assigned_to;
