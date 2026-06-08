@@ -1503,9 +1503,48 @@ async function sendMessage() {
       is_visible_to_client: true
     });
     if (error) throw error;
+
+    // Notificar al cliente por WhatsApp + Email
+    const cu  = ticketData?.sp_customers;
+    const eq  = ticketData?.sp_equipment;
+    const num = ticketData?.ticket_number || ticketId;
+    const portalBase = location.origin + location.pathname.replace('recepcion/ticket.html', '');
+    const portalLink = portalBase + 'portal.html?token=' + encodeURIComponent(ticketData?.access_token || '');
+
+    if (cu) {
+      // WhatsApp — parámetro correcto: "message"
+      if (cu.phone) {
+        await fetch('https://uzhjnedhmbvgfqqssuov.supabase.co/functions/v1/send-whatsapp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to:      cu.phone,
+            message: `💬 *Mensaje de Focus Store — Ticket #${num}*\n\nHola ${cu.full_name},\n\n"${msg}"\n\n📋 Ver tu ticket:\n${portalLink}`
+          })
+        });
+      }
+      // Email — tipo staff_message
+      if (cu.email) {
+        await fetch('https://uzhjnedhmbvgfqqssuov.supabase.co/functions/v1/send-ticket-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type:         'staff_message',
+            clientName:   cu.full_name,
+            clientEmail:  cu.email,
+            ticketNumber: num,
+            deviceBrand:  eq?.brand || '',
+            deviceModel:  eq?.model || '',
+            staffMessage: msg,
+            portalToken:  ticketData?.access_token || ''
+          })
+        });
+      }
+    }
+
     document.getElementById('newMsg').value = '';
-    showToast('✅ Mensaje enviado');
-    setTimeout(() => location.reload(), 800);
+    showToast('✅ Mensaje enviado' + (cu?.phone || cu?.email ? ' y cliente notificado' : ''));
+    setTimeout(() => location.reload(), 1000);
   } catch (ex) {
     showToast('⚠️ Error: ' + ex.message);
   }
