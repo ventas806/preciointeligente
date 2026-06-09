@@ -11537,7 +11537,6 @@ function renderHistorialCotizaciones() {
           <button class="btn btn-ghost btn-sm" onclick="verDetalleCotizacion('${c.id}')" title="Ver">👁️</button>
           <button class="btn btn-primary btn-sm" onclick="editarCotizacion('${c.id}')" title="Editar">✏️</button>
           <button class="btn btn-ghost btn-sm" onclick="imprimirCotizacion('${c.id}')" title="Imprimir">🖨️</button>
-          <button class="btn btn-ghost btn-sm" onclick="abrirEmailCotizacion('${c.id}')" title="Enviar por Gmail" style="color:#EA4335">📧</button>
           <button class="btn btn-ghost btn-sm" onclick="compartirCotizacion('${c.id}')" title="Compartir link al cliente" style="color:#25d366;border-color:rgba(37,211,102,.3)">📤</button>
           ${c.estado!=='convertida'&&c.estado!=='rechazada'?`<button class="btn btn-sm" onclick="convertirAVenta('${c.id}')" title="Convertir a Venta" style="background:var(--gold);color:#000;border:none">🔄 Venta</button>`:''}
           ${c.estado==='activa'||c.estado==='vencida'?`<button class="btn btn-sm" onclick="marcarCotizacionRechazada('${c.id}')" title="Rechazar" style="background:rgba(255,71,87,.12);border:1px solid rgba(255,71,87,.3);color:var(--red)">❌</button>`:''}
