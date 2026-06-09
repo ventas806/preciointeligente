@@ -11397,12 +11397,8 @@ async function guardarCotizacion() {
   try {
     const result = await sbSaveCotizacion(cot);
     if (result && result.numero) cot.numero = result.numero;
-    if (cEditandoId) {
-      const idx=cotizaciones.findIndex(x=>x.id===cEditandoId);
-      if(idx>=0) cotizaciones[idx]=cot; else cotizaciones.unshift(cot);
-    } else {
-      cotizaciones.unshift(cot);
-    }
+    // Recargar desde DB para obtener token_publico y numero generados por el servidor
+    await cargarCotizaciones();
     ocultarCargando();
     showToast(`✅ Cotización ${cot.numero} guardada`, 'success');
     limpiarCotizacion();
