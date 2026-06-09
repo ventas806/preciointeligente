@@ -2501,7 +2501,13 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 <div style="font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600">% DESCUENTO</div>
                 <input type="number" id="cPctDescuento" placeholder="0.0" step="0.1" min="0" max="100" oninput="actualizarResumenCombo('pct')" style="width:110px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);color:var(--gold);font-size:16px;font-weight:700;outline:none">
               </div>
+              <div style="font-size:20px;color:var(--text3);padding-bottom:10px">+</div>
+              <div>
+                <div style="font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600">AJUSTE MANUAL %</div>
+                <input type="number" id="cAjusteManual" placeholder="0.0" step="0.1" oninput="actualizarResumenCombo('ajuste')" title="Ajuste adicional sobre el precio con descuento (positivo sube, negativo baja)" style="width:110px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);color:#a29bfe;font-size:16px;font-weight:700;outline:none">
+              </div>
             </div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">💡 <strong>Ajuste Manual:</strong> aplica sobre el precio con descuento (+% sube el precio, −% lo baja)</div>
             <div id="comboAhorroInfo" style="margin-top:8px;font-size:13px;color:var(--text2)"></div>
           </div>
         </div>
@@ -10034,6 +10040,7 @@ function nuevoCombo() {
   document.getElementById('cCategoria').value = '';
   document.getElementById('cNota').value = '';
   document.getElementById('cPrecioFinal').value = '';
+  if (document.getElementById('cAjusteManual')) document.getElementById('cAjusteManual').value = '';
   document.getElementById('cImagenUrl').value = '';
   document.getElementById('cImagenPreview').style.display = 'none';
   document.getElementById('comboItemBuscar').value = '';
@@ -10051,6 +10058,7 @@ function cancelarCombo() {
   document.getElementById('cCategoria').value = '';
   document.getElementById('cNota').value = '';
   document.getElementById('cPrecioFinal').value = '';
+  if (document.getElementById('cAjusteManual')) document.getElementById('cAjusteManual').value = '';
   document.getElementById('cImagenUrl').value = '';
   document.getElementById('cImagenPreview').style.display = 'none';
   document.getElementById('comboItemBuscar').value = '';
@@ -10197,21 +10205,33 @@ function actualizarResumenCombo(fuente) {
 
   // cPrecioFinal holds sinISV value
   let sinISVInput = parseFloat(document.getElementById('cPrecioFinal').value) || 0;
-  let pctDesc = parseFloat(document.getElementById('cPctDescuento').value) || 0;
+  let pctDesc    = parseFloat(document.getElementById('cPctDescuento').value) || 0;
+  let ajuste     = parseFloat(document.getElementById('cAjusteManual')?.value) || 0;
 
   if (fuente === 'pct' && totalSinISV > 0) {
-    sinISVInput = +(totalSinISV * (1 - pctDesc / 100)).toFixed(2);
-    document.getElementById('cPrecioFinal').value = pctDesc > 0 ? sinISVInput : '';
+    // Aplica descuento y luego ajuste
+    const baseDesc = totalSinISV * (1 - pctDesc / 100);
+    sinISVInput = +(baseDesc * (1 + ajuste / 100)).toFixed(2);
+    document.getElementById('cPrecioFinal').value = sinISVInput > 0 ? sinISVInput : '';
+  } else if (fuente === 'ajuste' && totalSinISV > 0) {
+    // Aplica descuento actual y nuevo ajuste
+    const baseDesc = totalSinISV * (1 - pctDesc / 100);
+    sinISVInput = +(baseDesc * (1 + ajuste / 100)).toFixed(2);
+    document.getElementById('cPrecioFinal').value = sinISVInput > 0 ? sinISVInput : '';
   } else if (fuente === 'precio' && totalSinISV > 0 && sinISVInput > 0) {
+    // Al editar precio manual: limpiar ajuste, recalcular solo pct
+    ajuste = 0;
+    if (document.getElementById('cAjusteManual')) document.getElementById('cAjusteManual').value = '';
     pctDesc = +((1 - sinISVInput / totalSinISV) * 100).toFixed(1);
     document.getElementById('cPctDescuento').value = pctDesc > 0 ? pctDesc : '';
   }
 
   const conISVFinal = sinISVInput > 0 ? +(sinISVInput * (1 + isvPct)).toFixed(2) : 0;
-  const isvAmount = conISVFinal - sinISVInput;
+  const isvAmount   = conISVFinal - sinISVInput;
   const ahorroSinISV = totalSinISV - sinISVInput;
-  const pctAhorro = totalSinISV > 0 && sinISVInput > 0 ? (ahorroSinISV / totalSinISV * 100) : 0;
-  const isvLabel = (isvPct * 100).toFixed(0) + '%';
+  const pctAhorro   = totalSinISV > 0 && sinISVInput > 0 ? (ahorroSinISV / totalSinISV * 100) : 0;
+  const isvLabel    = (isvPct * 100).toFixed(0) + '%';
+  const ajusteLabel = ajuste !== 0 ? `<span style="color:#a29bfe;font-weight:700">${ajuste > 0 ? '+' : ''}${ajuste}%</span>` : '<span style="color:var(--text3)">—</span>';
 
   grid.innerHTML = `
     <div class="calc-item"><div class="calc-item-label">Suma Individual sin ISV</div><div class="calc-item-value" style="color:var(--text2)">${totalSinISV > 0 ? fmtLPS(totalSinISV) : '—'}</div></div>
@@ -10220,6 +10240,7 @@ function actualizarResumenCombo(fuente) {
     <div class="calc-item"><div class="calc-item-label">Precio Final con ISV</div><div class="calc-item-value" style="color:var(--green);font-weight:700">${conISVFinal > 0 ? fmtLPS(conISVFinal) : '—'}</div></div>
     <div class="calc-item"><div class="calc-item-label">Ahorro Cliente</div><div class="calc-item-value" style="color:${ahorroSinISV>0?'var(--accent3)':'var(--text3)'}">${ahorroSinISV > 0 ? fmtLPS(ahorroSinISV) : '—'}</div></div>
     <div class="calc-item"><div class="calc-item-label">% Descuento</div><div class="calc-item-value" style="color:${pctAhorro>0?'var(--gold)':'var(--text3)'}">${pctAhorro > 0 ? pctAhorro.toFixed(1)+'%' : '—'}</div></div>
+    <div class="calc-item"><div class="calc-item-label">Ajuste Manual</div><div class="calc-item-value">${ajusteLabel}</div></div>
   `;
   if (sinISVInput > 0 && ahorroSinISV > 0) {
     ahorroEl.innerHTML = `🎉 El cliente ahorra <strong style="color:var(--accent3)">${fmtLPS(ahorroSinISV)}</strong> comprando el combo (${pctAhorro.toFixed(1)}% menos que por separado).`;
@@ -10251,6 +10272,8 @@ async function guardarCombo() {
   const precioFinal = +(sinISVInput * (1 + isvPctGuardar)).toFixed(2);
   const totalIndividual = totalConISV;
 
+  const ajusteManualGuardar = parseFloat(document.getElementById('cAjusteManual')?.value) || 0;
+
   const combo = {
     id: editingComboId || 'combo_' + Date.now(),
     nombre,
@@ -10261,6 +10284,7 @@ async function guardarCombo() {
     items: [...comboItemsActuales],
     precioFinal,
     totalIndividual,
+    ajusteManual: ajusteManualGuardar || 0,
     fechaCreado: editingComboId ? (combos.find(c=>c.id===editingComboId)||{}).fechaCreado || new Date().toISOString() : new Date().toISOString(),
     ultimaModif: new Date().toISOString(),
     creadoPor: currentUser ? currentUser.nombre : '—'
@@ -10332,12 +10356,16 @@ function editarCombo(id) {
   const sinISVEdit = combo.precioFinal > 0 ? +(combo.precioFinal / (1 + isvPctEdit)).toFixed(2) : '';
   document.getElementById('cPrecioFinal').value = sinISVEdit || '';
   document.getElementById('cImagenUrl').value = combo.imagenUrl||'';
-  // Pre-fill % descuento using sinISV base
+  // Pre-fill % descuento usando sinISV base
   if (sinISVEdit > 0 && totalSinISVEdit > 0) {
     const pct = +((1 - sinISVEdit / totalSinISVEdit) * 100).toFixed(1);
     document.getElementById('cPctDescuento').value = pct > 0 ? pct : '';
   } else {
     document.getElementById('cPctDescuento').value = '';
+  }
+  // Pre-fill ajuste manual guardado
+  if (document.getElementById('cAjusteManual')) {
+    document.getElementById('cAjusteManual').value = combo.ajusteManual || '';
   }
   previsualizarImagenCombo();
   renderComboItemsActuales();
