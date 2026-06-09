@@ -10009,6 +10009,7 @@ async function cargarCombos(forzar = false) {
         imagenUrl:      c.imagen_url     || '',
         precioFinal:    c.precio_final   || 0,
         totalIndividual:c.total_individual|| 0,
+        ajusteManual:   parseFloat(c.ajuste_manual) || 0,
         creadoPor:      c.creado_por     || '',
         ultimaModif:    c.ultima_modif   || '',
         items: (c.combo_items || []).map(it => ({
@@ -10302,6 +10303,7 @@ async function guardarCombo() {
     imagen_url: combo.imagenUrl||'',
     precio_final: combo.precioFinal||0,
     total_individual: combo.totalIndividual||0,
+    ajuste_manual: combo.ajusteManual||0,
     creado_por: combo.creadoPor, ultima_modif: combo.ultimaModif, activo: true
   };
   try {
