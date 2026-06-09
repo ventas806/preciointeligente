@@ -10918,7 +10918,10 @@ let _cotSubActivo      = 'lista';
 let _cotizacionOrigenId= null;
 
 async function initCotizaciones() {
-  await cargarCotizaciones();  // siempre recargar para tener token_publico actualizado
+  await Promise.all([
+    cargarCotizaciones(),       // siempre recargar para tener token_publico actualizado
+    cargarVentasYClientes(),    // garantiza clientes[] cargado aunque no se haya visitado Ventas
+  ]);
   poblarSelectorVendedorCot();
   // Fecha por defecto
   const fd = document.getElementById('cFecha');
