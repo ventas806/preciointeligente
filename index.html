@@ -10567,6 +10567,7 @@ async function renderCombos() {
             </div>
             ${ahorro > 0 ? `<div style="font-size:12px;color:var(--accent3);font-weight:600">Ahorro ${fmtLPS(ahorro)} (${pct}%)</div>` : ''}
             ${precioMayor ? `<div style="font-size:12px;color:var(--gold);font-weight:600">⬆ ${fmtLPS(combo.precioFinal - combo.totalIndividual)} más caro</div>` : ''}
+            ${(()=>{ const aj = parseFloat(combo.ajusteManual)||0; if(!aj||aj<=0||aj>=100) return ''; const pn = +(combo.precioFinal/(1-aj/100)).toFixed(2); return `<div style="font-size:12px;text-align:right"><span style="color:var(--text3)">Precio Normal</span> <strong style="color:#a29bfe">${fmtLPS(pn)}</strong> <span style="font-size:10px;color:var(--text3)">(${aj}%)</span></div>`; })()}
             <div style="font-size:12px;color:var(--text2)">Suma ind.: ${fmtLPS(combo.totalIndividual)}</div>
             <div style="font-size:12px">Combos armables: <strong style="color:${stockColor}">${incompleto ? '⚠️ 0 — Sin stock completo' : stockDisp === 0 ? 'Sin stock' : stockDisp + ' combo(s)'}</strong></div>
             <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
