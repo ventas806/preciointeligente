@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Redirigiendo...</title>
+</head>
+<body>
+  <p>Redirigiendo a <a href="https://soporte.focusstore.net/portal.html">soporte.focusstore.net</a>...</p>
+  <script>
+    // Preserva el query string (token del cliente)
+    var dest = 'https://soporte.focusstore.net/portal.html' + window.location.search;
+    window.location.replace(dest);
+  </script>
+</body>
+</html>
