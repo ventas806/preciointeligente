@@ -208,7 +208,13 @@
   }
   .btn-submit:hover { opacity: .92; }
   .btn-submit:active { transform: scale(.98); }
-  .btn-submit:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+  .btn-submit:disabled { opacity: .6; cursor: not-allowed; transform: none; pointer-events: none; }
+  .btn-submit.loading {
+    background: linear-gradient(135deg, #555 0%, #777 100%);
+    opacity: 1;
+    pointer-events: none;
+    cursor: not-allowed;
+  }
 
   /* ── Spinner ── */
   .spinner {
@@ -625,8 +631,17 @@ async function enviarFormulario() {
 
   // Client-side rate limit: 30 s between submits
   const now = Date.now();
-  if (now - _lastSubmit < 30_000) {
-    showErr('Por favor espera unos segundos antes de intentar de nuevo.');
+  const diff = Math.ceil((30_000 - (now - _lastSubmit)) / 1000);
+  if (_lastSubmit > 0 && now - _lastSubmit < 30_000) {
+    showErr(`Por favor espera ${diff} segundo${diff !== 1 ? 's' : ''} antes de intentar de nuevo.`);
+    // start countdown update
+    const errEl = document.getElementById('errMsg');
+    let remaining = diff;
+    const iv = setInterval(() => {
+      remaining--;
+      if (remaining <= 0) { clearInterval(iv); hideErr(); return; }
+      errEl.textContent = `Por favor espera ${remaining} segundo${remaining !== 1 ? 's' : ''} antes de intentar de nuevo.`;
+    }, 1000);
     return;
   }
 
@@ -640,7 +655,8 @@ async function enviarFormulario() {
 
   const btn = document.getElementById('btnSubmit');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Guardando…';
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="spinner"></span> Guardando… por favor no cierres esta página';
 
   try {
     const id  = 'cli_' + Date.now();
@@ -681,8 +697,10 @@ async function enviarFormulario() {
     console.error('Error guardando:', err);
     showErr('Ocurrió un error al guardar. Por favor verifica tu conexión e intenta de nuevo.');
     btn.disabled = false;
+    btn.classList.remove('loading');
     btn.innerHTML = '📦 Guardar información de envío';
     _submitting = false;
+    _lastSubmit = 0;
   }
 }
 
@@ -717,6 +735,7 @@ function reiniciarFormulario() {
 
   const btn = document.getElementById('btnSubmit');
   btn.disabled = false;
+  btn.classList.remove('loading');
   btn.innerHTML = '📦 Guardar información de envío';
 
   _submitting = false;
