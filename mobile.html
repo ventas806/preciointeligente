@@ -762,6 +762,9 @@ select.field-input { cursor:pointer; }
       <div class="section-card">
         <div class="section-title">📦 Productos de la Venta</div>
         <div class="section-body">
+          <!-- Lista de items (aparece arriba del buscador) -->
+          <div id="vItemsLista" style="margin-bottom:8px"></div>
+
           <!-- Búsqueda -->
           <div class="search-wrap">
             <input type="text" class="search-input" id="vProdBuscar"
@@ -782,9 +785,6 @@ select.field-input { cursor:pointer; }
 
           <!-- Manual -->
           <button class="btn-manual" onclick="agregarManual()">+ Manual (producto fuera de catálogo)</button>
-
-          <!-- Lista de items -->
-          <div id="vItemsLista" style="margin-top:12px"></div>
         </div>
       </div>
 
@@ -2346,6 +2346,9 @@ function vShowSub(sub) {
 
   if (sub==='historial') {
     cargarVentasYClientes().then(()=>renderHistorial());
+  }
+  if (sub==='nueva') {
+    setTimeout(()=>{ const el=document.getElementById('vProdBuscar'); if(el) el.focus(); }, 120);
   }
 }
 
