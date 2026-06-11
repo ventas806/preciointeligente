@@ -1015,17 +1015,55 @@ select.field-input { cursor:pointer; }
   </div><!-- /appContent -->
 
   <!-- MODAL NUEVO CLIENTE -->
-  <div id="modalNuevoCliente" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center">
-    <div style="background:var(--bg2);border-radius:14px;padding:20px;width:90%;max-width:380px;border:1px solid var(--border)">
+  <div id="modalNuevoCliente" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:flex-end;justify-content:center">
+    <div style="background:var(--bg2);border-radius:16px 16px 0 0;padding:20px;width:100%;max-width:600px;border:1px solid var(--border);max-height:92vh;overflow-y:auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <span style="font-weight:800;font-size:16px">➕ Nuevo Cliente</span>
+        <span style="font-weight:800;font-size:16px">👤 Nuevo Cliente</span>
         <button onclick="cerrarModalNuevoCliente()" style="background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;line-height:1">✕</button>
       </div>
-      <div class="field-label">NOMBRE *</div>
-      <input type="text" class="field-input" id="mClienteNombre" placeholder="Nombre completo" autocapitalize="words" style="margin-bottom:10px">
-      <div class="field-label">RTN / ID (OPCIONAL)</div>
-      <input type="text" class="field-input" id="mClienteRTN" placeholder="0000-0000-000000" style="margin-bottom:16px">
-      <button class="btn-guardar" style="margin:0" onclick="guardarNuevoCliente()">✓ Agregar a la Venta</button>
+
+      <div class="field-label">NOMBRE COMPLETO *</div>
+      <input type="text" class="field-input" id="mClienteNombre" placeholder="Nombre del cliente" autocapitalize="words">
+
+      <div class="field-row" style="margin-top:4px">
+        <div>
+          <div class="field-label">CIUDAD</div>
+          <input type="text" class="field-input" id="mClienteCiudad" placeholder="Tegucigalpa, SPS...">
+        </div>
+        <div>
+          <div class="field-label">TELÉFONO *</div>
+          <input type="tel" class="field-input" id="mClienteTel" placeholder="+504 9999-9999">
+        </div>
+      </div>
+
+      <div class="field-row" style="margin-top:4px">
+        <div>
+          <div class="field-label">TELÉFONO ALTERNO</div>
+          <input type="tel" class="field-input" id="mClienteTel2" placeholder="+504 8888-8888">
+        </div>
+        <div>
+          <div class="field-label">EMAIL</div>
+          <input type="email" class="field-input" id="mClienteEmail" placeholder="correo@ejemplo.com">
+        </div>
+      </div>
+
+      <div class="field-label" style="margin-top:4px">RTN / ID (OPCIONAL)</div>
+      <input type="text" class="field-input" id="mClienteRTN" placeholder="0000-0000-000000">
+
+      <div class="tipo-venta-wrap" style="margin:12px 0 8px">
+        <button class="tipo-btn active-formal" id="mDirCasaBtn" onclick="mSetDirTipo('casa')">🏠 Casa</button>
+        <button class="tipo-btn"               id="mDirTrabBtn" onclick="mSetDirTipo('trabajo')">🏢 Trabajo</button>
+      </div>
+
+      <div class="field-label" id="mDirLabel">DIRECCIÓN CASA</div>
+      <input type="text" class="field-input" id="mClienteDireccion" placeholder="Colonia, calle, número de casa, referencias...">
+      <input type="url" class="field-input" id="mClienteMaps" placeholder="📍 Link Google Maps casa (opcional)" style="margin-top:6px">
+
+      <div class="field-label" style="margin-top:8px">OBSERVACIONES <span style="font-weight:400;text-transform:none;font-size:10px">(instrucciones de entrega, referencias, etc.)</span></div>
+      <textarea class="field-input" id="mClienteObs" rows="2" placeholder="Ej: Tocar timbre, preguntar por..." style="resize:vertical"></textarea>
+
+      <button class="btn-guardar" style="margin-top:16px" onclick="guardarNuevoCliente()">👤 Guardar Cliente</button>
+      <button class="btn-limpiar" onclick="cerrarModalNuevoCliente()">Cancelar</button>
     </div>
   </div>
 
@@ -1607,13 +1645,24 @@ function quitarCliente() {
   document.getElementById('clienteResultados').style.display = 'none';
 }
 
+let mDirTipo = 'casa';
+
+function mSetDirTipo(tipo) {
+  mDirTipo = tipo;
+  document.getElementById('mDirCasaBtn').className = tipo==='casa' ? 'tipo-btn active-formal' : 'tipo-btn';
+  document.getElementById('mDirTrabBtn').className = tipo==='trabajo' ? 'tipo-btn active-formal' : 'tipo-btn';
+  const lbl = document.getElementById('mDirLabel');
+  if (lbl) lbl.textContent = tipo === 'casa' ? 'DIRECCIÓN CASA' : 'DIRECCIÓN TRABAJO';
+}
+
 function abrirModalNuevoCliente() {
   const m = document.getElementById('modalNuevoCliente');
-  if (m) { m.style.display = 'flex'; }
-  const n = document.getElementById('mClienteNombre');
-  if (n) { n.value = ''; setTimeout(()=>n.focus(), 50); }
-  const r = document.getElementById('mClienteRTN');
-  if (r) r.value = '';
+  if (m) m.style.display = 'flex';
+  ['mClienteNombre','mClienteCiudad','mClienteTel','mClienteTel2',
+   'mClienteEmail','mClienteRTN','mClienteDireccion','mClienteMaps','mClienteObs']
+    .forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  mSetDirTipo('casa');
+  setTimeout(()=>{ const n=document.getElementById('mClienteNombre'); if(n) n.focus(); }, 80);
 }
 
 function cerrarModalNuevoCliente() {
@@ -1621,14 +1670,33 @@ function cerrarModalNuevoCliente() {
   if (m) m.style.display = 'none';
 }
 
-function guardarNuevoCliente() {
+async function guardarNuevoCliente() {
   const nombre = (document.getElementById('mClienteNombre').value || '').trim();
+  const tel    = (document.getElementById('mClienteTel').value   || '').trim();
   if (!nombre) { showToast('⚠️ Ingresá el nombre del cliente', 'warn'); return; }
-  const rtn = (document.getElementById('mClienteRTN')?.value || '').trim();
-  vClienteId = 'cli_new_' + Date.now();
-  mostrarClienteSeleccionado(nombre, rtn);
+  if (!tel)    { showToast('⚠️ Ingresá el teléfono', 'warn'); return; }
+
+  const id = 'cli_' + Date.now();
+  const cliente = {
+    id,
+    nombre,
+    ciudad:       (document.getElementById('mClienteCiudad').value   || '').trim(),
+    tel,
+    tel2:         (document.getElementById('mClienteTel2').value     || '').trim(),
+    email:        (document.getElementById('mClienteEmail').value    || '').trim(),
+    rtn:          (document.getElementById('mClienteRTN').value      || '').trim(),
+    direccion:    (document.getElementById('mClienteDireccion').value|| '').trim(),
+    mapsLink:     (document.getElementById('mClienteMaps').value     || '').trim(),
+    observaciones:(document.getElementById('mClienteObs').value      || '').trim(),
+    fechaCreado:  new Date().toISOString()
+  };
+
+  try { await sbSaveCliente(cliente); } catch(e) { console.warn('Cliente no guardado en DB:', e.message); }
+  clientes.push(cliente);
+  vClienteId = id;
+  mostrarClienteSeleccionado(nombre, cliente.rtn);
   cerrarModalNuevoCliente();
-  showToast('✅ ' + nombre + ' agregado', 'success', 1800);
+  showToast('✅ ' + nombre + ' guardado', 'success', 2000);
 }
 
 // Cerrar dropdowns al tocar fuera — respetar toque en el resultado mismo
