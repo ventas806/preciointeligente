@@ -3800,5 +3800,27 @@ ${c.observaciones?`<div class="obs">📝 <strong>Observaciones:</strong> ${c.obs
   setTimeout(()=>win.focus(),200);
 }
 </script>
+
+<script>
+/* ── Service Worker: siempre última versión ── */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(reg => {
+      // Verificar actualizaciones al cargar
+      reg.update();
+      // Cuando el nuevo SW toma control → recargar para servir la versión fresca
+      reg.addEventListener('updatefound', () => {
+        const sw = reg.installing;
+        sw.addEventListener('statechange', () => {
+          if (sw.state === 'activated' && navigator.serviceWorker.controller) {
+            console.log('[SW] Nueva versión activa — recargando');
+            window.location.reload();
+          }
+        });
+      });
+    })
+    .catch(e => console.warn('[SW] No disponible:', e.message));
+}
+</script>
 </body>
 </html>
