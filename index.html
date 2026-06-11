@@ -2398,6 +2398,10 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 <label>Email</label>
                 <input type="email" id="cliEmail" placeholder="correo@ejemplo.com">
               </div>
+              <div class="form-field">
+                <label>RTN <span style="color:var(--text3);font-weight:400;font-size:11px">(opcional)</span></label>
+                <input type="text" id="cliRTN" placeholder="0000-0000-000000" style="letter-spacing:.5px">
+              </div>
               <!-- Addresses: tabs Casa / Trabajo -->
               <div class="form-field field-full" style="margin-bottom:0">
                 <div style="display:flex;gap:8px;margin-bottom:10px">
@@ -3338,6 +3342,7 @@ async function sbSaveCliente(c) {
     tel:               c.tel               || '',
     tel2:              c.tel2              || '',
     email:             c.email             || '',
+    rtn:               c.rtn               || '',
     observaciones:     c.observaciones     || '',
     fecha_creado:      c.fechaCreado       || new Date().toISOString(),
     direccion_casa:    c.direccionCasa     || null,
@@ -6913,6 +6918,7 @@ async function cargarVentasYClientes() {
         tel:               r.tel               || '',
         tel2:              r.tel2              || '',
         email:             r.email             || '',
+        rtn:               r.rtn               || '',
         observaciones:     r.observaciones     || '',
         fechaCreado:       r.fecha_creado      || '',
         updatedAt:         r.updated_at        || '',
@@ -7176,6 +7182,7 @@ function abrirModalCliente(id) {
   document.getElementById('cliTel').value       = c?.tel       || '';
   document.getElementById('cliTel2').value      = c?.tel2      || '';
   document.getElementById('cliEmail').value     = c?.email     || '';
+  document.getElementById('cliRTN').value       = c?.rtn       || '';
   // Dual addresses
   document.getElementById('cliDirCasa').value      = c?.direccionCasa    || c?.direccion || '';
   document.getElementById('cliMapsCasa').value     = c?.mapsCasa         || '';
@@ -7200,6 +7207,7 @@ async function guardarCliente() {
     tel:               document.getElementById('cliTel').value.trim(),
     tel2:              document.getElementById('cliTel2').value.trim(),
     email:             document.getElementById('cliEmail').value.trim(),
+    rtn:               document.getElementById('cliRTN').value.trim(),
     direccionCasa:     document.getElementById('cliDirCasa').value.trim(),
     mapsCasa:          document.getElementById('cliMapsCasa').value.trim(),
     direccionTrabajo:  document.getElementById('cliDirTrabajo').value.trim(),
