@@ -762,12 +762,6 @@ select.field-input { cursor:pointer; }
       <div class="section-card">
         <div class="section-title">📦 Productos de la Venta</div>
         <div class="section-body">
-          <!-- Vendedor -->
-          <div class="field-label">VENDEDOR</div>
-          <select class="field-input" id="vVendedor">
-            <option value="">— Seleccionar vendedor —</option>
-          </select>
-
           <!-- Búsqueda -->
           <div class="search-wrap">
             <input type="text" class="search-input" id="vProdBuscar"
@@ -795,6 +789,14 @@ select.field-input { cursor:pointer; }
 
       </div><!-- /venta-form -->
       <div class="venta-sidebar">
+
+      <!-- Vendedor -->
+      <div style="padding:12px 12px 0">
+        <div class="field-label">VENDEDOR</div>
+        <select class="field-input" id="vVendedor">
+          <option value="">— Seleccionar vendedor —</option>
+        </select>
+      </div>
 
       <!-- Resumen -->
       <div class="section-card">
@@ -2029,11 +2031,9 @@ function toggleDtoTipoItem(vid) {
 function toggleISV(vid) {
   const it = vItems.find(x => x._id === vid);
   if (!it) return;
-  const tasaAnterior = it.llevaISV ? (it.isvPct||0) : 0;
-  it.precioBase = tasaAnterior > 0 ? it.precioFinal/(1+tasaAnterior) : it.precioFinal;
-  it.llevaISV   = !it.llevaISV;
-  it.isvPct     = it.llevaISV ? (parametros.isvNuevo||0.15) : 0;
-  it.precioFinal= +(it.precioBase*(1+it.isvPct)).toFixed(2);
+  it.llevaISV = !it.llevaISV;
+  it.isvPct   = it.llevaISV ? (parametros.isvNuevo||0.15) : 0;
+  // precioFinal no se modifica — el precio visible queda igual
   renderItems(); calcResumen();
 }
 
@@ -2749,15 +2749,12 @@ function onCodigoEscaneado(codigo) {
     String(p.sku||'').toLowerCase().includes(codigo.toLowerCase()) ||
     String(p.producto||'').toLowerCase().includes(codigo.toLowerCase())
   );
-  if (parciales.length === 1) {
+  if (parciales.length >= 1) {
     agregarDeCatalogo(parciales[0].id);
     showToast(`📷 Escaneado: ${parciales[0].producto}`, 'success');
     return;
   }
-  // Mostrar en campo de búsqueda
-  const input = document.getElementById('vProdBuscar');
-  if (input) { input.value = codigo; buscarProdVenta(); }
-  showToast(`📷 Código: ${codigo} — Seleccioná el producto`, 'info');
+  showToast(`📷 Código ${codigo} no encontrado`, 'warn', 3000);
 }
 
 /* ════════════════════════════════════════════
