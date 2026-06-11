@@ -766,7 +766,8 @@ select.field-input { cursor:pointer; }
           <div class="search-wrap">
             <input type="text" class="search-input" id="vProdBuscar"
               placeholder="🔍 SKU o nombre del producto..."
-              oninput="buscarProdVenta()" autocomplete="off" autocorrect="off" spellcheck="false">
+              oninput="buscarProdVenta()" onkeydown="buscarProdEnter(event)"
+              autocomplete="off" autocorrect="off" spellcheck="false">
             <button class="btn-scan" onclick="abrirScanner('venta')" title="Escanear código de barras">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/>
@@ -1759,10 +1760,36 @@ document.addEventListener('touchstart', e => {
 /* ════════════════════════════════════════════
    PRODUCT SEARCH
 ════════════════════════════════════════════ */
+function buscarProdEnter(e) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const q = (document.getElementById('vProdBuscar').value||'').trim();
+  if (!q) return;
+  const found = productos.filter(p =>
+    String(p.sku||'').toLowerCase().includes(q.toLowerCase()) ||
+    String(p.producto||'').toLowerCase().includes(q.toLowerCase())
+  );
+  if (found.length >= 1) {
+    agregarDeCatalogo(found[0].id);
+    document.getElementById('vProdBuscar').value = '';
+    document.getElementById('vProdResultados').style.display = 'none';
+    showToast('✅ ' + found[0].producto, 'success', 1600);
+  }
+}
+
 function buscarProdVenta() {
   const q   = (document.getElementById('vProdBuscar').value||'').toLowerCase().trim();
   const res = document.getElementById('vProdResultados');
   if (!q) { res.style.display='none'; return; }
+
+  // SKU exacto → auto-agregar sin mostrar dropdown
+  const exactoSKU = productos.find(p => String(p.sku||'').toLowerCase() === q);
+  if (exactoSKU) {
+    agregarDeCatalogo(exactoSKU.id);
+    document.getElementById('vProdBuscar').value = '';
+    res.style.display = 'none';
+    return;
+  }
 
   const found = productos.filter(p =>
     String(p.sku||'').toLowerCase().includes(q) ||
