@@ -713,7 +713,10 @@ select.field-input { cursor:pointer; }
                   <div id="vClienteCardRTN" style="font-size:12px;color:var(--text3)"></div>
                 </div>
               </div>
-              <button onclick="quitarCliente()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--text2);font-size:12px;cursor:pointer;flex-shrink:0">Cambiar</button>
+              <div style="display:flex;gap:6px;flex-shrink:0">
+                <button onclick="editarClienteSeleccionado()" style="background:none;border:1px solid var(--accent4);border-radius:6px;padding:5px 12px;color:var(--accent4);font-size:12px;cursor:pointer">✏️ Editar</button>
+                <button onclick="quitarCliente()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--text2);font-size:12px;cursor:pointer">Cambiar</button>
+              </div>
             </div>
           </div>
 
@@ -1018,7 +1021,7 @@ select.field-input { cursor:pointer; }
   <div id="modalNuevoCliente" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:flex-end;justify-content:center">
     <div style="background:var(--bg2);border-radius:16px 16px 0 0;padding:20px;width:100%;max-width:600px;border:1px solid var(--border);max-height:92vh;overflow-y:auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <span style="font-weight:800;font-size:16px">👤 Nuevo Cliente</span>
+        <span id="mModalTitulo" style="font-weight:800;font-size:16px">👤 Nuevo Cliente</span>
         <button onclick="cerrarModalNuevoCliente()" style="background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;line-height:1">✕</button>
       </div>
 
@@ -1646,6 +1649,7 @@ function quitarCliente() {
 }
 
 let mDirTipo = 'casa';
+let mClienteEditando = null;
 
 function mSetDirTipo(tipo) {
   mDirTipo = tipo;
@@ -1656,6 +1660,9 @@ function mSetDirTipo(tipo) {
 }
 
 function abrirModalNuevoCliente() {
+  mClienteEditando = null;
+  const titulo = document.getElementById('mModalTitulo');
+  if (titulo) titulo.textContent = '👤 Nuevo Cliente';
   const m = document.getElementById('modalNuevoCliente');
   if (m) m.style.display = 'flex';
   ['mClienteNombre','mClienteCiudad','mClienteTel','mClienteTel2',
@@ -1663,6 +1670,26 @@ function abrirModalNuevoCliente() {
     .forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   mSetDirTipo('casa');
   setTimeout(()=>{ const n=document.getElementById('mClienteNombre'); if(n) n.focus(); }, 80);
+}
+
+function editarClienteSeleccionado() {
+  const c = clientes.find(x => x.id === vClienteId);
+  mClienteEditando = c || { id: vClienteId };
+  const titulo = document.getElementById('mModalTitulo');
+  if (titulo) titulo.textContent = '✏️ Editar Cliente';
+  const m = document.getElementById('modalNuevoCliente');
+  if (m) m.style.display = 'flex';
+  const set = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
+  set('mClienteNombre',   mClienteEditando.nombre      || document.getElementById('vNombre').value);
+  set('mClienteCiudad',   mClienteEditando.ciudad      || '');
+  set('mClienteTel',      mClienteEditando.tel         || '');
+  set('mClienteTel2',     mClienteEditando.tel2        || '');
+  set('mClienteEmail',    mClienteEditando.email       || '');
+  set('mClienteRTN',      mClienteEditando.rtn         || document.getElementById('vRTN').value);
+  set('mClienteDireccion',mClienteEditando.direccion   || '');
+  set('mClienteMaps',     mClienteEditando.mapsLink    || '');
+  set('mClienteObs',      mClienteEditando.observaciones|| '');
+  mSetDirTipo('casa');
 }
 
 function cerrarModalNuevoCliente() {
@@ -1676,7 +1703,8 @@ async function guardarNuevoCliente() {
   if (!nombre) { showToast('⚠️ Ingresá el nombre del cliente', 'warn'); return; }
   if (!tel)    { showToast('⚠️ Ingresá el teléfono', 'warn'); return; }
 
-  const id = 'cli_' + Date.now();
+  const isEdit = !!mClienteEditando;
+  const id = isEdit ? mClienteEditando.id : ('cli_' + Date.now());
   const cliente = {
     id,
     nombre,
@@ -1688,15 +1716,21 @@ async function guardarNuevoCliente() {
     direccion:    (document.getElementById('mClienteDireccion').value|| '').trim(),
     mapsLink:     (document.getElementById('mClienteMaps').value     || '').trim(),
     observaciones:(document.getElementById('mClienteObs').value      || '').trim(),
-    fechaCreado:  new Date().toISOString()
+    fechaCreado:  mClienteEditando?.fechaCreado || new Date().toISOString()
   };
 
   try { await sbSaveCliente(cliente); } catch(e) { console.warn('Cliente no guardado en DB:', e.message); }
-  clientes.push(cliente);
+
+  if (isEdit) {
+    const idx = clientes.findIndex(x => x.id === id);
+    if (idx >= 0) Object.assign(clientes[idx], cliente); else clientes.push(cliente);
+  } else {
+    clientes.push(cliente);
+  }
   vClienteId = id;
   mostrarClienteSeleccionado(nombre, cliente.rtn);
   cerrarModalNuevoCliente();
-  showToast('✅ ' + nombre + ' guardado', 'success', 2000);
+  showToast(isEdit ? '✅ Cliente actualizado' : '✅ ' + nombre + ' guardado', 'success', 2000);
 }
 
 // Cerrar dropdowns al tocar fuera — respetar toque en el resultado mismo
