@@ -396,6 +396,21 @@ select.field-input { cursor:pointer; }
 .envio-input::-webkit-inner-spin-button { display:none; }
 .envio-input:focus { border-color:var(--accent); }
 
+/* ── Two-column venta layout ── */
+.venta-layout {
+  display:flex; gap:0; align-items:flex-start;
+}
+.venta-form { flex:1; min-width:0; }
+.venta-sidebar {
+  width:300px; flex-shrink:0;
+  position:sticky; top:56px;
+  max-height:calc(100vh - 56px); overflow-y:auto;
+}
+@media (max-width:700px) {
+  .venta-layout { flex-direction:column; }
+  .venta-sidebar { width:100%; position:static; max-height:none; }
+}
+
 /* ── Save button ── */
 .btn-guardar {
   width:100%; padding:16px; background:var(--accent3); color:#000;
@@ -663,6 +678,8 @@ select.field-input { cursor:pointer; }
         <div class="tipo-hint" id="tipoHint">Con factura formal, RTN y datos completos del cliente</div>
       </div>
 
+      <div class="venta-layout"><div class="venta-form">
+
       <!-- Cliente -->
       <div class="section-card">
         <div class="section-title">👤 Cliente</div>
@@ -730,8 +747,6 @@ select.field-input { cursor:pointer; }
             <input type="text" class="field-input" id="vObsPago" placeholder="Banco, referencia...">
           </div>
 
-          <div class="field-label">OBSERVACIONES</div>
-          <textarea class="field-input" id="vObservaciones" rows="2" placeholder="Notas adicionales del pedido..." style="resize:vertical;height:auto"></textarea>
         </div>
       </div>
 
@@ -770,6 +785,9 @@ select.field-input { cursor:pointer; }
         </div>
       </div>
 
+      </div><!-- /venta-form -->
+      <div class="venta-sidebar">
+
       <!-- Resumen -->
       <div class="section-card">
         <div class="section-title">💰 Resumen de Venta</div>
@@ -784,12 +802,6 @@ select.field-input { cursor:pointer; }
             <button class="btn-desc-tipo" id="vDescTipoBtn" onclick="toggleDescTipo()">%</button>
             <input type="number" class="desc-valor-input" id="vDescValor" min="0" step="any" placeholder="0" oninput="calcResumen()">
             <span style="font-size:12px;color:var(--text3)">descuento global</span>
-          </div>
-
-          <!-- Envío -->
-          <div class="envio-wrap" style="margin-bottom:12px">
-            <span class="envio-label">Envío L</span>
-            <input type="number" class="envio-input" id="vEnvio" value="120" min="0" step="any" oninput="calcResumen()">
           </div>
 
           <!-- Filas -->
@@ -809,10 +821,6 @@ select.field-input { cursor:pointer; }
             <span class="resumen-label">ISV (<span id="rISVPct">0%</span>)</span>
             <span class="resumen-val" id="rISV">L 0.00</span>
           </div>
-          <div class="resumen-row">
-            <span class="resumen-label">Envío</span>
-            <span class="resumen-val" id="rEnvio">L 120.00</span>
-          </div>
           <div class="resumen-total-row">
             <span class="resumen-total-label">TOTAL L</span>
             <input type="number" class="resumen-total-input" id="rTotal" step="any" placeholder="0.00" oninput="onEditTotal()">
@@ -826,6 +834,9 @@ select.field-input { cursor:pointer; }
         <button class="btn-guardar" onclick="guardarVenta()">💾 Guardar Venta</button>
         <button class="btn-limpiar" onclick="limpiarVenta()">🗑 Limpiar Todo</button>
       </div>
+
+      </div><!-- /venta-sidebar -->
+      </div><!-- /venta-layout -->
 
     </div><!-- /panelNueva -->
 
@@ -1426,9 +1437,7 @@ async function initApp() {
   poblarVendedores();
   poblarMetodosPago();
   poblarMetodosEnvio();
-
-  // Set envío default
-  document.getElementById('vEnvio').value = parametros.envioDefecto || 120;
+  setVentaDefaults();
 
   // Auto-select logged-in user as vendedor
   const selV = document.getElementById('vVendedor');
@@ -1908,7 +1917,7 @@ function calcResumen() {
     utilidadBruta  += (sinISV - (it.costoLPS||0)) * cant;
   });
 
-  const envio        = parseFloat(document.getElementById('vEnvio').value)||0;
+  const envio        = 0;
   const descActivo   = document.getElementById('vDescActivo').checked;
   const descTipo     = document.getElementById('vDescTipoBtn').textContent.trim();
   const descValor    = parseFloat(document.getElementById('vDescValor').value)||0;
@@ -1950,8 +1959,6 @@ function calcResumen() {
   // Fila subtotal con descuento
   if (subDescRow) subDescRow.style.display = descMonto>0 ? 'flex' : 'none';
   set('rSubDesc', fmtLPS(subtotalDesc));
-
-  set('rEnvio', fmtLPS(envio));
 
   // Total input (no sobreescribir si el user está editando)
   const totalEl = document.getElementById('rTotal');
@@ -2028,7 +2035,7 @@ async function guardarVenta() {
     utilidadBruta  += (sinISV-(it.costoLPS||0))*cant;
   });
 
-  const envio        = parseFloat(document.getElementById('vEnvio').value)||0;
+  const envio        = 0;
   const descActivo   = document.getElementById('vDescActivo').checked;
   const descTipo     = document.getElementById('vDescTipoBtn').textContent.trim();
   const descValor    = parseFloat(document.getElementById('vDescValor').value)||0;
@@ -2072,7 +2079,7 @@ async function guardarVenta() {
     utilidadBruta:  utilidadAjust,
     pctComision:    pctComision*100,
     comision,
-    observaciones:  (document.getElementById('vObservaciones').value||'').trim(),
+    observaciones:  '',
     mapsLink:       (document.getElementById('vMaps').value||'').trim(),
     metodoPago:     metodoPagoId,
     metodoPagoLabel:metodoPagoMet ? metodoPagoMet.label : metodoPagoId,
@@ -2111,21 +2118,42 @@ async function guardarVenta() {
 }
 
 /* ════════════════════════════════════════════
+   DEFAULTS ENVÍO / PAGO
+════════════════════════════════════════════ */
+function setVentaDefaults() {
+  const selEnvio = document.getElementById('vMetodoEnvio');
+  if (selEnvio) {
+    for (const opt of selEnvio.options) {
+      if (opt.value === 'Recoger en tienda' || opt.textContent.includes('Recoger')) {
+        selEnvio.value = opt.value; break;
+      }
+    }
+  }
+  const selPago = document.getElementById('vMetodoPago');
+  if (selPago) {
+    for (const opt of selPago.options) {
+      if (opt.textContent.trim() === 'POS' || opt.value.toLowerCase() === 'pos') {
+        selPago.value = opt.value; break;
+      }
+    }
+    onChangePago();
+  }
+}
+
+/* ════════════════════════════════════════════
    LIMPIAR
 ════════════════════════════════════════════ */
 function limpiarVenta() {
   vItems = []; vEditandoId = null; vClienteId = null;
   vTipoVenta = 'formal';
-  ['vNombre','vDireccion','vCiudad','vTel','vTel2','vEmail','vMaps','vObservaciones','vBuscarCliente'].forEach(id=>{
+  ['vNombre','vDireccion','vCiudad','vTel','vTel2','vEmail','vMaps','vBuscarCliente'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
-  document.getElementById('vMetodoPago').value  = '';
-  document.getElementById('vMetodoEnvio').value = '';
   document.getElementById('vDescActivo').checked = false;
   document.getElementById('vDescPanel').className = 'desc-panel';
   document.getElementById('vDescValor').value = '';
   document.getElementById('vDescTipoBtn').textContent = '%';
-  document.getElementById('vEnvio').value = parametros.envioDefecto || 120;
+  setVentaDefaults();
   // Reset tipo venta
   setTipoVenta('formal');
   renderItems(); calcResumen();
