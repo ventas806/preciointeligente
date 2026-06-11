@@ -2251,7 +2251,7 @@ async function guardarVenta() {
     pctComision:    pctComision*100,
     comision,
     observaciones:  '',
-    mapsLink:       (document.getElementById('vMaps').value||'').trim(),
+    mapsLink:       (document.getElementById('vMaps')?.value||'').trim(),
     metodoPago:     metodoPagoId,
     metodoPagoLabel:metodoPagoMet ? metodoPagoMet.label : metodoPagoId,
     metodoPagoObs:  (document.getElementById('vObsPago')?.value||'').trim(),
