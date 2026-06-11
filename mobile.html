@@ -2317,6 +2317,7 @@ function limpiarVenta() {
   vItems = []; vEditandoId = null; vClienteId = null;
   vTipoVenta = 'formal';
   quitarCliente();
+  mostrarClienteSeleccionado('Consumidor Final', '');
   document.getElementById('vDescActivo').checked = false;
   document.getElementById('vDescPanel').className = 'desc-panel';
   document.getElementById('vDescValor').value = '';
