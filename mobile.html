@@ -396,6 +396,21 @@ select.field-input { cursor:pointer; }
 .envio-input::-webkit-inner-spin-button { display:none; }
 .envio-input:focus { border-color:var(--accent); }
 
+/* ── Cliente card seleccionado ── */
+.cliente-selected-card {
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--bg3); border:1px solid var(--accent); border-radius:10px;
+  padding:10px 14px; gap:10px;
+}
+.cliente-selected-info { display:flex; align-items:center; gap:10px; }
+.btn-crear-cliente {
+  width:100%; margin-top:8px; padding:10px 14px;
+  background:transparent; border:1px dashed var(--accent4);
+  border-radius:8px; color:var(--accent4); font-size:13px;
+  font-weight:600; cursor:pointer; text-align:left;
+}
+.btn-crear-cliente:active { opacity:.7; }
+
 /* ── Two-column venta layout ── */
 .venta-layout {
   display:flex; gap:0; align-items:flex-start;
@@ -684,21 +699,36 @@ select.field-input { cursor:pointer; }
       <div class="section-card">
         <div class="section-title">👤 Cliente</div>
         <div class="section-body">
-          <!-- Buscar cliente existente -->
-          <div class="cliente-search-wrap">
-            <input type="text" class="field-input" id="vBuscarCliente"
-              placeholder="🔍 Buscar cliente existente..."
-              oninput="buscarCliente(this.value)" autocomplete="off" style="margin-bottom:6px">
-            <div class="cliente-results" id="clienteResultados"></div>
+          <!-- Campos ocultos (se llenan al seleccionar o crear) -->
+          <input type="hidden" id="vNombre">
+          <input type="hidden" id="vRTN">
+
+          <!-- Card cliente seleccionado -->
+          <div id="vClienteCard" style="display:none;margin-bottom:10px">
+            <div class="cliente-selected-card">
+              <div class="cliente-selected-info">
+                <span style="font-size:22px">👤</span>
+                <div>
+                  <div id="vClienteCardNombre" style="font-weight:700;font-size:14px;color:var(--text)"></div>
+                  <div id="vClienteCardRTN" style="font-size:12px;color:var(--text3)"></div>
+                </div>
+              </div>
+              <button onclick="quitarCliente()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--text2);font-size:12px;cursor:pointer;flex-shrink:0">Cambiar</button>
+            </div>
           </div>
 
-          <div class="field-label" id="lblNombre">NOMBRE DEL CLIENTE *</div>
-          <input type="text" class="field-input" id="vNombre" placeholder="Nombre completo" autocapitalize="words">
+          <!-- Búsqueda (se oculta al seleccionar) -->
+          <div id="vClienteSearchWrap">
+            <div class="cliente-search-wrap">
+              <input type="text" class="field-input" id="vBuscarCliente"
+                placeholder="🔍 Buscar cliente existente..."
+                oninput="buscarCliente(this.value)" autocomplete="off" style="margin-bottom:6px">
+              <div class="cliente-results" id="clienteResultados"></div>
+            </div>
+            <button class="btn-crear-cliente" onclick="abrirModalNuevoCliente()">➕ Nuevo Cliente</button>
+          </div>
 
-          <div class="field-label">RTN / ID DEL CLIENTE (OPCIONAL)</div>
-          <input type="text" class="field-input" id="vRTN" placeholder="0000-0000-000000">
-
-          <div class="field-label">FECHA DE VENTA *</div>
+          <div class="field-label" style="margin-top:12px">FECHA DE VENTA *</div>
           <input type="date" class="field-input" id="vFecha">
         </div>
       </div>
@@ -983,6 +1013,21 @@ select.field-input { cursor:pointer; }
     </div><!-- /moduloCotiz -->
 
   </div><!-- /appContent -->
+
+  <!-- MODAL NUEVO CLIENTE -->
+  <div id="modalNuevoCliente" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center">
+    <div style="background:var(--bg2);border-radius:14px;padding:20px;width:90%;max-width:380px;border:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <span style="font-weight:800;font-size:16px">➕ Nuevo Cliente</span>
+        <button onclick="cerrarModalNuevoCliente()" style="background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;line-height:1">✕</button>
+      </div>
+      <div class="field-label">NOMBRE *</div>
+      <input type="text" class="field-input" id="mClienteNombre" placeholder="Nombre completo" autocapitalize="words" style="margin-bottom:10px">
+      <div class="field-label">RTN / ID (OPCIONAL)</div>
+      <input type="text" class="field-input" id="mClienteRTN" placeholder="0000-0000-000000" style="margin-bottom:16px">
+      <button class="btn-guardar" style="margin:0" onclick="guardarNuevoCliente()">✓ Agregar a la Venta</button>
+    </div>
+  </div>
 
   <!-- MODAL DETALLE COTIZACIÓN -->
   <div id="modalDetalleCot">
@@ -1502,8 +1547,6 @@ function setTipoVenta(tipo) {
     btnI.className = 'tipo-btn active-informal';
     btnF.className = 'tipo-btn';
     if(hint) hint.textContent = 'Venta rápida sin datos formales — consumidor final';
-    const nomEl = document.getElementById('vNombre');
-    if (nomEl && !nomEl.value.trim()) nomEl.value = 'Consumidor Final';
   }
 }
 
@@ -1538,15 +1581,54 @@ function seleccionarCliente(id) {
   const c = clientes.find(x => x.id === id);
   if (!c) return;
   vClienteId = c.id;
-  document.getElementById('vNombre').value    = c.nombre    || '';
-  document.getElementById('vDireccion').value = c.direccion || '';
-  document.getElementById('vCiudad').value    = c.ciudad    || '';
-  document.getElementById('vTel').value       = c.tel       || '';
-  document.getElementById('vTel2').value      = c.tel2      || '';
-  document.getElementById('vEmail').value     = c.email     || '';
+  mostrarClienteSeleccionado(c.nombre || '', c.rtn || c.RTN || '');
+}
+
+function mostrarClienteSeleccionado(nombre, rtn) {
+  document.getElementById('vNombre').value = nombre;
+  document.getElementById('vRTN').value    = rtn || '';
+  document.getElementById('vClienteCardNombre').textContent = nombre;
+  const rtnEl = document.getElementById('vClienteCardRTN');
+  if (rtnEl) rtnEl.textContent = rtn ? 'RTN: ' + rtn : '';
+  document.getElementById('vClienteCard').style.display      = 'block';
+  document.getElementById('vClienteSearchWrap').style.display = 'none';
   document.getElementById('vBuscarCliente').value = '';
   document.getElementById('clienteResultados').style.display = 'none';
-  showToast('✅ Cliente cargado: ' + c.nombre, 'success', 2000);
+}
+
+function quitarCliente() {
+  vClienteId = null;
+  document.getElementById('vNombre').value = '';
+  document.getElementById('vRTN').value    = '';
+  document.getElementById('vClienteCard').style.display      = 'none';
+  document.getElementById('vClienteSearchWrap').style.display = 'block';
+  document.getElementById('vBuscarCliente').value = '';
+  document.getElementById('clienteResultados').innerHTML = '';
+  document.getElementById('clienteResultados').style.display = 'none';
+}
+
+function abrirModalNuevoCliente() {
+  const m = document.getElementById('modalNuevoCliente');
+  if (m) { m.style.display = 'flex'; }
+  const n = document.getElementById('mClienteNombre');
+  if (n) { n.value = ''; setTimeout(()=>n.focus(), 50); }
+  const r = document.getElementById('mClienteRTN');
+  if (r) r.value = '';
+}
+
+function cerrarModalNuevoCliente() {
+  const m = document.getElementById('modalNuevoCliente');
+  if (m) m.style.display = 'none';
+}
+
+function guardarNuevoCliente() {
+  const nombre = (document.getElementById('mClienteNombre').value || '').trim();
+  if (!nombre) { showToast('⚠️ Ingresá el nombre del cliente', 'warn'); return; }
+  const rtn = (document.getElementById('mClienteRTN')?.value || '').trim();
+  vClienteId = 'cli_new_' + Date.now();
+  mostrarClienteSeleccionado(nombre, rtn);
+  cerrarModalNuevoCliente();
+  showToast('✅ ' + nombre + ' agregado', 'success', 1800);
 }
 
 // Cerrar dropdowns al tocar fuera — respetar toque en el resultado mismo
@@ -1964,12 +2046,10 @@ function onChangePago() {
 async function guardarVenta() {
   if (!vItems.length) { showToast('⚠️ Agrega al menos un producto','warn'); return; }
 
-  const nombre     = (document.getElementById('vNombre').value||'').trim();
+  const nombre     = (document.getElementById('vNombre').value||'').trim() || 'Consumidor Final';
   const rtn        = (document.getElementById('vRTN')?.value||'').trim();
   const fecha      = document.getElementById('vFecha').value;
   const vendedorId = document.getElementById('vVendedor').value;
-
-  if (!nombre) { showToast('⚠️ Ingresá el nombre del cliente','warn'); return; }
   if (!fecha) { showToast('⚠️ Seleccioná la fecha','warn'); return; }
   if (!vendedorId) { showToast('⚠️ Seleccioná el vendedor','warn'); return; }
   if (!document.getElementById('vMetodoPago').value)  { showToast('⚠️ Seleccioná método de pago','warn'); return; }
@@ -2107,9 +2187,7 @@ function setVentaDefaults() {
 function limpiarVenta() {
   vItems = []; vEditandoId = null; vClienteId = null;
   vTipoVenta = 'formal';
-  ['vNombre','vRTN','vBuscarCliente'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.value='';
-  });
+  quitarCliente();
   document.getElementById('vDescActivo').checked = false;
   document.getElementById('vDescPanel').className = 'desc-panel';
   document.getElementById('vDescValor').value = '';
