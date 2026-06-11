@@ -1512,6 +1512,7 @@ async function initApp() {
   }
 
   calcResumen();
+  mostrarClienteSeleccionado('Consumidor Final', '');
   vShowSub('nueva');
 
   // Cargar clientes/ventas en segundo plano para que el autocomplete funcione de inmediato
@@ -2293,17 +2294,31 @@ async function guardarVenta() {
 function setVentaDefaults() {
   const selEnvio = document.getElementById('vMetodoEnvio');
   if (selEnvio) {
+    let found = false;
     for (const opt of selEnvio.options) {
-      if (opt.value === 'Recoger en tienda' || opt.textContent.includes('Recoger')) {
-        selEnvio.value = opt.value; break;
+      if (opt.value && (opt.value === 'Recoger en tienda' || opt.textContent.includes('Recoger'))) {
+        selEnvio.value = opt.value; found = true; break;
+      }
+    }
+    // Fallback: primera opción disponible
+    if (!found) {
+      for (const opt of selEnvio.options) {
+        if (opt.value) { selEnvio.value = opt.value; break; }
       }
     }
   }
   const selPago = document.getElementById('vMetodoPago');
   if (selPago) {
+    let found = false;
     for (const opt of selPago.options) {
-      if (opt.textContent.trim() === 'POS' || opt.value.toLowerCase() === 'pos') {
-        selPago.value = opt.value; break;
+      if (opt.value && (opt.textContent.trim() === 'POS' || opt.value.toLowerCase() === 'pos')) {
+        selPago.value = opt.value; found = true; break;
+      }
+    }
+    // Fallback: primera opción disponible
+    if (!found) {
+      for (const opt of selPago.options) {
+        if (opt.value) { selPago.value = opt.value; break; }
       }
     }
     onChangePago();
