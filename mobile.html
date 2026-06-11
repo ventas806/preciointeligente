@@ -672,10 +672,10 @@ select.field-input { cursor:pointer; }
       <!-- Tipo de Venta -->
       <div style="padding:12px 12px 0">
         <div class="tipo-venta-wrap">
-          <button class="tipo-btn active-formal" id="btnFormal"   onclick="setTipoVenta('formal')">Formal</button>
-          <button class="tipo-btn"               id="btnInformal" onclick="setTipoVenta('informal')">Informal</button>
+          <button class="tipo-btn"                id="btnFormal"   onclick="setTipoVenta('formal')">Formal</button>
+          <button class="tipo-btn active-informal" id="btnInformal" onclick="setTipoVenta('informal')">Informal</button>
         </div>
-        <div class="tipo-hint" id="tipoHint">Con factura formal, RTN y datos completos del cliente</div>
+        <div class="tipo-hint" id="tipoHint">Venta rápida sin datos formales — consumidor final</div>
       </div>
 
       <div class="venta-layout"><div class="venta-form">
@@ -695,33 +695,8 @@ select.field-input { cursor:pointer; }
           <div class="field-label" id="lblNombre">NOMBRE DEL CLIENTE *</div>
           <input type="text" class="field-input" id="vNombre" placeholder="Nombre completo" autocapitalize="words">
 
-          <div class="field-label" id="lblDireccion">DIRECCIÓN *</div>
-          <input type="text" class="field-input" id="vDireccion" placeholder="Dirección de entrega" autocapitalize="sentences">
-
-          <div class="field-row">
-            <div>
-              <div class="field-label" id="lblCiudad">CIUDAD *</div>
-              <input type="text" class="field-input" id="vCiudad" placeholder="Tegucigalpa...">
-            </div>
-            <div>
-              <div class="field-label" id="lblTel">TELÉFONO *</div>
-              <input type="tel" class="field-input" id="vTel" placeholder="+504 0000-0000">
-            </div>
-          </div>
-
-          <div class="field-row">
-            <div>
-              <div class="field-label">CONTACTO ALTERNO</div>
-              <input type="tel" class="field-input" id="vTel2" placeholder="+504...">
-            </div>
-            <div>
-              <div class="field-label">CORREO ELECTRÓNICO</div>
-              <input type="email" class="field-input" id="vEmail" placeholder="cliente@email.com">
-            </div>
-          </div>
-
-          <div class="field-label">UBICACIÓN GOOGLE MAPS (OPCIONAL)</div>
-          <input type="url" class="field-input" id="vMaps" placeholder="Pega aquí el link...">
+          <div class="field-label">RTN / ID DEL CLIENTE (OPCIONAL)</div>
+          <input type="text" class="field-input" id="vRTN" placeholder="0000-0000-000000">
 
           <div class="field-label">FECHA DE VENTA *</div>
           <input type="date" class="field-input" id="vFecha">
@@ -1063,7 +1038,7 @@ let ventas       = [];
 let vItems       = [];          // items de la venta actual
 let vEditandoId  = null;
 let vClienteId   = null;
-let vTipoVenta   = 'formal';
+let vTipoVenta   = 'informal';
 let _ventasCargadas  = false;
 let _scannerTarget   = 'venta';
 
@@ -1519,21 +1494,14 @@ function setTipoVenta(tipo) {
   const btnF = document.getElementById('btnFormal');
   const btnI = document.getElementById('btnInformal');
   const hint = document.getElementById('tipoHint');
-
   if (tipo === 'formal') {
     btnF.className = 'tipo-btn active-formal';
     btnI.className = 'tipo-btn';
     if(hint) hint.textContent = 'Con factura formal, RTN y datos completos del cliente';
-    setRequired('lblDireccion','DIRECCIÓN *');
-    setRequired('lblCiudad','CIUDAD *');
-    setRequired('lblTel','TELÉFONO *');
   } else {
     btnI.className = 'tipo-btn active-informal';
     btnF.className = 'tipo-btn';
     if(hint) hint.textContent = 'Venta rápida sin datos formales — consumidor final';
-    setRequired('lblDireccion','DIRECCIÓN (opcional)');
-    setRequired('lblCiudad','CIUDAD (opcional)');
-    setRequired('lblTel','TELÉFONO (opcional)');
     const nomEl = document.getElementById('vNombre');
     if (nomEl && !nomEl.value.trim()) nomEl.value = 'Consumidor Final';
   }
@@ -1997,16 +1965,11 @@ async function guardarVenta() {
   if (!vItems.length) { showToast('⚠️ Agrega al menos un producto','warn'); return; }
 
   const nombre     = (document.getElementById('vNombre').value||'').trim();
-  const direccion  = (document.getElementById('vDireccion').value||'').trim();
-  const ciudad     = (document.getElementById('vCiudad').value||'').trim();
-  const tel        = (document.getElementById('vTel').value||'').trim();
+  const rtn        = (document.getElementById('vRTN')?.value||'').trim();
   const fecha      = document.getElementById('vFecha').value;
   const vendedorId = document.getElementById('vVendedor').value;
 
   if (!nombre) { showToast('⚠️ Ingresá el nombre del cliente','warn'); return; }
-  if (vTipoVenta==='formal' && !direccion) { showToast('⚠️ Ingresá la dirección','warn'); return; }
-  if (vTipoVenta==='formal' && !ciudad)    { showToast('⚠️ Ingresá la ciudad','warn'); return; }
-  if (vTipoVenta==='formal' && !tel)       { showToast('⚠️ Ingresá el teléfono','warn'); return; }
   if (!fecha) { showToast('⚠️ Seleccioná la fecha','warn'); return; }
   if (!vendedorId) { showToast('⚠️ Seleccioná el vendedor','warn'); return; }
   if (!document.getElementById('vMetodoPago').value)  { showToast('⚠️ Seleccioná método de pago','warn'); return; }
@@ -2016,9 +1979,8 @@ async function guardarVenta() {
   let clienteId = vClienteId;
   const clienteObj = {
     id:          clienteId || ('cli_' + Date.now()),
-    nombre, direccion, ciudad, tel,
-    tel2:        (document.getElementById('vTel2').value||'').trim(),
-    email:       (document.getElementById('vEmail').value||'').trim(),
+    nombre,
+    rtn,
     fechaCreado: new Date().toISOString()
   };
   if (!clienteId) clienteId = clienteObj.id;
@@ -2064,8 +2026,7 @@ async function guardarVenta() {
     fecha,
     clienteId,
     clienteNombre:  nombre,
-    clienteCiudad:  ciudad,
-    clienteTel:     tel,
+    clienteRTN:     rtn,
     vendedorId,
     vendedorNombre: vendedor ? vendedor.nombre : '—',
     items:          [...vItems],
@@ -2146,7 +2107,7 @@ function setVentaDefaults() {
 function limpiarVenta() {
   vItems = []; vEditandoId = null; vClienteId = null;
   vTipoVenta = 'formal';
-  ['vNombre','vDireccion','vCiudad','vTel','vTel2','vEmail','vMaps','vBuscarCliente'].forEach(id=>{
+  ['vNombre','vRTN','vBuscarCliente'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
   document.getElementById('vDescActivo').checked = false;
@@ -2154,8 +2115,7 @@ function limpiarVenta() {
   document.getElementById('vDescValor').value = '';
   document.getElementById('vDescTipoBtn').textContent = '%';
   setVentaDefaults();
-  // Reset tipo venta
-  setTipoVenta('formal');
+  setTipoVenta('informal');
   renderItems(); calcResumen();
   // Re-select logged-in user
   const selV = document.getElementById('vVendedor');
