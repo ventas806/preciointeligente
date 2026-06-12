@@ -7032,6 +7032,27 @@ function vShowSub(sub) {
 // ===== MÓDULO ADMINISTRACIÓN DE CLIENTES =====
 let cliEditandoId = null;
 
+// Valida si ya existe OTRO cliente con el mismo nombre o teléfono.
+// tel y tel2 del MISMO cliente (casa/trabajo) sí pueden convivir.
+function _buscarClienteDuplicado(datos, excluirId) {
+  const normNom = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim();
+  const normTel = s => (s||'').replace(/\D/g,'');
+  // Coincidencia tolerante a prefijo +504: uno termina con el otro
+  const telIgual = (a, b) => {
+    if (a.length < 7 || b.length < 7) return false;
+    return a === b || a.endsWith(b) || b.endsWith(a);
+  };
+  const nom  = normNom(datos.nombre);
+  const tels = [normTel(datos.tel), normTel(datos.tel2)].filter(t => t.length >= 7);
+  for (const c of clientes) {
+    if (excluirId && c.id === excluirId) continue;
+    if (nom && normNom(c.nombre) === nom) return { cliente: c, motivo: 'nombre' };
+    const cTels = [normTel(c.tel), normTel(c.tel2)].filter(t => t.length >= 7);
+    if (tels.some(t => cTels.some(ct => telIgual(t, ct)))) return { cliente: c, motivo: 'teléfono' };
+  }
+  return null;
+}
+
 function _detectarDuplicadosClientes(lista) {
   const normTel   = s => (s||'').replace(/\D/g,'');
   const normEmail = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s/g,'');
@@ -7208,6 +7229,17 @@ async function guardarCliente() {
   if(!nombre) { showToast('El nombre es obligatorio','error'); return; }
   const telCli = document.getElementById('cliTel').value.trim();
   if(!telCli) { showToast('El teléfono es obligatorio','error'); return; }
+
+  // Bloquear duplicados: mismo nombre o mismo teléfono que OTRO cliente
+  const dup = _buscarClienteDuplicado({
+    nombre: nombre,
+    tel:    telCli,
+    tel2:   document.getElementById('cliTel2').value.trim()
+  }, cliEditandoId);
+  if (dup) {
+    showToast(`⚠️ Ya existe un cliente con ese ${dup.motivo}: "${dup.cliente.nombre}"${dup.cliente.tel?' · 📞 '+dup.cliente.tel:''} — verifícalo o actualízalo en vez de crear uno nuevo`, 'error', 8000);
+    return;
+  }
 
   const id = cliEditandoId || 'cli_' + Date.now();
   const clienteObj = {
