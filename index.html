@@ -1935,44 +1935,50 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                   <input type="text" id="vClienteBuscar" placeholder="🔍 Buscar por nombre o teléfono..." autocomplete="off"
                     style="flex:1;padding:10px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:14px;outline:none;min-width:0"
                     oninput="buscarCliente()">
-                  <button class="btn btn-ghost btn-sm" onclick="limpiarCliente()" title="Limpiar y crear nuevo cliente">➕ Nuevo</button>
+                  <button class="btn btn-ghost btn-sm" onclick="nuevoClienteDesdeVenta()" title="Crear cliente nuevo">➕ Nuevo Cliente</button>
                 </div>
               </div>
               <!-- Chip cliente seleccionado -->
-              <div id="vClienteChip" style="display:none;align-items:center;gap:10px;padding:8px 14px;background:rgba(0,200,160,.1);border:1px solid rgba(0,200,160,.35);border-radius:8px;margin-bottom:12px">
+              <div id="vClienteChip" style="display:none;align-items:center;gap:10px;padding:8px 14px;background:rgba(0,200,160,.1);border:1px solid rgba(0,200,160,.35);border-radius:8px;margin-bottom:12px;flex-wrap:wrap">
                 <span style="font-size:13px">✅ <strong id="vClienteChipNombre"></strong></span>
                 <span id="vClienteChipTel" style="font-size:12px;color:var(--text2)"></span>
-                <button onclick="limpiarCliente()" style="margin-left:auto;padding:3px 10px;font-size:12px;border:1px solid rgba(0,200,160,.4);background:transparent;color:#00c8a0;border-radius:6px;cursor:pointer;font-weight:700">✕ Cambiar</button>
+                <span id="vClienteChipRTN" style="font-size:12px;color:var(--text2)"></span>
+                <button onclick="editarClienteDesdeVenta()" style="margin-left:auto;padding:3px 10px;font-size:12px;border:1px solid rgba(61,106,255,.5);background:transparent;color:var(--accent);border-radius:6px;cursor:pointer;font-weight:700">✏️ Editar</button>
+                <button onclick="limpiarCliente()" style="padding:3px 10px;font-size:12px;border:1px solid rgba(0,200,160,.4);background:transparent;color:#00c8a0;border-radius:6px;cursor:pointer;font-weight:700">✕ Cambiar</button>
               </div>
               <div id="vClienteResultados" style="display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);max-height:200px;overflow-y:auto;margin-bottom:12px;box-shadow:0 4px 16px rgba(0,0,0,.3)"></div>
               <div class="form-grid fg3">
                 <div class="form-field field-full">
                   <label>Nombre del Cliente *</label>
-                  <input type="text" id="vClienteNombre" placeholder="Nombre completo">
+                  <input type="text" id="vClienteNombre" placeholder="Nombre completo" disabled>
                 </div>
                 <div class="form-field field-full">
                   <label id="vLblDireccion">Dirección Exacta *</label>
-                  <input type="text" id="vClienteDireccion" placeholder="Calle, colonia, número de casa...">
+                  <input type="text" id="vClienteDireccion" placeholder="Calle, colonia, número de casa..." disabled>
                 </div>
                 <div class="form-field">
                   <label id="vLblCiudad">Ciudad *</label>
-                  <input type="text" id="vClienteCiudad" placeholder="Tegucigalpa, SPS...">
+                  <input type="text" id="vClienteCiudad" placeholder="Tegucigalpa, SPS..." disabled>
                 </div>
                 <div class="form-field">
                   <label id="vLblTel">Teléfono *</label>
-                  <input type="text" id="vClienteTel" placeholder="+504 9999-9999">
+                  <input type="text" id="vClienteTel" placeholder="+504 9999-9999" disabled>
                 </div>
                 <div class="form-field">
                   <label>Contacto Alterno</label>
-                  <input type="text" id="vClienteTel2" placeholder="+504 8888-8888">
+                  <input type="text" id="vClienteTel2" placeholder="+504 8888-8888" disabled>
                 </div>
                 <div class="form-field">
                   <label>Correo Electrónico</label>
-                  <input type="email" id="vClienteEmail" placeholder="cliente@email.com">
+                  <input type="email" id="vClienteEmail" placeholder="cliente@email.com" disabled>
+                </div>
+                <div class="form-field">
+                  <label>RTN / ID <span style="color:var(--text3);font-weight:400;font-size:11px">(opcional)</span></label>
+                  <input type="text" id="vClienteRTN" placeholder="0000-0000-000000" disabled>
                 </div>
                 <div class="form-field field-full">
                   <label>📍 Ubicación Google Maps <span style="color:var(--text3);font-weight:400;font-size:11px">(opcional)</span></label>
-                  <input type="url" id="vMapsLink" placeholder="Pega aquí el link de Google Maps..." oninput="onMapsLinkChange()" style="width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+                  <input type="url" id="vMapsLink" placeholder="Link de Google Maps del cliente..." oninput="onMapsLinkChange()" disabled style="width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
                   <div id="vMapsPreview" style="display:none;margin-top:10px;display:flex;flex-direction:column;gap:6px">
                     <iframe id="vMapsIframe" width="100%" height="180" frameborder="0" style="border:1px solid var(--border);border-radius:8px;display:none" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" src="about:blank"></iframe>
                     <a id="vMapsBtn" href="#" target="_blank" rel="noopener" style="display:none;align-items:center;gap:6px;font-size:12px;color:var(--accent3);text-decoration:none;padding:5px 12px;background:rgba(0,200,160,.1);border-radius:6px;border:1px solid rgba(0,200,160,.3);width:fit-content">🗺️ Abrir en Google Maps ↗</a>
@@ -2066,7 +2072,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
 
               <!-- Buscador de productos -->
               <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-                <input type="text" id="vProdBuscar" placeholder="🔍 SKU o nombre del producto..." style="flex:1;min-width:200px;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none" oninput="buscarProductoVenta()">
+                <input type="text" id="vProdBuscar" placeholder="🔍 SKU, código de barras o nombre..." style="flex:1;min-width:200px;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none" oninput="buscarProductoVenta()" onkeydown="vProdBuscarKeydown(event)">
                 <button class="btn btn-ghost btn-sm" onclick="agregarProductoManual()">+ Manual</button>
               </div>
               <div id="vProdResultados" style="display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);max-height:200px;overflow-y:auto;margin-bottom:12px"></div>
@@ -7012,6 +7018,7 @@ function vShowSub(sub) {
     if (panel) panel.style.display = s === sub ? '' : 'none';
     if (btn)   { btn.classList.toggle('btn-primary', s === sub); btn.classList.toggle('btn-ghost', s !== sub); }
   });
+  if (sub === 'nueva' && !vClienteSelId && _ventasCargadas) seleccionarConsumidorFinal();
   if (sub === 'lista')     renderHistorialVentas();
   if (sub === 'reporte')   renderReporteVendedores();
   if (sub === 'clientes')  renderTablaClientes();
@@ -7174,6 +7181,7 @@ function cliSwitchAddr(tab) {
 }
 
 function abrirModalCliente(id) {
+  _cliDesdeVenta = false; // se re-activa en los wrappers nuevoClienteDesdeVenta/editarClienteDesdeVenta
   cliEditandoId = id;
   const c = id ? clientes.find(x => x.id === id) : null;
   document.getElementById('modalClienteTitulo').textContent = c ? '✏️ Editar Cliente' : '👤 Nuevo Cliente';
@@ -7198,6 +7206,8 @@ function abrirModalCliente(id) {
 async function guardarCliente() {
   const nombre = document.getElementById('cliNombre').value.trim();
   if(!nombre) { showToast('El nombre es obligatorio','error'); return; }
+  const telCli = document.getElementById('cliTel').value.trim();
+  if(!telCli) { showToast('El teléfono es obligatorio','error'); return; }
 
   const id = cliEditandoId || 'cli_' + Date.now();
   const clienteObj = {
@@ -7234,6 +7244,8 @@ async function guardarCliente() {
     addHistorial(`Cliente ${cliEditandoId?'editado':'creado'}: ${nombre}`, 'Clientes');
     showToast(`✅ Cliente ${cliEditandoId?'actualizado':'creado'}`, 'success');
     cliEditandoId = null;
+    // Si el modal se abrió desde la venta, seleccionar el cliente en la venta
+    if (_cliDesdeVenta) { _cliDesdeVenta = false; seleccionarCliente(id, true); }
   } catch(e) {
     showToast('Error al guardar cliente: ' + e.message, 'error');
   }
@@ -7259,21 +7271,23 @@ Nota: si tiene ventas asociadas, esas ventas se mantendrán.`)) return;
 }
 
 // ===== BÚSQUEDA DE CLIENTE =====
-const _VCLI_FIELDS = ['vClienteNombre','vClienteDireccion','vClienteCiudad','vClienteTel','vClienteTel2','vClienteEmail'];
+const _VCLI_FIELDS = ['vClienteNombre','vClienteDireccion','vClienteCiudad','vClienteTel','vClienteTel2','vClienteEmail','vClienteRTN'];
 
 function _setClienteLocked(locked) {
+  // Los campos del cliente son SIEMPRE de solo lectura en la venta —
+  // se crean/editan únicamente desde el modal de cliente
   _VCLI_FIELDS.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.disabled = locked;
-    el.style.opacity    = locked ? '0.65' : '1';
-    el.style.cursor     = locked ? 'not-allowed' : '';
-    el.style.background = locked ? 'var(--bg2)' : '';
+    el.disabled = true;
+    el.style.opacity    = '0.75';
+    el.style.cursor     = 'not-allowed';
+    el.style.background = 'var(--bg2)';
   });
   // También el campo de Maps
   const maps = document.getElementById('vMapsLink');
-  if (maps) { maps.disabled = locked; maps.style.opacity = locked ? '0.65' : '1'; maps.style.cursor = locked ? 'not-allowed' : ''; maps.style.background = locked ? 'var(--bg2)' : ''; }
-  // Chip visible sólo si bloqueado
+  if (maps) { maps.disabled = true; maps.style.opacity = '0.75'; maps.style.cursor = 'not-allowed'; maps.style.background = 'var(--bg2)'; }
+  // Chip visible sólo si hay cliente seleccionado
   const chip = document.getElementById('vClienteChip');
   if (chip) chip.style.display = locked ? 'flex' : 'none';
   // Buscador: ocultar cuando hay cliente seleccionado
@@ -7297,8 +7311,9 @@ function buscarCliente() {
     return false;
   }).slice(0, 10);
   if (!encontrados.length) {
-    res.innerHTML = `<div style="padding:12px 16px;color:var(--text3);font-size:13px">
-      Sin resultados — los campos están listos para registrar un cliente nuevo
+    res.innerHTML = `<div style="padding:12px 16px;color:var(--text3);font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <span>Sin resultados</span>
+      <button onclick="nuevoClienteDesdeVenta()" style="padding:5px 14px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:700;cursor:pointer">➕ Crear cliente nuevo</button>
     </div>`;
     res.style.display = 'block';
     return;
@@ -7316,7 +7331,7 @@ function buscarCliente() {
   res.style.display = 'block';
 }
 
-function seleccionarCliente(id) {
+function seleccionarCliente(id, silent) {
   const c = clientes.find(x => x.id === id);
   if (!c) return;
   vClienteSelId = id;
@@ -7327,6 +7342,8 @@ function seleccionarCliente(id) {
   document.getElementById('vClienteTel').value       = c.tel       || '';
   document.getElementById('vClienteTel2').value      = c.tel2      || '';
   document.getElementById('vClienteEmail').value     = c.email     || '';
+  const rtnEl = document.getElementById('vClienteRTN');
+  if (rtnEl) rtnEl.value = c.rtn || '';
   // Maps: prefer casa, then trabajo
   const mapsEl = document.getElementById('vMapsLink');
   if (mapsEl) { mapsEl.value = c.mapsCasa || c.mapsTrabajo || ''; onMapsLinkChange(); }
@@ -7335,10 +7352,37 @@ function seleccionarCliente(id) {
   // Mostrar chip y bloquear campos
   const chipNom = document.getElementById('vClienteChipNombre');
   const chipTel = document.getElementById('vClienteChipTel');
+  const chipRtn = document.getElementById('vClienteChipRTN');
   if (chipNom) chipNom.textContent = c.nombre;
   if (chipTel) chipTel.textContent = c.tel ? '📞 ' + c.tel : '';
+  if (chipRtn) chipRtn.textContent = c.rtn ? '🪪 RTN: ' + c.rtn : '';
   _setClienteLocked(true);
-  showToast('✅ Cliente seleccionado: ' + c.nombre, 'success');
+  if (!silent) showToast('✅ Cliente seleccionado: ' + c.nombre, 'success');
+}
+
+// ── Crear / editar cliente desde la venta (vía modal) ──
+let _cliDesdeVenta = false;
+
+function nuevoClienteDesdeVenta() {
+  abrirModalCliente(null);
+  _cliDesdeVenta = true;
+}
+
+function editarClienteDesdeVenta() {
+  if (!vClienteSelId) { showToast('⚠️ No hay cliente seleccionado','warn'); return; }
+  abrirModalCliente(vClienteSelId);
+  _cliDesdeVenta = true;
+}
+
+// ── Consumidor Final por defecto ──
+function seleccionarConsumidorFinal() {
+  let cf = clientes.find(c => (c.nombre||'').trim().toLowerCase() === 'consumidor final');
+  if (!cf) {
+    cf = { id: 'cli_consumidor_final', nombre: 'Consumidor Final', ciudad: '', tel: '', tel2: '', email: '', rtn: '', direccion: '', observaciones: '', fechaCreado: new Date().toISOString() };
+    clientes.push(cf);
+    sbSaveCliente(cf).catch(e => console.warn('No se pudo guardar Consumidor Final:', e.message));
+  }
+  seleccionarCliente(cf.id, true);
 }
 
 function limpiarCliente() {
@@ -7464,10 +7508,36 @@ function renderAbonosVenta() {
 }
 
 // ===== BÚSQUEDA DE PRODUCTO =====
+// Escáner de código de barras: Enter agrega el SKU exacto (o el primer resultado)
+function vProdBuscarKeydown(ev) {
+  if (ev.key !== 'Enter') return;
+  ev.preventDefault();
+  const q = (document.getElementById('vProdBuscar').value || '').toLowerCase().trim();
+  if (!q) return;
+  const exacto = productos.find(p => String(p.sku||'').toLowerCase() === q);
+  if (exacto) { agregarProductoCatalogo(exacto.id); showToast('📦 ' + exacto.producto + ' agregado', 'success'); return; }
+  const primero = productos.find(p =>
+    String(p.sku||'').toLowerCase().includes(q) ||
+    String(p.producto||'').toLowerCase().includes(q)
+  );
+  if (primero) { agregarProductoCatalogo(primero.id); showToast('📦 ' + primero.producto + ' agregado', 'success'); }
+  else showToast('Sin resultados para: ' + q, 'warn');
+}
+
 function buscarProductoVenta() {
   const q   = (document.getElementById('vProdBuscar').value || '').toLowerCase().trim();
   const res = document.getElementById('vProdResultados');
   if (!q) { res.style.display = 'none'; return; }
+
+  // Escáner sin Enter: si el texto coincide EXACTO con un SKU completo, agregar automático
+  if (q.length >= 4) {
+    const exacto = productos.find(p => String(p.sku||'').toLowerCase() === q);
+    if (exacto) {
+      agregarProductoCatalogo(exacto.id);
+      showToast('📦 ' + exacto.producto + ' agregado', 'success');
+      return;
+    }
+  }
 
   const encontrados = productos.filter(p =>
     String(p.sku||'').toLowerCase().includes(q) ||
@@ -7668,16 +7738,11 @@ function actualizarItemVenta(vid, campo, valor) {
   const item = vItemsActuales.find(x => x._id === vid);
   if (!item) return;
   if (campo === 'llevaISV') {
-    // Derivar precioBase del precioFinal actual ANTES de cambiar el estado ISV
-    // (evita que quede en 0 cuando el item viene de Supabase sin precioBase guardado)
-    const tasaAnterior = item.llevaISV ? (item.isvPct || 0) : 0;
-    item.precioBase = tasaAnterior > 0
-      ? item.precioFinal / (1 + tasaAnterior)
-      : item.precioFinal;
+    // El precio final NO cambia al activar/desactivar ISV —
+    // solo se recalcula la base sin ISV para desglose y comisiones
     item.llevaISV = valor;
     item.isvPct   = valor ? (parametros.isvNuevo || 0.15) : 0;
-    // Recalcular precioFinal desde la base derivada
-    item.precioFinal = +( item.precioBase * (1 + item.isvPct) ).toFixed(2);
+    item.precioBase = valor ? item.precioFinal / (1 + item.isvPct) : item.precioFinal;
   } else if (campo === 'precioFinal') {
     item.precioFinal = parseFloat(valor) || 0;
     // Derivar base sin ISV
@@ -8007,10 +8072,10 @@ async function guardarVenta() {
   const tel       = (document.getElementById('vClienteTel').value||'').trim();
   const fecha     = document.getElementById('vFecha').value;
   const vendedorId= document.getElementById('vVendedor').value;
-  if (!nombre)                              { showToast('⚠️ Ingresa el nombre del cliente','warn'); return; }
-  if (vTipoVenta === 'formal' && !direccion){ showToast('⚠️ Ingresa la dirección del cliente','warn'); return; }
-  if (vTipoVenta === 'formal' && !ciudad)   { showToast('⚠️ Ingresa la ciudad','warn'); return; }
-  if (vTipoVenta === 'formal' && !tel)      { showToast('⚠️ Ingresa el teléfono del cliente','warn'); return; }
+  if (!nombre)                              { showToast('⚠️ Selecciona un cliente para la venta','warn'); return; }
+  if (vTipoVenta === 'formal' && !direccion){ showToast('⚠️ El cliente no tiene dirección — usa ✏️ Editar para completarla','warn'); return; }
+  if (vTipoVenta === 'formal' && !ciudad)   { showToast('⚠️ El cliente no tiene ciudad — usa ✏️ Editar para completarla','warn'); return; }
+  if (vTipoVenta === 'formal' && !tel)      { showToast('⚠️ El cliente no tiene teléfono — usa ✏️ Editar para completarlo','warn'); return; }
   if (!fecha)      { showToast('⚠️ Selecciona la fecha de venta','warn'); return; }
   if (!vendedorId) { showToast('⚠️ Selecciona el vendedor','warn'); return; }
 
@@ -8019,32 +8084,33 @@ async function guardarVenta() {
   const promesaPago   = (document.getElementById('vPromesaPago')?.value   || '').trim();
   const metodoEnvio   = (document.getElementById('vMetodoEnvio')?.value   || '').trim();
 
-  // Guardar/actualizar cliente
+  // Cliente: siempre viene seleccionado (campos solo lectura) — la venta NO lo modifica.
+  // Solo se asegura que exista en Supabase antes de guardar la venta (FK ventas_cliente_id)
   let clienteId = vClienteSelId;
-  const clienteData = {
-    nombre, direccion, ciudad, tel,
-    tel2:   (document.getElementById('vClienteTel2').value||'').trim(),
-    email:  (document.getElementById('vClienteEmail').value||'').trim()
-  };
   if (clienteId) {
-    const idx = clientes.findIndex(c => c.id === clienteId);
-    if (idx >= 0) Object.assign(clientes[idx], clienteData);
+    const cliSel = clientes.find(c => c.id === clienteId);
+    try {
+      if (cliSel) await sbSaveCliente(cliSel);
+    } catch(e) {
+      console.warn('⚠️ Cliente no sincronizado en Supabase:', e.message);
+      clienteId = null;
+    }
   } else {
+    // Respaldo legacy: crear cliente mínimo desde los campos visibles
     clienteId = 'cli_' + Date.now();
-    clientes.push({ id: clienteId, ...clienteData, fechaCreado: new Date().toISOString() });
-  }
-  // Guardar cliente en Supabase en segundo plano
-  const clienteObj = { id: clienteId, ...clienteData, fechaCreado: new Date().toISOString() };
-  if (!vClienteSelId) clientes.push(clienteObj);
-  else { const idx = clientes.findIndex(c => c.id === clienteId); if(idx>=0) Object.assign(clientes[idx], clienteData); }
-  // Guardar cliente PRIMERO y esperar antes de guardar la venta
-  // (evita error de foreign key en ventas_cliente_id_fkey)
-  try {
-    await sbSaveCliente(clienteObj);
-  } catch(e) {
-    console.warn('⚠️ Cliente no guardado en Supabase:', e.message);
-    // Si falla el cliente, poner cliente_id null para evitar el error de FK
-    clienteId = null;
+    const clienteObj = {
+      id: clienteId, nombre, direccion, ciudad, tel,
+      tel2:  (document.getElementById('vClienteTel2').value||'').trim(),
+      email: (document.getElementById('vClienteEmail').value||'').trim(),
+      fechaCreado: new Date().toISOString()
+    };
+    clientes.push(clienteObj);
+    try {
+      await sbSaveCliente(clienteObj);
+    } catch(e) {
+      console.warn('⚠️ Cliente no guardado en Supabase:', e.message);
+      clienteId = null;
+    }
   }
 
   // Calcular totales
@@ -8161,6 +8227,7 @@ function limpiarVenta() {
   vEditandoId    = null;
   _ventasSubActivo = 'nueva';
   limpiarCliente();
+  if (_ventasCargadas) seleccionarConsumidorFinal();
   ['vObservaciones','vMetodoPagoObs','vMapsLink'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   vItemsAbonos = [];
   renderAbonosVenta();
