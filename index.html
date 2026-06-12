@@ -6970,7 +6970,7 @@ async function initVentas() {
   if (fd && !fd.value) fd.value = hoy;
   const envioEl = document.getElementById('vEnvio');
   if (envioEl && !envioEl._inicializado) {
-    envioEl.value = parametros.envioDefecto || 120;
+    envioEl.value = parametros.envioDefecto != null ? parametros.envioDefecto : 120;
     envioEl._inicializado = true;
   }
 
