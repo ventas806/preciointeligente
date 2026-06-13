@@ -2451,8 +2451,11 @@ function vShowSub(sub) {
 function renderHistorial() {
   const q     = (document.getElementById('histSearch').value||'').toLowerCase();
   const lista = document.getElementById('histLista');
-  let filtradas = ventas;
-  if (q) filtradas = ventas.filter(v =>
+  const _ts   = s => s ? new Date(s).getTime() : 0;
+  let filtradas = [...ventas].sort((a,b) =>
+    (_ts(b.fechaRegistro) || _ts(b.fecha)) - (_ts(a.fechaRegistro) || _ts(a.fecha))
+  );
+  if (q) filtradas = filtradas.filter(v =>
     (v.clienteNombre||'').toLowerCase().includes(q) ||
     String(v.total||'').includes(q) ||
     (v.metodoPagoLabel||v.metodoPago||'').toLowerCase().includes(q)
