@@ -842,6 +842,7 @@ select.field-input { cursor:pointer; }
 
       <!-- Guardar -->
       <div style="padding:0 12px">
+        <button class="btn-guardar" style="background:#1b5e20" onclick="guardarEImprimirUSB()">⚡ Guardar e Imprimir USB</button>
         <button class="btn-guardar" onclick="guardarVenta()">💾 Guardar Venta</button>
         <button class="btn-limpiar" onclick="limpiarVenta()">🗑 Limpiar Todo</button>
       </div>
@@ -2359,11 +2360,19 @@ async function guardarVenta() {
 
     hideLoading();
     showToast('✅ Venta guardada correctamente', 'success');
+    const ventaGuardadaId = venta.id;
     limpiarVenta();
+    if (typeof _onVentaGuardada === 'function') { _onVentaGuardada(ventaGuardadaId); _onVentaGuardada = null; }
   } catch(e) {
     hideLoading();
     showToast('❌ Error: ' + e.message, 'error', 7000);
   }
+}
+
+let _onVentaGuardada = null;
+async function guardarEImprimirUSB() {
+  _onVentaGuardada = (id) => imprimirUSBDirecto(id);
+  await guardarVenta();
 }
 
 /* ════════════════════════════════════════════
