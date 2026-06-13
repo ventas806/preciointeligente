@@ -7839,7 +7839,11 @@ function renderItemsVenta() {
           if (!lista) return '';
           const tipo   = item.descuentoItemTipo || '%';
           const dPct   = lista > item.precioFinal ? +((lista - item.precioFinal) / lista * 100).toFixed(1) : 0;
-          const dL     = lista > item.precioFinal ? +(lista - item.precioFinal).toFixed(2) : 0;
+          const dL     = lista > item.precioFinal
+            ? (tipo === 'L' && item.llevaISV && item.isvPct > 0
+                ? +((lista / (1 + item.isvPct)) - (item.precioFinal / (1 + item.isvPct))).toFixed(2)
+                : +(lista - item.precioFinal).toFixed(2))
+            : 0;
           const inputV = tipo === '%' ? dPct : dL;
           const ahorro = Math.max(0, (lista - item.precioFinal) * item.cantidad);
           return `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:2px">
@@ -7886,7 +7890,14 @@ function actualizarDescItem(id, valor) {
   if (tipo === '%') {
     item.precioFinal = +(item.precioLista * (1 - Math.min(100, v) / 100)).toFixed(2);
   } else {
-    item.precioFinal = +Math.max(0, item.precioLista - v).toFixed(2);
+    // Decreto 24-98: descuento L fijo aplica sobre base sin ISV
+    if (item.llevaISV && item.isvPct > 0) {
+      const baseSinISV = item.precioLista / (1 + item.isvPct);
+      const baseDesc   = Math.max(0, baseSinISV - v);
+      item.precioFinal = +(baseDesc * (1 + item.isvPct)).toFixed(2);
+    } else {
+      item.precioFinal = +Math.max(0, item.precioLista - v).toFixed(2);
+    }
   }
   renderItemsVenta();
 }
