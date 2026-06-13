@@ -2064,8 +2064,15 @@ function actualizarItem(vid, campo, valor) {
   if (campo === 'cantidad') {
     it.cantidad = Math.max(1, parseInt(valor)||1);
   } else if (campo === 'precioFinal') {
-    it.precioFinal = parseFloat(valor)||0;
-    it.precioBase  = it.llevaISV ? it.precioFinal/(1+it.isvPct) : it.precioFinal;
+    const rawPrice = parseFloat(valor) || 0;
+    it.precioLista = rawPrice; // precio ingresado = nueva referencia
+    it.precioFinal = rawPrice;
+    it.precioBase  = it.llevaISV ? rawPrice/(1+it.isvPct) : rawPrice;
+    // re-aplicar descuento si hay uno activo
+    if (it.dtoValor > 0) {
+      actualizarDescItem(vid, it.dtoValor);
+      return; // actualizarDescItem ya actualiza card y calcResumen
+    }
   } else if (campo === 'descripcion') {
     it.descripcion = valor;
   }
@@ -2140,17 +2147,7 @@ function toggleISV(vid) {
   if (!it) return;
   it.llevaISV = !it.llevaISV;
   it.isvPct   = it.llevaISV ? (parametros.isvNuevo||0.15) : 0;
-  // Si hay descuento L fijo, recalcular precioFinal (Decreto 24-98)
-  if (it.dtoTipo === 'L' && it.dtoValor > 0 && it.precioLista > 0) {
-    if (it.llevaISV && it.isvPct > 0) {
-      const baseSinISV = it.precioLista / (1 + it.isvPct);
-      const baseDesc   = Math.max(0, baseSinISV - it.dtoValor);
-      it.precioFinal   = +(baseDesc * (1 + it.isvPct)).toFixed(2);
-    } else {
-      it.precioFinal = +Math.max(0, it.precioLista - it.dtoValor).toFixed(2);
-    }
-    it.precioBase = it.llevaISV ? it.precioFinal/(1+it.isvPct) : it.precioFinal;
-  }
+  // precioFinal no se modifica — el precio visible queda igual
   renderItems(); calcResumen();
 }
 
