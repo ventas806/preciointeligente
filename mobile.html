@@ -2091,9 +2091,16 @@ function actualizarDescItem(vid, val) {
     it.dtoValor   = d;
     it.precioFinal = +(it.precioLista * (1 - d/100)).toFixed(2);
   } else {
+    // L fijos: descuento aplica sobre base sin ISV (Decreto 24-98 Honduras)
     d = Math.max(0, d);
-    it.dtoValor   = d;
-    it.precioFinal = Math.max(0, +(it.precioLista - d).toFixed(2));
+    it.dtoValor = d;
+    if (it.llevaISV && it.isvPct) {
+      const baseSinISV = it.precioLista / (1 + it.isvPct);
+      const baseDesc   = Math.max(0, baseSinISV - d);
+      it.precioFinal   = +(baseDesc * (1 + it.isvPct)).toFixed(2);
+    } else {
+      it.precioFinal = Math.max(0, +(it.precioLista - d).toFixed(2));
+    }
   }
   it.precioBase = it.llevaISV ? it.precioFinal/(1+it.isvPct) : it.precioFinal;
 
