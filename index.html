@@ -7770,11 +7770,27 @@ function actualizarItemVenta(vid, campo, valor) {
   const item = vItemsActuales.find(x => x._id === vid);
   if (!item) return;
   if (campo === 'llevaISV') {
-    // El precio final NO cambia al activar/desactivar ISV —
-    // solo se recalcula la base sin ISV para desglose y comisiones
-    item.llevaISV = valor;
-    item.isvPct   = valor ? (parametros.isvNuevo || 0.15) : 0;
-    item.precioBase = valor ? item.precioFinal / (1 + item.isvPct) : item.precioFinal;
+    if (item.descuentoItemTipo === 'L' && item.precioLista > 0 && item.precioFinal < item.precioLista) {
+      // Decreto 24-98: descuento L fijo → recalcular precioFinal al cambiar ISV
+      const oldIsvPct = item.isvPct || 0;
+      const baseLista = item.llevaISV && oldIsvPct > 0 ? item.precioLista / (1 + oldIsvPct) : item.precioLista;
+      const baseFinal = item.llevaISV && oldIsvPct > 0 ? item.precioFinal / (1 + oldIsvPct) : item.precioFinal;
+      const dtoL = Math.max(0, baseLista - baseFinal);
+      item.llevaISV = valor;
+      item.isvPct   = valor ? (parametros.isvNuevo || 0.15) : 0;
+      if (item.llevaISV && item.isvPct > 0) {
+        const newBase = item.precioLista / (1 + item.isvPct);
+        item.precioFinal = +(Math.max(0, newBase - dtoL) * (1 + item.isvPct)).toFixed(2);
+      } else {
+        item.precioFinal = +Math.max(0, item.precioLista - dtoL).toFixed(2);
+      }
+      item.precioBase = item.llevaISV ? item.precioFinal / (1 + item.isvPct) : item.precioFinal;
+    } else {
+      // Sin descuento L fijo: precio no cambia al activar/desactivar ISV
+      item.llevaISV = valor;
+      item.isvPct   = valor ? (parametros.isvNuevo || 0.15) : 0;
+      item.precioBase = valor ? item.precioFinal / (1 + item.isvPct) : item.precioFinal;
+    }
   } else if (campo === 'precioFinal') {
     item.precioFinal = parseFloat(valor) || 0;
     // Derivar base sin ISV

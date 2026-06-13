@@ -2140,7 +2140,17 @@ function toggleISV(vid) {
   if (!it) return;
   it.llevaISV = !it.llevaISV;
   it.isvPct   = it.llevaISV ? (parametros.isvNuevo||0.15) : 0;
-  // precioFinal no se modifica — el precio visible queda igual
+  // Si hay descuento L fijo, recalcular precioFinal (Decreto 24-98)
+  if (it.dtoTipo === 'L' && it.dtoValor > 0 && it.precioLista > 0) {
+    if (it.llevaISV && it.isvPct > 0) {
+      const baseSinISV = it.precioLista / (1 + it.isvPct);
+      const baseDesc   = Math.max(0, baseSinISV - it.dtoValor);
+      it.precioFinal   = +(baseDesc * (1 + it.isvPct)).toFixed(2);
+    } else {
+      it.precioFinal = +Math.max(0, it.precioLista - it.dtoValor).toFixed(2);
+    }
+    it.precioBase = it.llevaISV ? it.precioFinal/(1+it.isvPct) : it.precioFinal;
+  }
   renderItems(); calcResumen();
 }
 
