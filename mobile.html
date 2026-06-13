@@ -1778,6 +1778,77 @@ function buscarProdEnter(e) {
   }
 }
 
+/* ════════════════════════════════════════════
+   ESCÁNER GLOBAL — agrega producto sin importar
+   dónde esté el foco. Detecta escáner por velocidad:
+   < 80ms entre teclas = escáner USB/BT, humano > 200ms
+════════════════════════════════════════════ */
+(function() {
+  let buf = '', tPrev = 0;
+  const GAP = 80; // ms máximo entre teclas del escáner
+
+  document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey || e.altKey || e.metaKey) return;
+    const focusId = document.activeElement ? document.activeElement.id : '';
+    const now = Date.now();
+
+    if (e.key === 'Enter') {
+      const code = buf.trim();
+      buf = ''; tPrev = 0;
+      // Solo procesar si: hay código, el foco NO está en el campo SKU (ya lo maneja buscarProdEnter)
+      if (code.length >= 3 && focusId !== 'vProdBuscar') {
+        e.preventDefault();
+        e.stopPropagation();
+        _escanerProcesar(code);
+      }
+      return;
+    }
+
+    if (e.key.length !== 1) return;
+
+    const gap = tPrev ? now - tPrev : 9999;
+    tPrev = now;
+
+    // Gap largo → era el usuario escribiendo, resetear buffer
+    if (gap > GAP && buf.length > 0) { buf = ''; }
+
+    buf += e.key;
+
+    // A partir del 2º carácter a velocidad de escáner: interceptar
+    if (buf.length >= 2 && gap < GAP && focusId !== 'vProdBuscar') {
+      e.preventDefault();
+      // El 1er carácter ya entró en el campo activo — quitarlo
+      if (buf.length === 2) {
+        const el = document.activeElement;
+        if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+          el.value = el.value.slice(0, -1);
+        }
+      }
+    }
+  }, true);
+
+  function _escanerProcesar(code) {
+    const q = code.toLowerCase();
+    const lista = window.productos || [];
+    const exacto = lista.find(p => String(p.sku || '').toLowerCase() === q);
+    if (exacto) {
+      agregarDeCatalogo(exacto.id);
+      showToast('📷 ' + exacto.producto, 'success', 1800);
+      return;
+    }
+    const found = lista.filter(p =>
+      String(p.sku || '').toLowerCase().includes(q) ||
+      String(p.producto || '').toLowerCase().includes(q)
+    );
+    if (found.length) {
+      agregarDeCatalogo(found[0].id);
+      showToast('📷 ' + found[0].producto, 'success', 1800);
+    } else {
+      showToast('⚠️ Código no encontrado: ' + code, 'warn', 2500);
+    }
+  }
+})();
+
 function buscarProdVenta() {
   const q   = (document.getElementById('vProdBuscar').value||'').toLowerCase().trim();
   const res = document.getElementById('vProdResultados');
