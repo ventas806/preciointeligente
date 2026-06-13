@@ -1701,27 +1701,6 @@ function cerrarModalNuevoCliente() {
   if (m) m.style.display = 'none';
 }
 
-// Valida si ya existe OTRO cliente con el mismo nombre o teléfono.
-// tel y tel2 del MISMO cliente (casa/trabajo) sí pueden convivir.
-function _buscarClienteDuplicado(datos, excluirId) {
-  const normNom = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim();
-  const normTel = s => (s||'').replace(/\D/g,'');
-  // Coincidencia tolerante a prefijo +504: uno termina con el otro
-  const telIgual = (a, b) => {
-    if (a.length < 7 || b.length < 7) return false;
-    return a === b || a.endsWith(b) || b.endsWith(a);
-  };
-  const nom  = normNom(datos.nombre);
-  const tels = [normTel(datos.tel), normTel(datos.tel2)].filter(t => t.length >= 7);
-  for (const c of clientes) {
-    if (excluirId && c.id === excluirId) continue;
-    if (nom && normNom(c.nombre) === nom) return { cliente: c, motivo: 'nombre' };
-    const cTels = [normTel(c.tel), normTel(c.tel2)].filter(t => t.length >= 7);
-    if (tels.some(t => cTels.some(ct => telIgual(t, ct)))) return { cliente: c, motivo: 'teléfono' };
-  }
-  return null;
-}
-
 async function guardarNuevoCliente() {
   const nombre = (document.getElementById('mClienteNombre').value || '').trim();
   const tel    = (document.getElementById('mClienteTel').value   || '').trim();
@@ -1730,17 +1709,6 @@ async function guardarNuevoCliente() {
 
   const isEdit = !!mClienteEditando;
   const id = isEdit ? mClienteEditando.id : ('cli_' + Date.now());
-
-  // Bloquear duplicados: mismo nombre o mismo teléfono que OTRO cliente
-  const dup = _buscarClienteDuplicado({
-    nombre,
-    tel,
-    tel2: (document.getElementById('mClienteTel2').value || '').trim()
-  }, isEdit ? id : null);
-  if (dup) {
-    showToast(`⚠️ Ya existe un cliente con ese ${dup.motivo}: "${dup.cliente.nombre}"${dup.cliente.tel?' · 📞 '+dup.cliente.tel:''} — verificalo o actualizalo`, 'error', 8000);
-    return;
-  }
   const cliente = {
     id,
     nombre,
@@ -1889,7 +1857,7 @@ function agregarDeCatalogo(prodId) {
     stockActual: parseInt(p.cantidad)||0,
     cantidad:    1,
     dtoTipo:     '%',
-    dtoValor:    0,
+    dtoValor:    parseFloat(p.descuento||0),
     _id:         'vi_' + Date.now() + '_' + Math.random().toString(36).slice(2,6)
   });
   document.getElementById('vProdBuscar').value = '';
