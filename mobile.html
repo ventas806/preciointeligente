@@ -2126,18 +2126,20 @@ function actualizarDescItem(vid, val) {
 function toggleDtoTipoItem(vid) {
   const it = vItems.find(x => x._id === vid);
   if (!it) return;
-  const wasL     = (it.dtoTipo || '%') === 'L';
-  const base     = it.precioLista > 0 ? it.precioLista : it.precioFinal;
-  const curValor = it.dtoValor || 0;
+  const wasL       = (it.dtoTipo || '%') === 'L';
+  const base       = it.precioLista > 0 ? it.precioLista : it.precioFinal;
+  const isvPct     = it.llevaISV && it.isvPct > 0 ? it.isvPct : 0;
+  const baseSinISV = isvPct > 0 ? base / (1 + isvPct) : base;
+  const curValor   = it.dtoValor || 0;
 
   if (wasL) {
-    // L → %: convert saved L amount to equivalent %
+    // L → %: L es sobre baseSinISV → convertir a %
     it.dtoTipo  = '%';
-    it.dtoValor = base > 0 ? Math.max(0, Math.min(99, +((curValor/base)*100).toFixed(1))) : 0;
+    it.dtoValor = baseSinISV > 0 ? Math.max(0, Math.min(99, +((curValor / baseSinISV) * 100).toFixed(1))) : 0;
   } else {
-    // % → L: convert saved % to equivalent L amount
+    // % → L: convertir % a L sobre baseSinISV (Decreto 24-98)
     it.dtoTipo  = 'L';
-    it.dtoValor = base > 0 ? +((base * curValor / 100)).toFixed(2) : 0;
+    it.dtoValor = +(baseSinISV * curValor / 100).toFixed(2);
   }
   renderItems(); calcResumen();
 }
