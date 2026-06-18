@@ -11575,6 +11575,37 @@ function editarCotizacion(id) {
   showToast('✏️ Editando cotización '+c.numero,'success');
 }
 
+function duplicarCotizacion(id) {
+  const c=cotizaciones.find(x=>x.id===id); if(!c) return;
+  cEditandoId=null;  // NUEVA cotización — número y id se generan al guardar
+  cShowSub('nueva');
+  document.getElementById('cClienteNombre').value    = c.clienteNombre  || '';
+  document.getElementById('cClienteRTN').value       = c.clienteRTN     || '';
+  document.getElementById('cClienteCiudad').value    = c.clienteCiudad  || '';
+  document.getElementById('cClienteTel').value       = c.clienteTel     || '';
+  document.getElementById('cClienteEmail').value     = c.clienteEmail   || '';
+  // Fecha de hoy; vigencia se recalcula al guardar (+15 días)
+  document.getElementById('cFecha').value            = new Date().toISOString().split('T')[0];
+  document.getElementById('cFechaVencimiento').value = '';
+  document.getElementById('cObservaciones').value    = c.observaciones  || '';
+  cItemsActuales = (c.items||[]).map(it=>({...it,_id:'vi_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)}));
+  renderItemsCotizacion();
+  poblarSelectorVendedorCot();
+  setTimeout(()=>{ const s=document.getElementById('cVendedor'); if(s) s.value=c.vendedorId||''; },50);
+  // Botón en modo "Guardar" (no actualizar) — se crea una nueva
+  const btn=document.getElementById('cBtnGuardar'); if(btn){btn.textContent='💾 Guardar Cotización';btn.style.background='';btn.style.color='';}
+  const cw=document.getElementById('cBtnCancelarWrap'); if(cw) cw.style.display='none';
+  const bl=document.getElementById('cBtnLimpiar'); if(bl) bl.style.display='';
+  // Restaurar descuento
+  const _cda=document.getElementById('cDescActivo');  if(_cda) _cda.checked=!!(c.descuento>0);
+  const _cdv=document.getElementById('cDescValor');   if(_cdv) _cdv.value=c.descuentoValor!=null?c.descuentoValor:(c.descuento||0);
+  const _cdb=document.getElementById('cDescTipoBtn'); if(_cdb){const t=c.descuentoTipo||'%';_cdb.textContent=t;_cdb.style.color=t==='L'?'var(--accent3)':'var(--accent4)';}
+  const _cdr=document.getElementById('cResDescRow');  if(_cdr) _cdr.style.display=c.descuento>0?'flex':'none';
+  calcResumenCotizacion();
+  document.getElementById('cPanelNueva').scrollIntoView({behavior:'smooth'});
+  showToast('📑 Cotización duplicada de '+c.numero+' — modifica y guarda como nueva','success',6000);
+}
+
 async function eliminarCotizacion(id) {
   const c=cotizaciones.find(x=>x.id===id); if(!c) return;
   if (!confirm(`¿Eliminar cotización ${c.numero} de ${c.clienteNombre}?`)) return;
@@ -11668,6 +11699,7 @@ function renderHistorialCotizaciones() {
         <td onclick="event.stopPropagation()" style="white-space:nowrap">
           <button class="btn btn-ghost btn-sm" onclick="verDetalleCotizacion('${c.id}')" title="Ver">👁️</button>
           <button class="btn btn-primary btn-sm" onclick="editarCotizacion('${c.id}')" title="Editar">✏️</button>
+          <button class="btn btn-ghost btn-sm" onclick="duplicarCotizacion('${c.id}')" title="Duplicar" style="color:#a29bfe;border-color:rgba(162,155,254,.3)">📑</button>
           <button class="btn btn-ghost btn-sm" onclick="imprimirCotizacion('${c.id}')" title="Imprimir">🖨️</button>
           <button class="btn btn-ghost btn-sm" onclick="compartirCotizacion('${c.id}')" title="Compartir link al cliente" style="color:#25d366;border-color:rgba(37,211,102,.3)">📤</button>
           ${c.estado!=='convertida'&&c.estado!=='rechazada'?`<button class="btn btn-sm" onclick="convertirAVenta('${c.id}')" title="Convertir a Venta" style="background:var(--gold);color:#000;border:none">🔄 Venta</button>`:''}
