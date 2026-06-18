@@ -769,6 +769,9 @@ select.field-input { cursor:pointer; }
           <div class="search-wrap">
             <input type="text" class="search-input" id="vProdBuscar"
               placeholder="🔍 SKU o nombre del producto..."
+              inputmode="none"
+              ontouchstart="this.inputMode='text'"
+              onblur="this.inputMode='none'"
               oninput="buscarProdVenta()" onkeydown="buscarProdEnter(event)"
               autocomplete="off" autocorrect="off" spellcheck="false">
             <button class="btn-scan" onclick="abrirScanner('venta')" title="Escanear código de barras">
