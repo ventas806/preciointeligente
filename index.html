@@ -3338,7 +3338,8 @@ async function sbGetCotizaciones() {
     ventaId:          c.venta_id          || '',
     fechaRegistro:    c.fecha_registro    || '',
     registradoPor:    c.registrado_por    || '',
-    tokenPublico:     c.token_publico     || ''
+    tokenPublico:     c.token_publico     || '',
+    notifSilenciada:  c.notif_silenciada  || false
   }));
 }
 
@@ -11680,6 +11681,18 @@ async function marcarCotizacionRechazada(id) {
   } catch(e) { showToast('❌ Error: '+e.message,'error'); }
 }
 
+async function toggleSilenciarCot(id) {
+  const c=cotizaciones.find(x=>x.id===id); if(!c) return;
+  const nuevo = !c.notifSilenciada;
+  try {
+    const {error}=await sb.from('cotizaciones').update({notif_silenciada:nuevo}).eq('id',id);
+    if(error) throw error;
+    c.notifSilenciada=nuevo;
+    renderHistorialCotizaciones();
+    showToast(nuevo?`🔕 ${c.numero}: no recibirá avisos de vencimiento`:`🔔 ${c.numero}: avisos de vencimiento reactivados`,'success');
+  } catch(e) { showToast('❌ Error: '+e.message,'error'); }
+}
+
 function convertirAVenta(id) {
   const c=cotizaciones.find(x=>x.id===id); if(!c) return;
   if (c.estado==='convertida') { showToast('⚠️ Esta cotización ya fue convertida a venta','warn'); return; }
@@ -11746,11 +11759,12 @@ function renderHistorialCotizaciones() {
         <td style="font-weight:600">${c.clienteNombre}</td>
         <td style="color:var(--text2)">${c.clienteCiudad||'—'}</td>
         <td style="text-align:right;font-weight:700;color:var(--accent3)">${fmtLPS(c.total)}</td>
-        <td><span style="font-size:11px;font-weight:700;background:${cfg.bg};border:1px solid ${cfg.border};color:${cfg.color};border-radius:10px;padding:2px 9px;white-space:nowrap">${cfg.icon} ${cfg.label}</span></td>
+        <td><span style="font-size:11px;font-weight:700;background:${cfg.bg};border:1px solid ${cfg.border};color:${cfg.color};border-radius:10px;padding:2px 9px;white-space:nowrap">${cfg.icon} ${cfg.label}</span>${c.notifSilenciada?` <span style="font-size:11px;font-weight:700;background:rgba(90,100,128,.15);border:1px solid rgba(90,100,128,.4);color:var(--text3);border-radius:10px;padding:2px 9px;white-space:nowrap" title="No recibirá notificaciones de vencimiento">🔕 Sin avisos</span>`:''}</td>
         <td onclick="event.stopPropagation()" style="white-space:nowrap">
           <button class="btn btn-ghost btn-sm" onclick="verDetalleCotizacion('${c.id}')" title="Ver">👁️</button>
           <button class="btn btn-primary btn-sm" onclick="editarCotizacion('${c.id}')" title="Editar">✏️</button>
           <button class="btn btn-ghost btn-sm" onclick="duplicarCotizacion('${c.id}')" title="Duplicar" style="color:#a29bfe;border-color:rgba(162,155,254,.3)">📑</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleSilenciarCot('${c.id}')" title="${c.notifSilenciada?'Reactivar notificaciones de vencimiento':'Silenciar notificaciones de vencimiento'}" style="color:${c.notifSilenciada?'var(--accent3)':'var(--text3)'}">${c.notifSilenciada?'🔔':'🔕'}</button>
           <button class="btn btn-ghost btn-sm" onclick="imprimirCotizacion('${c.id}')" title="Imprimir">🖨️</button>
           <button class="btn btn-ghost btn-sm" onclick="compartirCotizacion('${c.id}')" title="Compartir link al cliente" style="color:#25d366;border-color:rgba(37,211,102,.3)">📤</button>
           ${c.estado!=='convertida'&&c.estado!=='rechazada'?`<button class="btn btn-sm" onclick="convertirAVenta('${c.id}')" title="Convertir a Venta" style="background:var(--gold);color:#000;border:none">🔄 Venta</button>`:''}
