@@ -12856,6 +12856,7 @@ function limpiarWixApiKey() {
     <div id="cmpFooterBar" style="display:none;padding:14px 20px;border-top:1px solid #2a3145;gap:10px;align-items:center;flex-wrap:wrap">
       <div style="flex:1;font-size:13px;color:#8892aa" id="cmpSelInfo">Seleccioná una cantidad para cada producto</div>
       <button id="cmpSinMatchBtn" onclick="toggleSinMatch()" style="display:none;background:#1e2330;border:1px solid #f5c842;color:#f5c842;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px">⚠️ Ver sin match (0)</button>
+      <button id="cmpExportSinMatchBtn" onclick="exportarCmpSinMatch()" style="display:none;background:#1e2330;border:1px solid #f5c842;color:#f5c842;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px">📥 Exportar sin match</button>
       <button onclick="exportarCmpExcel()" style="background:#1e2330;border:1px solid #2a3145;color:#e8ecf5;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px">📥 Exportar Excel</button>
       <button id="cmpApplyBtn" onclick="aplicarCmp()" style="background:linear-gradient(135deg,#2ed573,#1ab55a);border:none;color:#fff;border-radius:8px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:700;opacity:.4;pointer-events:none">✅ Aplicar cambios</button>
     </div>
@@ -12865,6 +12866,7 @@ function limpiarWixApiKey() {
 <script>
 // ─── COMPARAR STOCK ────────────────────────────────
 var cmpDatos = [];
+var cmpSinMatch = [];
 var cmpTimer = null;
 
 function abrirCmp() {
@@ -12918,6 +12920,7 @@ async function cargarComparacion() {
     finalizarProgressBar(true);
     cmpDatos = data.diferencias || [];
     var sinMatchData = data.sinMatchList || [];
+    cmpSinMatch = sinMatchData;
 
     document.getElementById('cmpSub').textContent =
       (data.wixTotal||0) + ' prods Wix · 🔴 ' + (data.totalDiferencias||0) + ' diferencias · ✅ ' + (data.totalIguales||0) + ' iguales · ⚠️ ' + (data.totalSinMatch||0) + ' sin match';
@@ -12927,6 +12930,8 @@ async function cargarComparacion() {
       var btnSM = document.getElementById('cmpSinMatchBtn');
       btnSM.style.display = 'inline-block';
       btnSM.textContent = '⚠️ Ver sin match (' + sinMatchData.length + ')';
+      var btnExpSM = document.getElementById('cmpExportSinMatchBtn');
+      if (btnExpSM) { btnExpSM.style.display = 'inline-block'; btnExpSM.textContent = '📥 Exportar sin match (' + sinMatchData.length + ')'; }
       // Render tabla sin match
       var smBody = document.getElementById('cmpSinMatchBody');
       document.getElementById('cmpSinMatchCount').textContent = sinMatchData.length;
@@ -13085,6 +13090,19 @@ function exportarCmpExcel() {
   XLSX.writeFile(wb, 'Comparacion_Stock_' + new Date().toISOString().slice(0,10) + '.xlsx');
 }
 
+function exportarCmpSinMatch() {
+  if (!cmpSinMatch.length) { showToast('No hay productos sin match para exportar', 'warn'); return; }
+  var wb = XLSX.utils.book_new();
+  var rows = [['Producto','SKU','Categoría','Stock Supabase','Razón']];
+  cmpSinMatch.forEach(function(p) {
+    rows.push([p.producto, p.sku, p.categoria||'-', p.stockSupabase, p.razon||'']);
+  });
+  var ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:42},{wch:18},{wch:22},{wch:14},{wch:22}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Sin match Wix');
+  XLSX.writeFile(wb, 'Productos_sin_match_Wix_' + new Date().toISOString().slice(0,10) + '.xlsx');
+}
+
 function toggleSinMatch() {
   var panel = document.getElementById('cmpSinMatchPanel');
   var btn = document.getElementById('cmpSinMatchBtn');
@@ -13102,7 +13120,9 @@ function cerrarCmp() {
   document.getElementById('modalCmp').style.display = 'none';
   document.getElementById('cmpSinMatchPanel').style.display = 'none';
   document.getElementById('cmpSinMatchBtn').style.display = 'none';
+  var _bx = document.getElementById('cmpExportSinMatchBtn'); if (_bx) _bx.style.display = 'none';
   cmpDatos = [];
+  cmpSinMatch = [];
 }
 </script>
 
