@@ -1949,6 +1949,8 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 <button onclick="limpiarCliente()" style="padding:3px 10px;font-size:12px;border:1px solid rgba(0,200,160,.4);background:transparent;color:#00c8a0;border-radius:6px;cursor:pointer;font-weight:700">✕ Cambiar</button>
               </div>
               <div id="vClienteResultados" style="display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);max-height:200px;overflow-y:auto;margin-bottom:12px;box-shadow:0 4px 16px rgba(0,0,0,.3)"></div>
+              <!-- Aviso: cliente tiene cotización activa -->
+              <div id="vClienteCotAviso" style="display:none;align-items:flex-start;gap:10px;padding:10px 14px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.4);border-radius:8px;margin-bottom:12px;flex-wrap:wrap"></div>
               <div class="form-grid fg3">
                 <div class="form-field field-full">
                   <label>Nombre del Cliente *</label>
@@ -7391,7 +7393,52 @@ function seleccionarCliente(id, silent) {
   if (chipTel) chipTel.textContent = c.tel ? '📞 ' + c.tel : '';
   if (chipRtn) chipRtn.textContent = c.rtn ? '🪪 RTN: ' + c.rtn : '';
   _setClienteLocked(true);
-  if (!silent) showToast('✅ Cliente seleccionado: ' + c.nombre, 'success');
+  // Ocultar aviso previo; revisar cotización activa solo en selección manual
+  const _avisoEl = document.getElementById('vClienteCotAviso');
+  if (_avisoEl) { _avisoEl.style.display = 'none'; _avisoEl.innerHTML = ''; }
+  if (!silent) {
+    showToast('✅ Cliente seleccionado: ' + c.nombre, 'success');
+    _avisarCotizacionActiva(c);
+  }
+}
+
+// ── Aviso: el cliente seleccionado tiene cotización(es) activa(s) sin convertir ──
+let _cotizCargadasVentas = false;
+async function _avisarCotizacionActiva(c) {
+  const aviso = document.getElementById('vClienteCotAviso');
+  if (!aviso || !c) return;
+  if ((c.nombre || '').trim().toLowerCase() === 'consumidor final') return;
+  // Asegurar que cotizaciones[] esté cargado aunque no se haya abierto esa pestaña
+  if (!cotizaciones.length && !_cotizCargadasVentas) {
+    try { await cargarCotizaciones(); } catch(_) {}
+    _cotizCargadasVentas = true;
+  }
+  const normNom = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim();
+  const normTel = s => (s||'').replace(/\D/g,'');
+  const nom  = normNom(c.nombre);
+  const tels = [normTel(c.tel), normTel(c.tel2)].filter(t => t.length >= 7);
+  const matches = cotizaciones.filter(q => {
+    if (q.estado !== 'activa') return false;
+    if (nom && normNom(q.clienteNombre) === nom) return true;
+    const qt = normTel(q.clienteTel);
+    if (qt.length >= 7 && tels.some(t => t === qt || t.endsWith(qt) || qt.endsWith(t))) return true;
+    return false;
+  });
+  if (!matches.length) { aviso.style.display = 'none'; aviso.innerHTML = ''; return; }
+  const q = [...matches].sort((a,b) => (b.total||0) - (a.total||0))[0];
+  const extra = matches.length > 1 ? ` (+${matches.length-1} más)` : '';
+  aviso.innerHTML = `
+    <span style="font-size:18px;line-height:1.2">📋</span>
+    <div style="flex:1;min-width:200px;font-size:13px;color:var(--text)">
+      Este cliente tiene <strong>${matches.length} cotización${matches.length>1?'es':''} activa${matches.length>1?'s':''}</strong>${extra}.
+      Última: <strong>${q.numero}</strong> · ${fmtLPS(q.total)}.
+      <span style="color:var(--text3)">Conviene convertirla para que quede ligada a la venta y no reciba recordatorio de vencimiento.</span>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button onclick="convertirAVenta('${q.id}')" style="padding:5px 12px;font-size:12px;border:none;background:var(--gold);color:#000;border-radius:6px;cursor:pointer;font-weight:700">🔄 Convertir ${q.numero}</button>
+      <button onclick="this.closest('#vClienteCotAviso').style.display='none'" style="padding:5px 10px;font-size:12px;border:1px solid var(--border);background:transparent;color:var(--text3);border-radius:6px;cursor:pointer">Ignorar</button>
+    </div>`;
+  aviso.style.display = 'flex';
 }
 
 // ── Crear / editar cliente desde la venta (vía modal) ──
@@ -7428,6 +7475,8 @@ function limpiarCliente() {
   if (mapsEl) { mapsEl.value = ''; onMapsLinkChange(); }
   document.getElementById('vClienteBuscar').value = '';
   document.getElementById('vClienteResultados').style.display = 'none';
+  const _avisoEl = document.getElementById('vClienteCotAviso');
+  if (_avisoEl) { _avisoEl.style.display = 'none'; _avisoEl.innerHTML = ''; }
   _setClienteLocked(false);
 }
 
