@@ -6870,6 +6870,9 @@ function _mapVentaRow(v) {
     metodoPagoObs:   v.metodo_pago_obs || '',
     metodoEnvio:     v.metodo_envio   || '',
     promesaPago:     v.promesa_pago    || '',
+    recordatorioActivo:       v.recordatorio_activo || false,
+    fechaProximoRecordatorio: v.fecha_proximo_recordatorio || '',
+    fechaUltimoRecordatorio:  v.fecha_ultimo_recordatorio  || '',
     fechaRegistro:   v.fecha_registro  || '',
     fechaLiquidada:  v.fecha_liquidada || '',
     registradoPor:   v.registrado_por  || '',
@@ -10799,6 +10802,72 @@ function renderCobros() {
   }
 }
 
+// ── Recordatorios de cobro (internos) ──────────────────────────────
+function _hoyTegu() {
+  const t = new Date(new Date().toLocaleString('en-US',{timeZone:'America/Tegucigalpa'}));
+  return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+}
+function _fechaMasDias(dias) {
+  const t = new Date(new Date().toLocaleString('en-US',{timeZone:'America/Tegucigalpa'}));
+  t.setDate(t.getDate()+dias);
+  return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+}
+
+async function toggleRecordatorioCobro(ventaId) {
+  const v = ventas.find(x => x.id === ventaId); if (!v) return;
+  const nuevo = !v.recordatorioActivo;
+  let fecha = null;
+  if (nuevo) {
+    const hoy = _hoyTegu();
+    fecha = (v.promesaPago && v.promesaPago >= hoy) ? v.promesaPago : hoy;  // promesa o hoy si ya pasó
+  }
+  try {
+    const { error } = await sb.rpc('set_recordatorio_cobro', { p_user: currentUser?.user||'', p_venta_id: ventaId, p_activo: nuevo, p_fecha: fecha });
+    if (error) throw error;
+    v.recordatorioActivo = nuevo;
+    if (fecha) v.fechaProximoRecordatorio = fecha;
+    renderCobros();
+    showToast(nuevo ? `🔔 Recordatorio activado — primer aviso ${fmtFecha(fecha)}` : '🔕 Recordatorio desactivado', 'success');
+  } catch(e) { showToast('❌ Error: '+e.message, 'error'); }
+}
+
+async function posponerRecordatorioCobro(ventaId, opcion) {
+  const v = ventas.find(x => x.id === ventaId); if (!v) return;
+  let fecha;
+  if (opcion === 'custom') {
+    const def = v.fechaProximoRecordatorio || _hoyTegu();
+    const input = prompt('Nueva fecha del recordatorio (AAAA-MM-DD):', def);
+    if (!input) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.trim())) { showToast('⚠️ Formato inválido. Usa AAAA-MM-DD','warn'); return; }
+    fecha = input.trim();
+  } else {
+    fecha = _fechaMasDias(parseInt(opcion));
+  }
+  try {
+    const { error } = await sb.rpc('set_recordatorio_cobro', { p_user: currentUser?.user||'', p_venta_id: ventaId, p_activo: true, p_fecha: fecha });
+    if (error) throw error;
+    v.recordatorioActivo = true;
+    v.fechaProximoRecordatorio = fecha;
+    renderCobros();
+    showToast(`📅 Recordatorio reprogramado para ${fmtFecha(fecha)}`, 'success');
+  } catch(e) { showToast('❌ Error: '+e.message, 'error'); }
+}
+
+function _cobroRecordatorioCtrl(v) {
+  if (!v.recordatorioActivo) {
+    return `<button onclick="toggleRecordatorioCobro('${v.id}')" title="Activar recordatorio interno de cobro" style="padding:6px 10px;font-size:12px;font-weight:700;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text3);cursor:pointer">🔕 Recordar</button>`;
+  }
+  const prox = v.fechaProximoRecordatorio ? fmtFecha(v.fechaProximoRecordatorio) : '';
+  return `<button onclick="toggleRecordatorioCobro('${v.id}')" title="Desactivar recordatorio" style="padding:6px 10px;font-size:12px;font-weight:700;background:rgba(0,200,160,.15);border:1px solid rgba(0,200,160,.5);border-radius:6px;color:var(--accent3);cursor:pointer">🔔 ${prox}</button>
+    <select onchange="if(this.value){posponerRecordatorioCobro('${v.id}',this.value);this.value=''}" title="Posponer recordatorio" style="padding:5px 6px;font-size:11px;background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer">
+      <option value="">📅 Posponer…</option>
+      <option value="7">+7 días</option>
+      <option value="15">+15 días</option>
+      <option value="30">+30 días</option>
+      <option value="custom">Fecha…</option>
+    </select>`;
+}
+
 function _renderCobrosInterno() {
   const hoy       = new Date(); hoy.setHours(0,0,0,0);
   const q         = ((document.getElementById('cobrosBuscar') ||{}).value||'').toLowerCase().trim();
@@ -10847,6 +10916,9 @@ function _renderCobrosInterno() {
   const nHoy      = parciales.filter(v=>v.estado==='hoy').length;
   const nProximos = parciales.filter(v=>v.estado==='proximo').length;
   const totalPend = parciales.reduce((s,v)=>s+(v.saldoPendiente||v.total),0);
+  const _hoyR = _hoyTegu();
+  const nRecord    = parciales.filter(v=>v.recordatorioActivo).length;
+  const nRecordHoy = parciales.filter(v=>v.recordatorioActivo && v.fechaProximoRecordatorio && v.fechaProximoRecordatorio <= _hoyR).length;
 
   const badge = document.getElementById('badgeCobros');
   const alertas = nVencidos + nHoy;
@@ -10873,6 +10945,11 @@ function _renderCobrosInterno() {
       <div class="stat-label">💰 Total por Cobrar</div>
       <div class="stat-value stat-teal" style="font-size:18px">${fmtLPS(totalPend)}</div>
       <div class="stat-sub">${parciales.length} factura(s) pendiente(s)</div>
+    </div>
+    <div class="stat-card" style="border-color:${nRecordHoy?'var(--accent3)':'var(--border)'}">
+      <div class="stat-label">🔔 Recordatorios</div>
+      <div class="stat-value" style="color:var(--accent3)">${nRecord}</div>
+      <div class="stat-sub">${nRecordHoy>0?`⏰ ${nRecordHoy} avisan hoy/vencido`:'activos · avisa 9am'}</div>
     </div>`;
 
   const lista = document.getElementById('cobrosLista');
@@ -10967,7 +11044,8 @@ function _renderCobrosReporte(filtrados, hoy) {
           ${(v.abonos||[]).length ? `<div style="font-size:10px;color:var(--text3)">${(v.abonos||[]).length} abono(s) · ${fmtLPS((v.abonos||[]).reduce((s,a)=>s+(a.monto||0),0))}</div>` : ''}
         </td>
         <td style="${tdStyle};text-align:right">
-          <div style="display:flex;gap:4px;justify-content:flex-end">
+          <div style="display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap;align-items:center">
+            ${_cobroRecordatorioCtrl(v)}
             <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')" style="padding:4px 8px;font-size:11px">👁️</button>
             <button data-cli="${(v.clienteNombre||'').replace(/"/g,'&quot;')}" onclick="imprimirReporteCobros(this.dataset.cli)" style="padding:6px 10px;font-size:12px;font-weight:700;background:#1a1a2e;border:none;border-radius:6px;color:#fff;cursor:pointer" title="Imprimir reporte de este cliente">🖨️</button>
             <button onclick="editarVenta('${v.id}', true)" style="padding:6px 13px;font-size:13px;font-weight:700;background:var(--gold);border:none;border-radius:6px;color:#000;cursor:pointer">✏️ Ingresar Abono</button>
@@ -11090,7 +11168,8 @@ function _renderCobrosTarjetas(filtrados) {
             ${(v.abonos||[]).length?`<div style="font-size:11px;color:var(--text3)">${(v.abonos||[]).length} abono(s) · ${fmtLPS((v.abonos||[]).reduce((s,a)=>s+(a.monto||0),0))}</div>`:''}
           </div>
           <div style="font-size:11px;color:var(--text3)">Ref: ${(v.id||'').slice(-8)}</div>
-          <div style="display:flex;gap:6px;margin-top:4px">
+          <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;justify-content:flex-end;align-items:center">
+            ${_cobroRecordatorioCtrl(v)}
             <button class="btn btn-ghost btn-sm" onclick="verDetalleVenta('${v.id}')">👁️ Ver</button>
             <button data-cli="${(v.clienteNombre||'').replace(/"/g,'&quot;')}" onclick="imprimirReporteCobros(this.dataset.cli)" style="padding:6px 10px;font-size:12px;font-weight:700;background:#1a1a2e;border:none;border-radius:6px;color:#fff;cursor:pointer" title="Imprimir reporte">🖨️</button>
             <button onclick="editarVenta('${v.id}', true)" style="padding:6px 13px;font-size:13px;font-weight:700;background:var(--gold);border:none;border-radius:6px;color:#000;cursor:pointer">✏️ Ingresar Abono</button>
