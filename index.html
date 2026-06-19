@@ -2871,6 +2871,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
           </select>
         </div>
         <div class="form-field field-full"><label>Email</label><input type="email" id="uEmail" placeholder="correo@focusstore.hn"></div>
+        <div class="form-field field-full"><label>📱 Teléfono WhatsApp <span style="font-size:10px;color:var(--text3);font-weight:400;text-transform:none">— para avisos de cotizaciones por vencer</span></label><input type="tel" id="uTelefono" placeholder="+504 9999-9999"></div>
         <div class="form-field"><label>Comisión Ventas % <span style="font-size:10px;color:var(--text3);font-weight:400;text-transform:none">— vacío = usar global (${parametros.comisionVentas||10}%)</span></label><input type="number" id="uComision" placeholder="ej. 10" step="0.1" min="0" max="100"></div>
       </div>
       <div class="btn-row" style="margin-top:16px">
@@ -3031,7 +3032,8 @@ function rowToUsuario(r) {
     email:    r.email   || '',
     avatar:   r.avatar  || 'U',
     color:    r.color   || '#666',
-    comision: r.comision != null ? r.comision : null
+    comision: r.comision != null ? r.comision : null,
+    telefono: r.telefono || ''
   };
 }
 
@@ -3091,7 +3093,8 @@ async function sbSaveUsuario(u) {
     p_email:    u.email   || '',
     p_avatar:   u.avatar  || 'U',
     p_color:    u.color   || '#666',
-    p_comision: u.comision != null ? u.comision : null
+    p_comision: u.comision != null ? u.comision : null,
+    p_telefono: u.telefono || ''
   });
   if (error) throw new Error(error.message);
   return { ok: true };
@@ -5861,11 +5864,12 @@ function abrirModalUsuario(id) {
       document.getElementById('uPass').value     = '';
       document.getElementById('uRol').value      = u.rol||'ventas';
       document.getElementById('uEmail').value    = u.email||'';
+      const uTel=document.getElementById('uTelefono'); if(uTel) uTel.value=u.telefono||'';
       const uCom=document.getElementById('uComision'); if(uCom) uCom.value=u.comision!=null?u.comision:'';
     }
     if(passHint) passHint.style.display='block';
   } else {
-    ['uNombre','uUser','uPass','uEmail'].forEach(x=>document.getElementById(x).value='');
+    ['uNombre','uUser','uPass','uEmail','uTelefono'].forEach(x=>document.getElementById(x).value='');
     document.getElementById('uRol').value='ventas';
     if(passHint) passHint.style.display='none';
   }
@@ -5877,6 +5881,7 @@ async function guardarUsuario() {
   const pass   = document.getElementById('uPass').value;
   const rol    = document.getElementById('uRol').value;
   const email  = document.getElementById('uEmail').value.trim();
+  const telefono = (document.getElementById('uTelefono')?.value || '').trim();
   const colors = {admin:'#f5c842',gerencia:'#3d6aff',ventas:'#00c8a0',bodega:'#ff6b35',externo:'#8a8a8a'};
 
   if(editingUserId) {
@@ -5889,7 +5894,7 @@ async function guardarUsuario() {
     const comisionVal = uComEl && uComEl.value !== '' ? parseFloat(uComEl.value) : null;
     const updated = {
       ...existing,
-      nombre, user, rol, email,
+      nombre, user, rol, email, telefono,
       comision: comisionVal,
       // Solo actualizar contraseña si se ingresó una nueva
       pass: pass ? pass : existing.pass,
@@ -5912,7 +5917,7 @@ async function guardarUsuario() {
     if(!nombre||!user||!pass) { showToast('Completa todos los campos','error'); return; }
     const uComElN=document.getElementById('uComision');
     const comisionNew = uComElN && uComElN.value !== '' ? parseFloat(uComElN.value) : null;
-    const newUser = {id:Date.now(),nombre,user,pass,rol,email,comision:comisionNew,avatar:nombre.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase(),color:colors[rol]||'#666'};
+    const newUser = {id:Date.now(),nombre,user,pass,rol,email,telefono,comision:comisionNew,avatar:nombre.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase(),color:colors[rol]||'#666'};
     usuarios.push(newUser);
     mostrarCargando('💾 Guardando usuario...');
     try {
