@@ -3535,6 +3535,7 @@ function renderHistorialCot() {
       <div class="cot-card-meta">📅 ${fmtFecha(c.fecha)} · ⏳ ${c.fechaVencimiento?fmtFecha(c.fechaVencimiento):'—'} (${diasLabel})${c.clienteCiudad?' · 📍'+c.clienteCiudad:''}</div>
       <div class="cot-card-actions" onclick="event.stopPropagation()">
         <button class="btn-cot-action btn-cot-edit"   onclick="editarCot('${c.id}')">✏️ Editar</button>
+        <button class="btn-cot-action btn-cot-edit"   onclick="duplicarCot('${c.id}')" style="color:#a29bfe;border-color:rgba(162,155,254,.3)">📑 Duplicar</button>
         <button class="btn-cot-action btn-cot-pdf"    onclick="imprimirCot('${c.id}')">🖨️ PDF</button>
         ${canConvert?`<button class="btn-cot-action btn-cot-conv" onclick="convertirCotAVenta('${c.id}')">🔄 Venta</button>`:''}
         ${canReject ?`<button class="btn-cot-action btn-cot-rech" onclick="marcarRechazadaCot('${c.id}')">❌ Rechazar</button>`:''}
@@ -3640,6 +3641,35 @@ function editarCot(id) {
   switchModule('cotiz');
   cShowSub('nueva');
   showToast('✏️ Editando cotización '+c.numero,'success');
+}
+
+function duplicarCot(id) {
+  const c=cotizaciones.find(x=>x.id===id); if(!c) return;
+  cEditandoId=null;  // NUEVA cotización — número/id se generan al guardar
+  cItems=(c.items||[]).map(it=>({...it,_id:'ci_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)}));
+  const set=(elId,val)=>{ const el=document.getElementById(elId); if(el) el.value=val||''; };
+  set('cNombre',  c.clienteNombre);
+  set('cRTN',     c.clienteRTN);
+  set('cCiudad',  c.clienteCiudad);
+  set('cTel',     c.clienteTel);
+  set('cEmail',   c.clienteEmail);
+  // Fecha de hoy (Tegucigalpa); vigencia se recalcula al guardar
+  const hn=new Date(new Date().toLocaleString('en-US',{timeZone:'America/Tegucigalpa'}));
+  set('cFecha', `${hn.getFullYear()}-${String(hn.getMonth()+1).padStart(2,'0')}-${String(hn.getDate()).padStart(2,'0')}`);
+  set('cVigencia','');
+  set('cObservaciones',c.observaciones);
+  // Descuento
+  const da=document.getElementById('cDescActivo'); if(da) da.checked=!!(c.descuento>0);
+  const dv=document.getElementById('cDescValor');  if(dv) dv.value=c.descuentoValor!=null?c.descuentoValor:(c.descuento||0);
+  const db=document.getElementById('cDescTipoBtn'); if(db){const t=c.descuentoTipo||'%';db.textContent=t;db.style.color=t==='L'?'var(--accent3)':'var(--accent4)';}
+  const dp=document.getElementById('cDescPanel'); if(dp) dp.style.display=c.descuento>0?'flex':'none';
+  cRenderItems();
+  poblarVendedoresCot();
+  setTimeout(()=>{ const s=document.getElementById('cVendedor'); if(s) s.value=c.vendedorId||''; },50);
+  calcResumenCot();
+  switchModule('cotiz');
+  cShowSub('nueva');
+  showToast('📑 Cotización duplicada de '+c.numero+' — modifica y guarda como nueva','success',6000);
 }
 
 /* ════════════════════════════════════════════
