@@ -2582,6 +2582,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
               <tr>
                 <th style="width:40px">✔</th>
                 <th>SKU</th>
+                <th style="width:52px">Foto</th>
                 <th>Producto</th>
                 <th>Categoría</th>
                 <th>Estado</th>
@@ -6498,7 +6499,7 @@ function initTablaEtiquetas() {
   etiqCombosFiltrados = listaC;
 
   if(!lista.length && !listaC.length) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text3)">${productos.length===0 ? '⏳ Sin productos cargados' : `Sin resultados para "${buscar}"`}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text3)">${productos.length===0 ? '⏳ Sin productos cargados' : `Sin resultados para "${buscar}"`}</td></tr>`;
     actualizarContadorEtiq();
     return;
   }
@@ -6513,6 +6514,9 @@ function initTablaEtiquetas() {
     return `<tr onclick="etiqToggleRow('${p.id}',event)" style="cursor:pointer">
       <td onclick="event.stopPropagation()"><input type="checkbox" class="etiqChk" data-id="${p.id}" ${checked} onchange="etiqToggleCheck('${p.id}',this)"></td>
       <td class="td-sku">${String(p.sku||'')}</td>
+      <td onclick="event.stopPropagation()">${p.imagen
+        ? `<div class="prod-thumb" onmouseenter="mostrarImgPreview('${p.imagen}',event)" onmousemove="mostrarImgPreview('${p.imagen}',event)" onmouseleave="ocultarImgPreview()"><img src="${p.imagen}" loading="lazy"></div>`
+        : `<div class="prod-thumb">📦</div>`}</td>
       <td class="td-name" style="max-width:220px;overflow:hidden;text-overflow:ellipsis">${p.producto||''}</td>
       <td style="font-size:12px">${p.categoria||'—'}</td>
       <td><span class="badge badge-${(p.estado||'nuevo').toLowerCase().replace(/ /g,'-')}">${p.estado||'—'}</span></td>
@@ -6528,7 +6532,7 @@ function initTablaEtiquetas() {
   }).join('');
 
   const separadorCombos = listaC.length ? `<tr style="background:rgba(61,106,255,.06)">
-    <td colspan="9" style="padding:6px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent)">🎁 Combos</td>
+    <td colspan="10" style="padding:6px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent)">🎁 Combos</td>
   </tr>` : '';
 
   const rowsCombos = listaC.map(combo => {
@@ -6546,6 +6550,9 @@ function initTablaEtiquetas() {
     return `<tr onclick="etiqToggleRow('${ckey}',event)" style="cursor:pointer">
       <td onclick="event.stopPropagation()"><input type="checkbox" class="etiqChk" data-id="${ckey}" ${checked} onchange="etiqToggleCheck('${ckey}',this)"></td>
       <td class="td-sku" style="color:var(--accent)">${combo.codigo||'—'}</td>
+      <td onclick="event.stopPropagation()">${combo.imagenUrl
+        ? `<div class="prod-thumb" onmouseenter="mostrarImgPreview('${combo.imagenUrl}',event)" onmousemove="mostrarImgPreview('${combo.imagenUrl}',event)" onmouseleave="ocultarImgPreview()"><img src="${combo.imagenUrl}" loading="lazy"></div>`
+        : `<div class="prod-thumb">🎁</div>`}</td>
       <td class="td-name" style="max-width:220px;overflow:hidden;text-overflow:ellipsis">${combo.nombre||''}</td>
       <td style="font-size:12px">Combo</td>
       <td><span style="background:rgba(61,106,255,.15);color:var(--accent);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">🎁 Combo</span></td>
