@@ -6482,10 +6482,12 @@ function initTablaEtiquetas() {
 
   const buscarLC = buscar.toLowerCase();
   const lista = !buscar
-    ? [...productos].sort((a,b)=> orden==='ingreso' ? new Date(b.fechaIngreso)-new Date(a.fechaIngreso) : new Date(b.ultimaModif)-new Date(a.ultimaModif))
+    ? productos.filter(p => !p.descontinuado).sort((a,b)=> orden==='ingreso' ? new Date(b.fechaIngreso)-new Date(a.fechaIngreso) : new Date(b.ultimaModif)-new Date(a.ultimaModif))
     : productos.filter(p =>
-        String(p.sku||'').toLowerCase().includes(buscarLC) ||
-        String(p.producto||'').toLowerCase().includes(buscarLC)
+        !p.descontinuado && (
+          String(p.sku||'').toLowerCase().includes(buscarLC) ||
+          String(p.producto||'').toLowerCase().includes(buscarLC)
+        )
       ).sort((a,b)=> orden==='ingreso' ? new Date(b.fechaIngreso)-new Date(a.fechaIngreso) : new Date(b.ultimaModif)-new Date(a.ultimaModif));
 
   const listaC = !buscar
