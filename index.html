@@ -1945,7 +1945,8 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 <span style="font-size:13px">✅ <strong id="vClienteChipNombre"></strong></span>
                 <span id="vClienteChipTel" style="font-size:12px;color:var(--text2)"></span>
                 <span id="vClienteChipRTN" style="font-size:12px;color:var(--text2)"></span>
-                <button onclick="editarClienteDesdeVenta()" style="margin-left:auto;padding:3px 10px;font-size:12px;border:1px solid rgba(61,106,255,.5);background:transparent;color:var(--accent);border-radius:6px;cursor:pointer;font-weight:700">✏️ Editar</button>
+                <button onclick="confirmarDatosEnvioVenta()" title="Enviar al cliente sus datos por WhatsApp para confirmar" style="margin-left:auto;padding:3px 10px;font-size:12px;border:none;background:#25d366;color:#fff;border-radius:6px;cursor:pointer;font-weight:700">📤 Confirmar envío</button>
+                <button onclick="editarClienteDesdeVenta()" style="padding:3px 10px;font-size:12px;border:1px solid rgba(61,106,255,.5);background:transparent;color:var(--accent);border-radius:6px;cursor:pointer;font-weight:700">✏️ Editar</button>
                 <button onclick="limpiarCliente()" style="padding:3px 10px;font-size:12px;border:1px solid rgba(0,200,160,.4);background:transparent;color:#00c8a0;border-radius:6px;cursor:pointer;font-weight:700">✕ Cambiar</button>
               </div>
               <div id="vClienteResultados" style="display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);max-height:200px;overflow-y:auto;margin-bottom:12px;box-shadow:0 4px 16px rgba(0,0,0,.3)"></div>
@@ -7596,6 +7597,12 @@ function vSetDireccion(cual) {
   const ina = 'background:var(--bg3);color:var(--text2);border:1.5px solid var(--border)';
   if (bC) bC.style.cssText = `padding:5px 14px;font-size:12px;font-weight:700;border-radius:6px;cursor:pointer;font-family:var(--font);${cual==='casa'?act:ina}`;
   if (bT) bT.style.cssText = `padding:5px 14px;font-size:12px;font-weight:700;border-radius:6px;cursor:pointer;font-family:var(--font);${cual==='trabajo'?act:ina}`;
+}
+
+// Confirmar datos de envío por WhatsApp desde la venta (usa la dirección elegida)
+function confirmarDatosEnvioVenta() {
+  if (!vClienteSelId) { showToast('⚠️ Selecciona un cliente primero','warn'); return; }
+  confirmarDatosEnvioCliente(vClienteSelId, _ventaDirTipo);
 }
 
 // ── Aviso: el cliente seleccionado tiene cotización(es) activa(s) sin convertir ──
