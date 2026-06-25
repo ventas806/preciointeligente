@@ -1951,6 +1951,12 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
               <div id="vClienteResultados" style="display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);max-height:200px;overflow-y:auto;margin-bottom:12px;box-shadow:0 4px 16px rgba(0,0,0,.3)"></div>
               <!-- Aviso: cliente tiene cotización activa -->
               <div id="vClienteCotAviso" style="display:none;align-items:flex-start;gap:10px;padding:10px 14px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.4);border-radius:8px;margin-bottom:12px;flex-wrap:wrap"></div>
+              <!-- Selector de dirección (Casa/Trabajo) cuando el cliente tiene ambas -->
+              <div id="vClienteAddrSel" style="display:none;align-items:center;gap:8px;padding:8px 12px;background:rgba(61,106,255,.07);border:1px solid rgba(61,106,255,.25);border-radius:8px;margin-bottom:12px;flex-wrap:wrap">
+                <span style="font-size:12px;color:var(--text2);font-weight:700">📍 Enviar a:</span>
+                <button type="button" id="vAddrBtnCasa" onclick="vSetDireccion('casa')" style="padding:5px 14px;font-size:12px;font-weight:700;border-radius:6px;cursor:pointer;font-family:var(--font)">🏠 Casa</button>
+                <button type="button" id="vAddrBtnTrabajo" onclick="vSetDireccion('trabajo')" style="padding:5px 14px;font-size:12px;font-weight:700;border-radius:6px;cursor:pointer;font-family:var(--font)">🏢 Trabajo</button>
+              </div>
               <div class="form-grid fg3">
                 <div class="form-field field-full">
                   <label>Nombre del Cliente *</label>
@@ -7543,6 +7549,8 @@ function seleccionarCliente(id, silent) {
   if (chipTel) chipTel.textContent = c.tel ? '📞 ' + c.tel : '';
   if (chipRtn) chipRtn.textContent = c.rtn ? '🪪 RTN: ' + c.rtn : '';
   _setClienteLocked(true);
+  // Selector Casa/Trabajo si el cliente tiene ambas direcciones
+  _actualizarSelectorDireccion(c);
   // Ocultar aviso previo; revisar cotización activa solo en selección manual
   const _avisoEl = document.getElementById('vClienteCotAviso');
   if (_avisoEl) { _avisoEl.style.display = 'none'; _avisoEl.innerHTML = ''; }
@@ -7550,6 +7558,44 @@ function seleccionarCliente(id, silent) {
     showToast('✅ Cliente seleccionado: ' + c.nombre, 'success');
     _avisarCotizacionActiva(c);
   }
+}
+
+// ── Selector de dirección Casa/Trabajo en la venta ──
+let _ventaDirTipo = 'casa';
+function _actualizarSelectorDireccion(c) {
+  const sel = document.getElementById('vClienteAddrSel');
+  if (!sel) return;
+  const tieneCasa = !!(c.direccionCasa || c.direccion);
+  const tieneTrab = !!c.direccionTrabajo;
+  if (tieneCasa && tieneTrab) {
+    sel.style.display = 'flex';
+    vSetDireccion('casa');  // por defecto Casa
+  } else {
+    sel.style.display = 'none';
+    // Una sola dirección: usar la que exista (incluye caso solo-Trabajo)
+    _ventaDirTipo = tieneTrab && !tieneCasa ? 'trabajo' : 'casa';
+    const dir  = _ventaDirTipo === 'trabajo' ? (c.direccionTrabajo || '') : (c.direccionCasa || c.direccion || '');
+    const maps = _ventaDirTipo === 'trabajo' ? (c.mapsTrabajo || '') : (c.mapsCasa || c.mapsTrabajo || '');
+    const dEl = document.getElementById('vClienteDireccion'); if (dEl) dEl.value = dir;
+    const mEl = document.getElementById('vMapsLink'); if (mEl) { mEl.value = maps; onMapsLinkChange(); }
+    const lbl = document.getElementById('vLblDireccion'); if (lbl) lbl.textContent = 'Dirección Exacta *';
+  }
+}
+function vSetDireccion(cual) {
+  const c = clientes.find(x => x.id === vClienteSelId);
+  if (!c) return;
+  _ventaDirTipo = cual;
+  const dir  = cual === 'trabajo' ? (c.direccionTrabajo || '') : (c.direccionCasa || c.direccion || '');
+  const maps = cual === 'trabajo' ? (c.mapsTrabajo || '') : (c.mapsCasa || '');
+  const dEl = document.getElementById('vClienteDireccion'); if (dEl) dEl.value = dir;
+  const mEl = document.getElementById('vMapsLink'); if (mEl) { mEl.value = maps; onMapsLinkChange(); }
+  const lbl = document.getElementById('vLblDireccion'); if (lbl) lbl.textContent = cual === 'trabajo' ? 'Dirección Exacta * (🏢 Trabajo)' : 'Dirección Exacta * (🏠 Casa)';
+  // Estilos de botones activo/inactivo
+  const bC = document.getElementById('vAddrBtnCasa'), bT = document.getElementById('vAddrBtnTrabajo');
+  const act = 'background:var(--accent);color:#fff;border:1.5px solid var(--accent)';
+  const ina = 'background:var(--bg3);color:var(--text2);border:1.5px solid var(--border)';
+  if (bC) bC.style.cssText = `padding:5px 14px;font-size:12px;font-weight:700;border-radius:6px;cursor:pointer;font-family:var(--font);${cual==='casa'?act:ina}`;
+  if (bT) bT.style.cssText = `padding:5px 14px;font-size:12px;font-weight:700;border-radius:6px;cursor:pointer;font-family:var(--font);${cual==='trabajo'?act:ina}`;
 }
 
 // ── Aviso: el cliente seleccionado tiene cotización(es) activa(s) sin convertir ──
@@ -7627,6 +7673,10 @@ function limpiarCliente() {
   document.getElementById('vClienteResultados').style.display = 'none';
   const _avisoEl = document.getElementById('vClienteCotAviso');
   if (_avisoEl) { _avisoEl.style.display = 'none'; _avisoEl.innerHTML = ''; }
+  const _addrSel = document.getElementById('vClienteAddrSel');
+  if (_addrSel) _addrSel.style.display = 'none';
+  const _lbl = document.getElementById('vLblDireccion'); if (_lbl) _lbl.textContent = 'Dirección Exacta *';
+  _ventaDirTipo = 'casa';
   _setClienteLocked(false);
 }
 
