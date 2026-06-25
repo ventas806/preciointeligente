@@ -7196,6 +7196,7 @@ function renderTablaClientes() {
         ${!c.direccionCasa && !c.direccionTrabajo && !c.direccion ? '—' : ''}
       </td>
       <td onclick="event.stopPropagation()" style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="verDetalleCliente('${c.id}')" title="Vista previa">👁️</button>
         <button class="btn btn-ghost btn-sm" onclick="abrirModalCliente('${c.id}')" title="Editar">✏️</button>
         <button class="btn btn-ghost btn-sm" onclick="imprimirEtiquetaCliente('${c.id}')" title="Imprimir etiqueta cliente" style="background:rgba(61,106,255,.12);border:1px solid rgba(61,106,255,.3);color:var(--accent)">🖨️</button>
         <button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="eliminarCliente('${c.id}','${(c.nombre||'').replace(/'/g,"\\'")}')">🗑️</button>
@@ -7247,23 +7248,12 @@ function abrirModalCliente(id) {
   setTimeout(() => document.getElementById('cliNombre').focus(), 100);
 }
 
-async function confirmarDatosEnvio() {
-  const v = id => (document.getElementById(id)?.value || '').trim();
-  const nombre = v('cliNombre');
+// Envío compartido de "confirmar datos de envío" por WhatsApp
+async function _enviarConfirmEnvio({ nombre, telRaw, ciudad, tel2, email, dir, maps, etiqueta }) {
   if (!nombre) { showToast('⚠️ Falta el nombre del cliente','warn'); return; }
-
-  const telRaw = v('cliTel');
-  const telD   = telRaw.replace(/\D/g,'');
-  const telN   = telD.length === 8 ? '504'+telD : telD;
+  const telD = (telRaw||'').replace(/\D/g,'');
+  const telN = telD.length === 8 ? '504'+telD : telD;
   if (telN.length < 11) { showToast('⚠️ Teléfono inválido para WhatsApp','warn'); return; }
-
-  const ciudad   = v('cliCiudad');
-  const tel2     = v('cliTel2');
-  const email    = v('cliEmail');
-  const dirCasa  = v('cliDirCasa');
-  const dirTrab  = v('cliDirTrabajo');
-  const dir      = dirCasa || dirTrab;
-  const maps     = dirCasa ? v('cliMapsCasa') : (dirTrab ? v('cliMapsTrabajo') : '');
 
   const msg = [
     `Hola ${nombre} 👋`,
@@ -7275,7 +7265,7 @@ async function confirmarDatosEnvio() {
     `📞 Teléfono: ${telRaw}`,
     tel2  ? `📞 Alterno: ${tel2}` : '',
     email ? `✉️ ${email}` : '',
-    dir   ? `🏠 Dirección: ${dir}` : '',
+    dir   ? `🏠 Dirección${etiqueta?` (${etiqueta})`:''}: ${dir}` : '',
     maps  ? `📍 ${maps}` : '',
     ``,
     `✅ Si todo está correcto responde *SÍ*`,
@@ -7301,6 +7291,91 @@ async function confirmarDatosEnvio() {
   } catch(e) {
     showToast('❌ Error de red: ' + e.message, 'error', 8000);
   }
+}
+
+// Desde el modal Editar/Nuevo Cliente (lee los campos del formulario)
+async function confirmarDatosEnvio() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const dirCasa = v('cliDirCasa'), dirTrab = v('cliDirTrabajo');
+  await _enviarConfirmEnvio({
+    nombre: v('cliNombre'), telRaw: v('cliTel'), ciudad: v('cliCiudad'),
+    tel2: v('cliTel2'), email: v('cliEmail'),
+    dir: dirCasa || dirTrab,
+    maps: dirCasa ? v('cliMapsCasa') : (dirTrab ? v('cliMapsTrabajo') : ''),
+    etiqueta: dirCasa ? 'Casa' : (dirTrab ? 'Trabajo' : '')
+  });
+}
+
+// Desde la vista previa del cliente (cual = 'casa' | 'trabajo')
+async function confirmarDatosEnvioCliente(id, cual) {
+  const c = clientes.find(x => x.id === id); if (!c) return;
+  let dir, maps, etiqueta;
+  if (cual === 'trabajo') { dir = c.direccionTrabajo; maps = c.mapsTrabajo; etiqueta = 'Trabajo'; }
+  else { dir = c.direccionCasa || c.direccion; maps = c.mapsCasa; etiqueta = 'Casa'; }
+  await _enviarConfirmEnvio({ nombre: c.nombre, telRaw: c.tel, ciudad: c.ciudad, tel2: c.tel2, email: c.email, dir, maps, etiqueta });
+}
+
+// Vista previa del cliente en modal
+function verDetalleCliente(id) {
+  const c = clientes.find(x => x.id === id); if (!c) return;
+  const prev = document.getElementById('modalVerCliente'); if (prev) prev.remove();
+  const tieneCasa = !!(c.direccionCasa || c.direccion);
+  const tieneTrab = !!c.direccionTrabajo;
+  const telOk = (c.tel||'').replace(/\D/g,'').length >= 8;
+
+  const dirBlock = (icon, titulo, dir, maps) => dir ? `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-top:8px">
+      <div style="font-size:11px;color:var(--text3);font-weight:700;margin-bottom:3px">${icon} ${titulo}</div>
+      <div style="font-size:13px;color:var(--text)">${dir}</div>
+      ${maps?`<a href="${maps}" target="_blank" rel="noopener" style="font-size:12px;color:var(--accent3);text-decoration:none">📍 Ver en Google Maps ↗</a>`:''}
+    </div>` : '';
+
+  let waBtns;
+  if (!telOk) {
+    waBtns = `<div style="font-size:12px;color:var(--text3)">⚠️ Sin teléfono válido para enviar WhatsApp</div>`;
+  } else if (tieneCasa && tieneTrab) {
+    waBtns = `<div style="font-size:12px;color:var(--text3);margin-bottom:8px">Este cliente tiene 2 direcciones — ¿a cuál confirmar el envío?</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="confirmarDatosEnvioCliente('${c.id}','casa')" style="flex:1;min-width:150px;background:#25d366;color:#fff;border:none;border-radius:8px;padding:11px;cursor:pointer;font-weight:700;font-family:var(--font)">📤 Enviar a 🏠 Casa</button>
+        <button onclick="confirmarDatosEnvioCliente('${c.id}','trabajo')" style="flex:1;min-width:150px;background:#128c7e;color:#fff;border:none;border-radius:8px;padding:11px;cursor:pointer;font-weight:700;font-family:var(--font)">📤 Enviar a 🏢 Trabajo</button>
+      </div>`;
+  } else {
+    const cual = tieneTrab ? 'trabajo' : 'casa';
+    waBtns = `<button onclick="confirmarDatosEnvioCliente('${c.id}','${cual}')" style="width:100%;background:#25d366;color:#fff;border:none;border-radius:8px;padding:11px;cursor:pointer;font-weight:700;font-family:var(--font)">📤 Confirmar datos de Envío por WhatsApp</button>`;
+  }
+
+  const campo = (lbl, val) => `<div><div style="font-size:11px;color:var(--text3);letter-spacing:.3px">${lbl}</div><div style="font-size:13px;color:var(--text)">${val||'—'}</div></div>`;
+
+  const m = document.createElement('div');
+  m.id = 'modalVerCliente';
+  m.className = 'modal-overlay open';
+  m.innerHTML = `<div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title">👤 ${c.nombre||'Cliente'}</div>
+      <button class="modal-close" onclick="document.getElementById('modalVerCliente').remove()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 14px">
+        ${campo('CIUDAD', c.ciudad)}
+        ${campo('TELÉFONO', c.tel)}
+        ${campo('TEL. ALTERNO', c.tel2)}
+        ${campo('RTN', c.rtn)}
+        <div style="grid-column:1/-1">${campo('EMAIL', c.email)}</div>
+      </div>
+      ${dirBlock('🏠','Dirección Casa', c.direccionCasa || c.direccion, c.mapsCasa)}
+      ${dirBlock('🏢','Dirección Trabajo', c.direccionTrabajo, c.mapsTrabajo)}
+      ${c.observaciones?`<div style="margin-top:10px;font-size:12px;color:var(--text2);font-style:italic">📝 ${c.observaciones}</div>`:''}
+      <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px">Confirmar datos de envío con el cliente</div>
+        ${waBtns}
+      </div>
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn btn-ghost" onclick="abrirModalCliente('${c.id}');document.getElementById('modalVerCliente').remove()">✏️ Editar</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('modalVerCliente').remove()">Cerrar</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
 }
 
 async function guardarCliente() {
