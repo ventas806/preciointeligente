@@ -2448,6 +2448,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             </div>
             <div class="btn-row">
               <button class="btn btn-primary" onclick="guardarCliente()">💾 Guardar Cliente</button>
+              <button class="btn" style="background:#25d366;color:#fff;border:none" onclick="confirmarDatosEnvio()" title="Enviar al cliente sus datos por WhatsApp para que los confirme">📤 Confirmar datos de Envío</button>
               <button class="btn btn-ghost" onclick="cerrarModal('modalCliente')">Cancelar</button>
             </div>
           </div>
@@ -7244,6 +7245,62 @@ function abrirModalCliente(id) {
   cliSwitchAddr('casa');
   document.getElementById('modalCliente').classList.add('open');
   setTimeout(() => document.getElementById('cliNombre').focus(), 100);
+}
+
+async function confirmarDatosEnvio() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const nombre = v('cliNombre');
+  if (!nombre) { showToast('⚠️ Falta el nombre del cliente','warn'); return; }
+
+  const telRaw = v('cliTel');
+  const telD   = telRaw.replace(/\D/g,'');
+  const telN   = telD.length === 8 ? '504'+telD : telD;
+  if (telN.length < 11) { showToast('⚠️ Teléfono inválido para WhatsApp','warn'); return; }
+
+  const ciudad   = v('cliCiudad');
+  const tel2     = v('cliTel2');
+  const email    = v('cliEmail');
+  const dirCasa  = v('cliDirCasa');
+  const dirTrab  = v('cliDirTrabajo');
+  const dir      = dirCasa || dirTrab;
+  const maps     = dirCasa ? v('cliMapsCasa') : (dirTrab ? v('cliMapsTrabajo') : '');
+
+  const msg = [
+    `Hola ${nombre} 👋`,
+    ``,
+    `Somos *Focus Store*. Por favor confirma que tus *datos de envío* están correctos:`,
+    ``,
+    `👤 ${nombre}`,
+    ciudad ? `🏙️ Ciudad: ${ciudad}` : '',
+    `📞 Teléfono: ${telRaw}`,
+    tel2  ? `📞 Alterno: ${tel2}` : '',
+    email ? `✉️ ${email}` : '',
+    dir   ? `🏠 Dirección: ${dir}` : '',
+    maps  ? `📍 ${maps}` : '',
+    ``,
+    `✅ Si todo está correcto responde *SÍ*`,
+    `✏️ Si hay que corregir algo, escríbenos los datos correctos. ¡Gracias! 🙏`
+  ].filter(l => l !== '').join('\n');
+
+  if (!confirm(`¿Enviar confirmación de datos de envío por WhatsApp a +${telN}?`)) return;
+
+  showToast('📤 Enviando WhatsApp...', 'info');
+  try {
+    const res = await fetch(`https://api.ultramsg.com/${ULTRA_INSTANCE}/messages/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ token: ULTRA_TOKEN, to: '+' + telN, body: msg })
+    });
+    const data = await res.json();
+    if (data.sent === 'true' || data.id) {
+      showToast('✅ WhatsApp enviado a ' + nombre, 'success');
+      addHistorial(`Confirmación de datos de envío enviada por WhatsApp a ${nombre} (+${telN})`, 'Clientes');
+    } else {
+      showToast('❌ Error: ' + (data.error || JSON.stringify(data)), 'error', 8000);
+    }
+  } catch(e) {
+    showToast('❌ Error de red: ' + e.message, 'error', 8000);
+  }
 }
 
 async function guardarCliente() {
