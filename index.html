@@ -2782,7 +2782,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
       <!-- ── PANEL HISTORIAL COTIZACIONES ── -->
       <div id="cPanelLista">
         <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
-          <input type="text" id="cFiltBuscar" placeholder="🔍 Cliente, número..."
+          <input type="text" id="cFiltBuscar" placeholder="🔍 Cliente, número, producto o SKU..."
             oninput="renderHistorialCotizaciones()"
             style="flex:1;min-width:180px;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
           <select id="cFiltEstado" onchange="renderHistorialCotizaciones()"
@@ -2793,6 +2793,8 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             <option value="convertida">✅ Convertidas</option>
             <option value="rechazada">❌ Rechazadas</option>
           </select>
+          <button class="btn" onclick="abrirHistorialPrecios()" title="Ver historial de precios cotizados por producto"
+            style="padding:8px 14px;background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.4);color:var(--gold);border-radius:var(--radius2);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">📈 Historial de precios</button>
         </div>
         <div id="cHistorialLista"></div>
       </div>
@@ -2844,6 +2846,22 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
       <button class="modal-close" onclick="cerrarModal('modalDetalleCotizacion')">✕</button>
     </div>
     <div class="modal-body" id="modalDetalleCotizacionBody"></div>
+  </div>
+</div>
+
+<!-- MODAL HISTORIAL DE PRECIOS POR PRODUCTO -->
+<div class="modal-overlay" id="modalHistorialPrecios">
+  <div class="modal" style="max-width:760px;width:95vw">
+    <div class="modal-header">
+      <div class="modal-title">📈 Historial de precios por producto</div>
+      <button class="modal-close" onclick="cerrarModal('modalHistorialPrecios')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="text" id="hpBuscar" placeholder="🔍 Escribe el nombre del producto o SKU..."
+        oninput="renderHistorialPrecios()"
+        style="width:100%;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:14px;outline:none;margin-bottom:14px">
+      <div id="hpResultado"></div>
+    </div>
   </div>
 </div>
 
@@ -12011,7 +12029,13 @@ function renderHistorialCotizaciones() {
   const ef=(document.getElementById('cFiltEstado')||{}).value||'';
 
   let lista=[...cotizaciones];
-  if(q) lista=lista.filter(c=>(c.clienteNombre||'').toLowerCase().includes(q)||(c.numero||'').toLowerCase().includes(q)||(c.clienteRTN||'').toLowerCase().includes(q));
+  const matchItems={}; // id -> ítems que coinciden con la búsqueda por producto
+  if(q) lista=lista.filter(c=>{
+    const datosMatch=(c.clienteNombre||'').toLowerCase().includes(q)||(c.numero||'').toLowerCase().includes(q)||(c.clienteRTN||'').toLowerCase().includes(q);
+    const itemsMatch=(c.items||[]).filter(it=>(it.descripcion||'').toLowerCase().includes(q)||(it.sku||'').toLowerCase().includes(q));
+    if(itemsMatch.length) matchItems[c.id]=itemsMatch;
+    return datosMatch||itemsMatch.length;
+  });
   if(ef) lista=lista.filter(c=>c.estado===ef);
 
   if(!lista.length){
@@ -12044,7 +12068,11 @@ function renderHistorialCotizaciones() {
         <td><span style="font-family:monospace;font-weight:700;color:var(--accent)">${c.numero||'—'}</span></td>
         <td style="white-space:nowrap">${fmtFecha(c.fecha)}</td>
         <td style="white-space:nowrap">${c.fechaVencimiento?fmtFecha(c.fechaVencimiento):'—'} <span style="font-size:10px;color:${cfg.color}">(${diasLabel})</span></td>
-        <td style="font-weight:600">${c.clienteNombre}</td>
+        <td style="font-weight:600">${c.clienteNombre}${(matchItems[c.id]||[]).map(it=>{
+            const cant=parseFloat(it.cantidad)||0;
+            const pu=parseFloat(it.precioFinal)||0;
+            return `<div style="font-weight:500;font-size:11px;color:var(--accent3);margin-top:3px">📦 ${it.descripcion||it.sku||'—'} · ${cant} × ${fmtLPS(pu)} = ${fmtLPS(cant*pu)}</div>`;
+          }).join('')}</td>
         <td style="color:var(--text2)">${c.clienteCiudad||'—'}</td>
         <td style="text-align:right;font-weight:700;color:var(--accent3)">${fmtLPS(c.total)}</td>
         <td><span style="font-size:11px;font-weight:700;background:${cfg.bg};border:1px solid ${cfg.border};color:${cfg.color};border-radius:10px;padding:2px 9px;white-space:nowrap">${cfg.icon} ${cfg.label}</span>${c.notifSilenciada?` <span style="font-size:11px;font-weight:700;background:rgba(90,100,128,.15);border:1px solid rgba(90,100,128,.4);color:var(--text3);border-radius:10px;padding:2px 9px;white-space:nowrap" title="No recibirá notificaciones de vencimiento">🔕 Sin avisos</span>`:''}</td>
@@ -12068,6 +12096,103 @@ function renderHistorialCotizaciones() {
     const tw = el.querySelector('.table-wrap');
     if (tw) agregarScrollArriba(tw);
   });
+}
+
+// ── HISTORIAL DE PRECIOS POR PRODUCTO ────────────────────────────────────────
+function abrirHistorialPrecios() {
+  abrirModal('modalHistorialPrecios');
+  const inp = document.getElementById('hpBuscar');
+  // Si el usuario ya escribió algo en el buscador de cotizaciones, lo reutilizamos
+  const qLista = (document.getElementById('cFiltBuscar')||{}).value || '';
+  if (inp) { inp.value = qLista; setTimeout(()=>inp.focus(), 50); }
+  renderHistorialPrecios();
+}
+
+function renderHistorialPrecios() {
+  const cont = document.getElementById('hpResultado'); if(!cont) return;
+  const q = (document.getElementById('hpBuscar')||{}).value.trim().toLowerCase();
+
+  if (!q) {
+    cont.innerHTML = `<div style="text-align:center;padding:40px 24px;color:var(--text3)">
+      <div style="font-size:38px;margin-bottom:10px">🔎</div>
+      <div style="font-size:14px">Escribe un producto o SKU para ver a cuánto se ha cotizado.</div></div>`;
+    return;
+  }
+
+  // Recolectar cada vez que el producto aparece en una cotización
+  const ocurrencias = [];
+  cotizaciones.forEach(c => {
+    (c.items||[]).forEach(it => {
+      const desc = (it.descripcion||it.nombre||'').toLowerCase();
+      const sku  = (it.sku||'').toLowerCase();
+      if (desc.includes(q) || sku.includes(q)) {
+        ocurrencias.push({
+          numero: c.numero||'—',
+          cotId: c.id,
+          cliente: c.clienteNombre||'—',
+          fecha: c.fecha,
+          estado: c.estado||'activa',
+          descripcion: it.descripcion||it.nombre||'—',
+          sku: it.sku||'',
+          cantidad: parseFloat(it.cantidad)||0,
+          precio: parseFloat(it.precioFinal)||0
+        });
+      }
+    });
+  });
+
+  if (!ocurrencias.length) {
+    cont.innerHTML = `<div style="text-align:center;padding:40px 24px;color:var(--text3)">
+      <div style="font-size:38px;margin-bottom:10px">📭</div>
+      <div style="font-size:14px">No se encontró "<b>${q}</b>" en ninguna cotización.</div></div>`;
+    return;
+  }
+
+  // Ordenar por fecha (más reciente primero)
+  ocurrencias.sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+
+  // Estadísticas de precio unitario
+  const precios = ocurrencias.map(o=>o.precio).filter(p=>p>0);
+  const min = precios.length ? Math.min(...precios) : 0;
+  const max = precios.length ? Math.max(...precios) : 0;
+  const prom = precios.length ? precios.reduce((a,b)=>a+b,0)/precios.length : 0;
+  const ultimo = ocurrencias.find(o=>o.precio>0);
+
+  const estadoCfg = {activa:'🟢',vencida:'🔴',convertida:'✅',rechazada:'❌'};
+
+  const stat = (label,val,color)=>`<div style="flex:1;min-width:110px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:3px">${label}</div>
+      <div style="font-size:16px;font-weight:800;color:${color}">${fmtLPS(val)}</div></div>`;
+
+  cont.innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      ${stat('Precio mínimo', min, 'var(--accent3)')}
+      ${stat('Precio promedio', prom, 'var(--text)')}
+      ${stat('Precio máximo', max, 'var(--gold)')}
+      ${ultimo ? stat('Último cotizado', ultimo.precio, 'var(--accent)') : ''}
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:8px">${ocurrencias.length} cotización(es) con este producto · precios unitarios sin ISV</div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th>Cotización</th><th>Fecha</th><th>Cliente</th><th>Producto</th>
+        <th style="text-align:right">Cant.</th>
+        <th style="text-align:right">Precio unit.</th>
+        <th style="text-align:right">Subtotal</th>
+        <th>Estado</th>
+      </tr></thead>
+      <tbody>
+      ${ocurrencias.map(o=>`<tr style="cursor:pointer" onclick="cerrarModal('modalHistorialPrecios');verDetalleCotizacion('${o.cotId}')">
+        <td><span style="font-family:monospace;font-weight:700;color:var(--accent)">${o.numero}</span></td>
+        <td style="white-space:nowrap">${fmtFecha(o.fecha)}</td>
+        <td style="font-weight:600">${o.cliente}</td>
+        <td style="font-size:12px">${o.descripcion}${o.sku?`<br><span style="font-size:10px;color:var(--text3);font-family:monospace">SKU: ${o.sku}</span>`:''}</td>
+        <td style="text-align:right">${o.cantidad}</td>
+        <td style="text-align:right;font-weight:700;color:var(--accent3)">${fmtLPS(o.precio)}</td>
+        <td style="text-align:right;font-weight:700">${fmtLPS(o.precio*o.cantidad)}</td>
+        <td>${estadoCfg[o.estado]||'🟢'}</td>
+      </tr>`).join('')}
+      </tbody>
+    </table></div>`;
 }
 
 // ── COMPARTIR COTIZACIÓN ─────────────────────────────────────────────────────
