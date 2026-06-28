@@ -1902,6 +1902,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
         <button class="btn btn-primary" id="vSubLista" onclick="vShowSub('lista')">📋 Historial de Ventas</button>
         <button class="btn btn-ghost" id="vSubReporte" onclick="vShowSub('reporte')">📊 Reporte Vendedores</button>
         <button class="btn btn-ghost" id="vSubProductos" onclick="vShowSub('productos')">📦 Reporte por Producto</button>
+        <button class="btn btn-ghost" id="vSubDespacho" onclick="vShowSub('despacho')">🚚 Despacho del día</button>
         <button class="btn btn-ghost" id="vSubClientes" onclick="vShowSub('clientes')" style="margin-left:auto">👥 Clientes</button>
       </div>
 
@@ -2342,6 +2343,33 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- ===== DESPACHO DEL DÍA (descargar stock) ===== -->
+      <div id="vPanelDespacho" style="display:none">
+        <div class="card">
+          <div class="card-header" style="flex-wrap:wrap;gap:10px">
+            <div>
+              <div class="card-title">🚚 Despacho del día — Descargar inventario</div>
+              <div class="card-sub" id="despResumen">Productos vendidos en la fecha seleccionada</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input type="date" id="despFecha" onchange="renderDespachoDia()"
+                style="padding:7px 10px;background:var(--bg3);border:1px solid var(--accent);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('despFecha').value=_despachoHoyISO();renderDespachoDia()">Hoy</button>
+              <button class="btn btn-ghost btn-sm" onclick="renderDespachoDia()">🔄 Recargar</button>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--text3);background:rgba(61,106,255,.06);border:1px solid rgba(61,106,255,.18);border-radius:8px;padding:9px 12px;margin-bottom:14px">
+            ℹ️ <b>Descontar inventario</b> resta lo vendido de tu stock. <b>Aplicar en Wix</b> envía ese stock actualizado a la tienda (Wix refleja siempre tu inventario). El descuento queda registrado para no repetirse.
+          </div>
+          <!-- KPIs -->
+          <div id="despKpi" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px"></div>
+          <!-- Tabla productos de catálogo -->
+          <div id="despCatalogo"></div>
+          <!-- Sección de productos manuales -->
+          <div id="despManual"></div>
         </div>
       </div>
 
@@ -2861,6 +2889,23 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
         oninput="renderHistorialPrecios()"
         style="width:100%;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:14px;outline:none;margin-bottom:14px">
       <div id="hpResultado"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VINCULAR PRODUCTO MANUAL A CATÁLOGO (despacho) -->
+<div class="modal-overlay" id="modalVincularDespacho">
+  <div class="modal" style="max-width:600px;width:95vw">
+    <div class="modal-header">
+      <div class="modal-title">🔗 Vincular a producto del catálogo</div>
+      <button class="modal-close" onclick="cerrarModal('modalVincularDespacho')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="dvManualNombre" style="font-size:13px;color:var(--text2);margin-bottom:10px"></div>
+      <input type="text" id="dvBuscar" placeholder="🔍 Buscar producto por nombre o SKU..."
+        oninput="renderVincularDespacho()"
+        style="width:100%;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:14px;outline:none;margin-bottom:12px">
+      <div id="dvResultados" style="max-height:340px;overflow:auto"></div>
     </div>
   </div>
 </div>
@@ -7066,7 +7111,7 @@ let _ventaSnapshot   = null;    // Snapshot de la venta original al entrar a edi
 
 function vShowSub(sub) {
   _ventasSubActivo = sub;
-  ['nueva','lista','reporte','productos','clientes'].forEach(s => {
+  ['nueva','lista','reporte','productos','despacho','clientes'].forEach(s => {
     const panel = document.getElementById('vPanel' + s.charAt(0).toUpperCase() + s.slice(1));
     const btn   = document.getElementById('vSub'   + s.charAt(0).toUpperCase() + s.slice(1));
     if (panel) panel.style.display = s === sub ? '' : 'none';
@@ -7080,6 +7125,11 @@ function vShowSub(sub) {
     poblarSelectorVendedor('vRPPVendedor');
     poblarRPPPago();
     renderReporteProductos();
+  }
+  if (sub === 'despacho') {
+    const f = document.getElementById('despFecha');
+    if (f && !f.value) f.value = _despachoHoyISO();
+    renderDespachoDia();
   }
 }
 
@@ -10178,6 +10228,278 @@ function exportarReporteProductos() {
   navigator.clipboard.writeText(texto)
     .then(()  => showToast('📋 Datos copiados al portapapeles','success'))
     .catch(()  => showToast('❌ No se pudo copiar','error'));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  DESPACHO DEL DÍA — descargar inventario / Wix por producto vendido
+// ═══════════════════════════════════════════════════════════════════════
+function _despachoHoyISO() {
+  const d = new Date(); const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+function _despachoLog() {
+  const l = parametros.despachoLog;
+  return (l && typeof l === 'object') ? l : {};
+}
+
+// Agrupa los productos vendidos en una fecha. Estado de descuento desde parametros.despachoLog
+function getDespachoGrupos(fecha) {
+  const log = _despachoLog();
+  const map = {};
+  (ventas||[]).forEach(v => {
+    if (((v.fecha||'')+'').slice(0,10) !== fecha) return;
+    (v.items||[]).forEach(it => {
+      let prod = it.productoId ? productos.find(p => p.id === it.productoId) : null;
+      if (!prod && it.sku) prod = productos.find(p => String(p.sku||'').trim() !== '' && String(p.sku).trim() === String(it.sku).trim());
+      const ident = prod ? prod.id : ('m:' + ((it.sku||it.descripcion||it.nombre||'?')+'').trim().toLowerCase());
+      if (!map[ident]) {
+        map[ident] = {
+          key: ident, prod: prod || null,
+          sku:    prod ? prod.sku     : (it.sku||''),
+          nombre: prod ? prod.producto: (it.descripcion||it.nombre||'(sin nombre)'),
+          imagen: prod ? prod.imagen  : (it.imagen||null),
+          esManual: !prod, vendido: 0, lineas: []
+        };
+      }
+      const g = map[ident];
+      g.vendido += Number(it.cantidad||1);
+      g.lineas.push({ venta: v, item: it });
+    });
+  });
+  Object.values(map).forEach(g => {
+    const e = log[fecha + '|' + g.key] || {};
+    g.invHecho = Number(e.inv||0);
+    g.wixHecho = Number(e.wix||0);
+    g.wixStock = e.wixStock;
+    g.sinInv   = !!e.sinInv;
+    g.pendInv  = Math.max(0, g.vendido - g.invHecho);
+    g.pendWix  = Math.max(0, g.vendido - g.wixHecho);
+  });
+  return Object.values(map).sort((a,b) => (b.pendInv - a.pendInv) || a.nombre.localeCompare(b.nombre));
+}
+
+function renderDespachoDia() {
+  const cat = document.getElementById('despCatalogo');
+  const man = document.getElementById('despManual');
+  const kpi = document.getElementById('despKpi');
+  const res = document.getElementById('despResumen');
+  if (!cat) return;
+  const fecha = (document.getElementById('despFecha')||{}).value || _despachoHoyISO();
+  const puede = ['admin','gerencia'].includes(currentUser?.rol);
+
+  const grupos   = getDespachoGrupos(fecha);
+  const catalogo = grupos.filter(g => !g.esManual);
+  const manuales = grupos.filter(g => g.esManual);
+
+  const totUds         = grupos.reduce((a,g) => a + g.vendido, 0);
+  const pendInvUds     = catalogo.reduce((a,g) => a + g.pendInv, 0);
+  const prodPendientes = catalogo.filter(g => g.pendInv > 0).length;
+
+  if (res) res.textContent = `${fecha} · ${grupos.length} producto(s) · ${totUds} unidad(es) vendidas`;
+  if (kpi) kpi.innerHTML = `
+    <div class="stat-card"><div class="stat-label">Productos vendidos</div><div class="stat-value stat-blue">${grupos.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Unidades vendidas</div><div class="stat-value stat-green">${totUds}</div></div>
+    <div class="stat-card"><div class="stat-label">Por descontar</div><div class="stat-value ${prodPendientes?'stat-gold':'stat-green'}">${pendInvUds}</div><div class="stat-sub">${prodPendientes} producto(s)</div></div>
+    <div class="stat-card"><div class="stat-label">Manuales</div><div class="stat-value stat-teal">${manuales.length}</div></div>`;
+
+  if (!grupos.length) {
+    cat.innerHTML = `<div style="text-align:center;padding:48px 24px;color:var(--text3)"><div style="font-size:40px;margin-bottom:10px">🛒</div><div style="font-size:15px">No hay ventas registradas en esta fecha.</div></div>`;
+    man.innerHTML = '';
+    return;
+  }
+
+  // ── Tabla de productos de catálogo ──
+  const stockColor = (st, min) => st > min ? 'var(--accent3)' : st > 0 ? 'var(--gold)' : 'var(--red)';
+  if (!catalogo.length) {
+    cat.innerHTML = `<div style="padding:18px;color:var(--text3);font-size:13px">No hay productos de catálogo en esta fecha (revisa la sección de manuales abajo).</div>`;
+  } else {
+    cat.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr>
+        <th>Producto</th>
+        <th style="text-align:center">Vendido hoy</th>
+        <th style="text-align:center">Stock actual</th>
+        <th>Inventario</th>
+        <th>Wix</th>
+        <th style="text-align:center">Acciones</th>
+      </tr></thead><tbody>
+      ${catalogo.map(g => {
+        const st  = parseInt(g.prod.cantidad)||0;
+        const min = parseInt(g.prod.minStock)||0;
+        const invBadge = g.pendInv > 0
+          ? `<span style="font-size:11px;font-weight:700;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.35);color:var(--gold);border-radius:10px;padding:2px 9px">⏳ Faltan ${g.pendInv}</span>`
+          : (g.invHecho > 0 ? `<span style="font-size:11px;font-weight:700;background:rgba(46,213,115,.12);border:1px solid rgba(46,213,115,.3);color:var(--green);border-radius:10px;padding:2px 9px">✅ Descontado</span>`
+                            : `<span style="font-size:11px;color:var(--text3)">—</span>`);
+        const wixBadge = g.pendWix > 0
+          ? `<span style="font-size:11px;font-weight:700;background:rgba(90,100,128,.12);border:1px solid rgba(90,100,128,.3);color:var(--text3);border-radius:10px;padding:2px 9px">⏳ Pendiente</span>`
+          : (g.wixHecho > 0 ? `<span style="font-size:11px;font-weight:700;background:rgba(0,200,160,.12);border:1px solid rgba(0,200,160,.3);color:var(--accent3);border-radius:10px;padding:2px 9px">✅ En Wix${g.wixStock!=null?` (${g.wixStock})`:''}</span>`
+                            : `<span style="font-size:11px;color:var(--text3)">—</span>`);
+        const btnInv = !puede ? '' : (g.pendInv > 0
+          ? `<button onclick="despachoDescontarInv('${g.key}')" title="Restar lo vendido del inventario" style="padding:5px 11px;font-size:12px;border:none;border-radius:6px;cursor:pointer;background:var(--gold);color:#000;font-weight:800;margin-right:5px">📦 Descontar (${g.pendInv})</button>`
+          : `<button disabled style="padding:5px 11px;font-size:12px;border:1px solid rgba(46,213,115,.3);border-radius:6px;background:rgba(46,213,115,.08);color:var(--green);font-weight:700;margin-right:5px;cursor:default">✅ Inventario</button>`);
+        const btnWix = !puede ? '' : (g.sku
+          ? (g.pendWix > 0
+              ? `<button onclick="despachoAplicarWix('${g.key}')" title="Enviar el stock actual a Wix" style="padding:5px 11px;font-size:12px;border:none;border-radius:6px;cursor:pointer;background:rgba(0,200,160,.15);color:#00c8a0;font-weight:800">🛒 Aplicar en Wix</button>`
+              : `<button onclick="despachoAplicarWix('${g.key}')" title="Reenviar el stock actual a Wix" style="padding:5px 11px;font-size:12px;border:1px solid rgba(0,200,160,.3);border-radius:6px;cursor:pointer;background:rgba(0,200,160,.06);color:var(--accent3);font-weight:700">🔄 Wix</button>`)
+          : `<span style="font-size:11px;color:var(--text3)" title="Sin SKU">sin SKU</span>`);
+        return `<tr>
+          <td style="font-weight:600">
+            <div style="display:flex;align-items:center;gap:9px">
+              ${g.imagen?`<img src="${g.imagen}" style="width:34px;height:34px;object-fit:contain;border-radius:6px;background:var(--bg4);flex-shrink:0" onerror="this.style.display='none'">`:'<div style="width:34px;height:34px;background:var(--bg4);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0">📦</div>'}
+              <div style="min-width:0"><div style="font-size:13px">${g.nombre}</div><div style="font-size:10px;color:var(--text3);font-family:monospace">SKU: ${g.sku||'—'}</div></div>
+            </div>
+          </td>
+          <td style="text-align:center;font-weight:800;font-size:15px;color:var(--accent)">${g.vendido}</td>
+          <td style="text-align:center;font-weight:800;color:${stockColor(st,min)}">${st}</td>
+          <td>${invBadge}</td>
+          <td>${wixBadge}</td>
+          <td style="text-align:center;white-space:nowrap">${puede ? btnInv + btnWix : '<span style="font-size:11px;color:var(--text3)">Solo admin</span>'}</td>
+        </tr>`;
+      }).join('')}
+      </tbody></table></div>`;
+    requestAnimationFrame(() => { const tw = cat.querySelector('.table-wrap'); if (tw && typeof agregarScrollArriba==='function') agregarScrollArriba(tw); });
+  }
+
+  // ── Sección de productos manuales ──
+  if (!manuales.length) {
+    man.innerHTML = '';
+  } else {
+    man.innerHTML = `
+      <div style="margin-top:22px;padding:14px 16px;background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.25);border-radius:12px">
+        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:4px">⚠️ Productos manuales (${manuales.length})</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Se ingresaron a mano y no están en el catálogo, por eso no se pueden descontar automáticamente. Vincúlalos a un producto del catálogo para descontar su stock, o márcalos como "sin inventario" si no afectan stock (servicios, envíos, etc.).</div>
+        ${manuales.map(g => `
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 0;border-top:1px solid var(--border2)">
+            <div style="flex:1;min-width:160px">
+              <div style="font-size:13px;font-weight:600">${g.nombre}</div>
+              <div style="font-size:11px;color:var(--text3)">${g.vendido} unidad(es) vendida(s) hoy${g.sku?` · SKU ingresado: ${g.sku}`:''}</div>
+            </div>
+            ${g.sinInv
+              ? `<span style="font-size:11px;font-weight:700;background:rgba(90,100,128,.12);border:1px solid rgba(90,100,128,.3);color:var(--text3);border-radius:10px;padding:3px 10px">🚫 Sin inventario</span>${puede?`<button onclick="despachoDeshacerSinInv('${g.key}')" style="padding:5px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg3);color:var(--text2)">↩️ Deshacer</button>`:''}`
+              : (puede
+                  ? `<button onclick="abrirVincularDespacho('${g.key}')" style="padding:6px 12px;font-size:12px;border:none;border-radius:6px;cursor:pointer;background:rgba(61,106,255,.18);color:var(--accent);font-weight:700">🔗 Vincular a producto</button>
+                     <button onclick="despachoMarcarSinInv('${g.key}')" style="padding:6px 12px;font-size:12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg3);color:var(--text2)">🚫 Sin inventario</button>`
+                  : '<span style="font-size:11px;color:var(--text3)">Solo admin</span>')}
+          </div>`).join('')}
+      </div>`;
+  }
+}
+
+async function despachoDescontarInv(key) {
+  const fecha = (document.getElementById('despFecha')||{}).value || _despachoHoyISO();
+  const g = getDespachoGrupos(fecha).find(x => x.key === key);
+  if (!g) { renderDespachoDia(); return; }
+  if (!g.prod) { showToast('⚠️ No está en el catálogo. Vincúlalo primero.','warn'); return; }
+  if (g.pendInv <= 0) { showToast('Ya estaba descontado','info'); return; }
+  const p = productos.find(x => x.id === g.prod.id);
+  const stockAnt = parseInt(p.cantidad)||0;
+  const nuevo = stockAnt - g.pendInv;
+  const aviso = nuevo < 0 ? `\n\n⚠️ El stock quedaría NEGATIVO (${nuevo}). Verifica si vendiste más de lo registrado en inventario.` : '';
+  if (!confirm(`Descontar ${g.pendInv} unidad(es) de:\n"${g.prod.producto}"\n\nStock: ${stockAnt} → ${nuevo}${aviso}`)) return;
+  p.cantidad = nuevo;
+  const log = _despachoLog();
+  log[fecha + '|' + g.key] = Object.assign({}, log[fecha + '|' + g.key], { inv: g.vendido, invTs: new Date().toISOString(), invBy: currentUser?.nombre||'' });
+  try {
+    mostrarCargando('☁️ Descontando del inventario...');
+    await sbSaveProducto(p);
+    parametros.despachoLog = log;
+    await sbSaveParametro('despachoLog', log);
+    if (typeof addHistorial === 'function') addHistorial(`Inventario descontado por venta: ${g.prod.producto} −${g.pendInv} (stock ${stockAnt}→${nuevo})`, 'Ventas');
+    ocultarCargando();
+    showToast(`✅ ${g.pendInv} uds descontadas — stock: ${nuevo}`,'success');
+  } catch(e) { ocultarCargando(); showToast('❌ '+e.message,'error',7000); }
+  renderDespachoDia();
+}
+
+async function despachoAplicarWix(key) {
+  const fecha = (document.getElementById('despFecha')||{}).value || _despachoHoyISO();
+  const g = getDespachoGrupos(fecha).find(x => x.key === key);
+  if (!g) { renderDespachoDia(); return; }
+  if (!g.prod || !g.sku) { showToast('⚠️ Sin SKU de catálogo para sincronizar con Wix','warn'); return; }
+  mostrarCargando('🛒 Enviando stock a Wix...');
+  try {
+    const { data, error } = await sb.functions.invoke('wix-sync', { body: { action: 'test', sku_test: String(g.sku).trim() } });
+    if (error) throw new Error(error.message || JSON.stringify(error));
+    if (data?.error) throw new Error(data.error);
+    const det = data?.detalles?.[0];
+    ocultarCargando();
+    if (!det) { showToast('⚠️ SKU no encontrado en Wix','warn',6000); return; }
+    const log = _despachoLog();
+    log[fecha + '|' + g.key] = Object.assign({}, log[fecha + '|' + g.key], { wix: g.vendido, wixStock: det.cantidad, wixTs: new Date().toISOString() });
+    parametros.despachoLog = log;
+    await sbSaveParametro('despachoLog', log);
+    showToast(`✅ Wix actualizado — stock en tienda: ${det.cantidad}`,'success',6000);
+  } catch(e) { ocultarCargando(); showToast('❌ '+e.message,'error',7000); }
+  renderDespachoDia();
+}
+
+async function despachoMarcarSinInv(key) {
+  const fecha = (document.getElementById('despFecha')||{}).value || _despachoHoyISO();
+  const log = _despachoLog();
+  log[fecha + '|' + key] = Object.assign({}, log[fecha + '|' + key], { sinInv: true });
+  parametros.despachoLog = log;
+  try { await sbSaveParametro('despachoLog', log); showToast('✓ Marcado sin inventario','success'); }
+  catch(e) { showToast('❌ '+e.message,'error'); }
+  renderDespachoDia();
+}
+
+async function despachoDeshacerSinInv(key) {
+  const fecha = (document.getElementById('despFecha')||{}).value || _despachoHoyISO();
+  const log = _despachoLog();
+  if (log[fecha + '|' + key]) { delete log[fecha + '|' + key].sinInv; }
+  parametros.despachoLog = log;
+  try { await sbSaveParametro('despachoLog', log); }
+  catch(e) { showToast('❌ '+e.message,'error'); }
+  renderDespachoDia();
+}
+
+// ── Vincular producto manual a catálogo ──
+let _dvPendiente = null;
+function abrirVincularDespacho(key) {
+  const fecha = (document.getElementById('despFecha')||{}).value || _despachoHoyISO();
+  const g = getDespachoGrupos(fecha).find(x => x.key === key);
+  if (!g) return;
+  _dvPendiente = { key, fecha, lineas: g.lineas, nombre: g.nombre, vendido: g.vendido };
+  document.getElementById('dvManualNombre').innerHTML = `Producto manual: <b style="color:var(--text)">${g.nombre}</b> · ${g.vendido} ud vendida(s) hoy`;
+  document.getElementById('dvBuscar').value = '';
+  document.getElementById('dvResultados').innerHTML = '';
+  abrirModal('modalVincularDespacho');
+  setTimeout(() => document.getElementById('dvBuscar').focus(), 60);
+  renderVincularDespacho();
+}
+function renderVincularDespacho() {
+  const cont = document.getElementById('dvResultados'); if (!cont) return;
+  const q = (document.getElementById('dvBuscar')||{}).value.trim().toLowerCase();
+  if (!q) { cont.innerHTML = `<div style="padding:18px;color:var(--text3);font-size:13px;text-align:center">Escribe para buscar un producto…</div>`; return; }
+  const lista = (productos||[]).filter(p => String(p.producto||'').toLowerCase().includes(q) || String(p.sku||'').toLowerCase().includes(q));
+  if (!lista.length) { cont.innerHTML = `<div style="padding:18px;color:var(--text3);font-size:13px;text-align:center">Sin coincidencias</div>`; return; }
+  cont.innerHTML = lista.slice(0,20).map(p => {
+    const stock = parseInt(p.cantidad)||0;
+    return `<div onclick="aplicarVincularDespacho('${p.id}')" style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
+      ${p.imagen?`<img src="${p.imagen}" style="width:38px;height:38px;object-fit:contain;border-radius:6px;background:var(--bg4);flex-shrink:0" onerror="this.style.display='none'">`:'<div style="width:38px;height:38px;background:var(--bg4);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0">📦</div>'}
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">${p.producto}</div><div style="font-size:11px;color:var(--text2)">SKU: ${p.sku||'—'} · Stock: ${stock}</div></div>
+      <span style="font-size:11px;color:var(--accent);font-weight:700;flex-shrink:0">+ Vincular</span>
+    </div>`;
+  }).join('');
+}
+async function aplicarVincularDespacho(prodId) {
+  if (!_dvPendiente) return;
+  const p = productos.find(x => x.id === prodId); if (!p) return;
+  const ventasAfect = new Set();
+  _dvPendiente.lineas.forEach(l => {
+    l.item.productoId = p.id;
+    l.item.sku = p.sku;
+    if (!l.item.descripcion) l.item.descripcion = p.producto;
+    ventasAfect.add(l.venta);
+  });
+  try {
+    mostrarCargando('☁️ Vinculando producto...');
+    for (const v of ventasAfect) { await sbSaveVenta(v); }
+    ocultarCargando();
+    showToast(`✅ Vinculado a "${p.producto}" — ya puedes descontarlo`,'success',5000);
+    cerrarModal('modalVincularDespacho');
+  } catch(e) { ocultarCargando(); showToast('❌ '+e.message,'error',7000); }
+  _dvPendiente = null;
+  renderDespachoDia();
 }
 
 // ===== PDF REPORTE VENDEDORES =====
