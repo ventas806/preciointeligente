@@ -12333,7 +12333,12 @@ function convertirAVenta(id) {
     document.getElementById('vClienteTel').value       = c.clienteTel     || '';
     document.getElementById('vClienteEmail').value     = c.clienteEmail   || '';
     document.getElementById('vObservaciones').value    = c.observaciones  || '';
-    vItemsActuales=(c.items||[]).map(it=>({...it,_id:'vi_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)}));
+    // Las cotizaciones no guardan costo: buscarlo en el catálogo para que la utilidad y comisión salgan correctas
+    vItemsActuales=(c.items||[]).map(it=>{
+      const p = it.productoId ? productos.find(x=>x.id===it.productoId) : null;
+      const costoLPS = p ? calcProd(p).costoTotalLPS : (it.costoLPS||0);
+      return {...it,costoLPS,_id:'vi_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)};
+    });
     renderItemsVenta();
     // Restaurar descuento de la cotización
     const _vda2=document.getElementById('vDescActivo');  if(_vda2) _vda2.checked=!!(c.descuento>0);
