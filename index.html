@@ -4538,7 +4538,7 @@ function renderTablaProductos() {
         case 'roi': { const roiCls = c.roi < c.roiRef ? 'bad' : 'good'; return `<td class="td-roi ${roiCls}">${fmtPct(c.roi)}</td>`; }
         case 'utilBrutaCant': return `<td style="color:var(--gold);font-weight:700">${fmtLPS(c.utilBrutaCant)}</td>`;
         case 'link': return `<td onclick="event.stopPropagation()" style="text-align:center">${p.url1 ? `<a href="${p.url1}" target="_blank" title="${p.url1}" style="color:var(--accent);font-size:16px;text-decoration:none">🔗</a>` : `<span style="color:var(--text3);font-size:13px">—</span>`}</td>`;
-        case 'wix': return `<td onclick="event.stopPropagation()" style="text-align:center">${p.url2 ? `<a href="${p.url2}" target="_blank" title="Ver en Focus Store: ${p.url2}" style="font-size:16px;text-decoration:none;opacity:.85;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.85">🛒</a>` : `<span style="color:var(--text3);font-size:13px">—</span>`}</td>`;
+        case 'wix': return `<td onclick="event.stopPropagation()" style="text-align:center">${p.url2 ? `<a href="${p.url2}" target="_blank" title="Ver en Focus Store: ${p.url2}" style="font-size:16px;text-decoration:none;opacity:.85;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.85">🛒</a>` : (['admin','gerencia'].includes(currentUser?.rol) && p.sku ? `<button onclick="crearEnWix('${p.id}')" title="Crear este producto en Wix (quedará OCULTO hasta que lo publiques en el panel de Wix)" style="background:rgba(0,200,160,.12);border:1px solid rgba(0,200,160,.35);color:var(--accent3);border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer;font-weight:800">🛒➕</button>` : `<span style="color:var(--text3);font-size:13px">—</span>`)}</td>`;
         case 'enCamino': {
           const ordsT = (ordenesCompra||[]).filter(o => o.productoId === p.id && o.estado === 'en_transito');
           const uds   = ordsT.reduce((s,o) => s + (parseInt(o.cantidadOrdenada)||0), 0);
@@ -13458,6 +13458,54 @@ async function importarDesdeWix(modoTest = false) {
   } finally {
     btn.disabled = false;
     btn.innerHTML = orig;
+  }
+}
+
+// ── Crear producto en Wix (oculto) desde la tabla de productos ───────────────
+async function crearEnWix(prodId) {
+  const p = productos.find(x => x.id === prodId);
+  if (!p) return;
+  if (!['admin','gerencia'].includes(currentUser?.rol)) { showToast('⚠️ Solo admin/gerencia pueden crear productos en Wix','warn'); return; }
+  if (!p.sku) { showToast('⚠️ El producto necesita SKU para crearse en Wix','warn'); return; }
+  if (p.url2) { showToast('ℹ️ Este producto ya tiene link de Wix (columna 🛒)','info'); return; }
+
+  const c = calcProd(p);
+  const precioLista = +c.precioConISV.toFixed(2);
+  const descPct = parseFloat(p.descuento) || 0;
+  const precioFinal = +c.precioFinalDesc.toFixed(2);
+  const stock = parseInt(p.cantidad) || 0;
+
+  const msg = `🛒 Crear en Wix (quedará OCULTO hasta que lo publiques):\n\n${p.producto}\nSKU: ${p.sku}\n` +
+    (descPct > 0
+      ? `Precio de lista (tachado): ${fmtLPS(precioLista)}\nDescuento: ${descPct}% → precio final ${fmtLPS(precioFinal)}\n`
+      : `Precio: ${fmtLPS(precioLista)}\n`) +
+    `Stock inicial: ${stock}\nImagen: ${p.imagen ? 'sí' : 'no (la agregas en Wix)'}\n\n¿Continuar?`;
+  if (!confirm(msg)) return;
+
+  mostrarCargando('🛒 Creando producto en Wix...');
+  try {
+    const { data, error } = await sb.functions.invoke('wix-sync', { body: { action: 'crear_producto', prod: {
+      id: p.id,
+      sku: p.sku,
+      nombre: p.producto,
+      precioLista,
+      descuentoPct: descPct,
+      cantidad: stock,
+      imagenUrl: p.imagen || ''
+    }}});
+    if (error) throw new Error(error.message || JSON.stringify(error));
+    if (data?.error) throw new Error(data.error);
+    ocultarCargando();
+    if (data?.url) p.url2 = data.url; // la función también lo guardó en la base
+    const avisos = [];
+    if (data?.mediaOk === false) avisos.push('⚠️ la imagen no se pudo subir');
+    if (data?.stockOk === false) avisos.push('⚠️ el stock no se aplicó');
+    showToast(`✅ "${(p.producto||'').substring(0,40)}" creado en Wix (oculto)${avisos.length ? ' · ' + avisos.join(' · ') : ''}`, 'success', 7000);
+    addHistorial(`Producto creado en Wix (oculto): ${p.producto} · SKU ${p.sku}`, 'Productos');
+    if (typeof renderTablaProductos === 'function') renderTablaProductos();
+  } catch(e) {
+    ocultarCargando();
+    showToast('❌ ' + e.message, 'error', 8000);
   }
 }
 
