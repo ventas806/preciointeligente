@@ -4590,6 +4590,30 @@ function calcularPreview() {
   const nivel         = document.getElementById('fNivel').value;
   const cantidad      = document.getElementById('fCantidad').value==='' ? 1 : (parseInt(document.getElementById('fCantidad').value)||0);
   const overrideBanda = document.getElementById('fOverrideBanda').value||'';
+
+  // ── Estrategia extra-financiamiento ──
+  // En bandas de margen mínimo (Alto-Normal, Alto-Alto y Premium en todos los niveles)
+  // se infla el precio de lista +21% y se aplica 13% de descuento: el precio tachado
+  // absorbe la comisión bancaria (~13%) del financiamiento a 12 meses, y las ofertas
+  // 0% interés no aplican sobre productos con descuento.
+  const inpAjFin = document.getElementById('fAjusteManual');
+  const inpDeFin = document.getElementById('fDescuento');
+  let estrategiaFinActiva = false;
+  if (costoUSD > 0 && !editingId) { // solo productos nuevos/duplicados — al editar no se tocan los valores
+    const bandaPre = calcProd({costoExtra, costoUSD, fleteL, estado, nivel, cantidad, overrideBanda, ajusteManual:0, descuento:0}).bandaEfectiva;
+    const esComboFin = bandaPre === 'Premium' || (bandaPre === 'Alto' && (nivel === 'Normal' || nivel === 'Alto'));
+    if (esComboFin && inpAjFin.value === '' && inpDeFin.value === '') {
+      inpAjFin.value = 21; inpDeFin.value = 13;
+      inpAjFin.dataset.autoFin = '1'; inpDeFin.dataset.autoFin = '1';
+    } else if (!esComboFin && inpAjFin.dataset.autoFin === '1' && inpDeFin.dataset.autoFin === '1'
+               && inpAjFin.value === '21' && inpDeFin.value === '13') {
+      // El combo dejó de aplicar y los valores siguen siendo los automáticos → limpiarlos
+      inpAjFin.value = ''; inpDeFin.value = '';
+      delete inpAjFin.dataset.autoFin; delete inpDeFin.dataset.autoFin;
+    }
+    estrategiaFinActiva = esComboFin && parseFloat(inpAjFin.value) === 21 && parseFloat(inpDeFin.value) === 13;
+  }
+
   const ajusteManual  = (parseFloat(document.getElementById('fAjusteManual').value)||0) / 100;
   const descuentoRaw  = document.getElementById('fDescuento').value;
   const descuento     = descuentoRaw !== '' ? parseFloat(descuentoRaw)||0 : 0;
@@ -4610,9 +4634,10 @@ function calcularPreview() {
   // Banda info tag
   const bandaInfo = document.getElementById('calcBandaInfo');
   if(bandaInfo) {
-    bandaInfo.innerHTML = c.bandaEfectiva !== c.bandaAuto
+    bandaInfo.innerHTML = (c.bandaEfectiva !== c.bandaAuto
       ? `🔧 Banda manual: <strong>${c.bandaEfectiva}</strong> <span style="color:var(--text3)">(automático sería: ${c.bandaAuto})</span>`
-      : `⚙️ Banda automática: <strong>${c.bandaEfectiva}</strong> <span style="color:var(--text3)">· costo ${fmtUSD(c.costoTotalUSD)}</span>`;
+      : `⚙️ Banda automática: <strong>${c.bandaEfectiva}</strong> <span style="color:var(--text3)">· costo ${fmtUSD(c.costoTotalUSD)}</span>`)
+      + (estrategiaFinActiva ? ` <span style="margin-left:8px;font-size:11px;font-weight:700;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.4);color:var(--gold);border-radius:10px;padding:2px 9px" title="Precio de lista inflado +21% con 13% de descuento: el precio tachado absorbe la comisión bancaria del extra-financiamiento (~13% a 12 meses) y las ofertas 0% interés no aplican sobre productos con descuento">💳 Estrategia extra-financiamiento: +21% ajuste · 13% desc.</span>` : '');
   }
 
   const items = [
