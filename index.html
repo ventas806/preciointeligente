@@ -13731,7 +13731,7 @@ function actualizarCmpBtn() {
 
 async function aplicarCmp() {
   var cambios = cmpDatos.filter(function(d){ return d._v !== undefined; })
-    .map(function(d){ return { id: d.id, sku: d.sku, invId: d.invId, cantidad: d._v }; });
+    .map(function(d){ return { id: d.id, sku: d.sku, invId: d.invId, variantId: d.variantId || null, cantidad: d._v }; });
   if (!cambios.length) return;
   if (!confirm('¿Aplicar ' + cambios.length + ' cambio(s) en Supabase y Wix?')) return;
   var btn = document.getElementById('cmpApplyBtn');
