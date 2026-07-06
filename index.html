@@ -7434,20 +7434,23 @@ async function _enviarConfirmEnvio({ nombre, telRaw, ciudad, tel2, email, dir, m
 
   showToast('📤 Enviando WhatsApp...', 'info');
   try {
-    const res = await fetch(`https://api.ultramsg.com/${ULTRA_INSTANCE}/messages/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ token: ULTRA_TOKEN, to: '+' + telN, body: msg })
+    // El envío pasa por la Edge Function send-whatsapp (el token vive seguro en secrets)
+    const { data, error } = await sb.functions.invoke('send-whatsapp', {
+      body: { to: telN, message: msg, notification_type: 'confirmacion_envio' }
     });
-    const data = await res.json();
-    if (data.sent === 'true' || data.id) {
+    if (error) {
+      let det = error.message || 'Error al enviar';
+      try { const j = await error.context?.json?.(); if (j?.error) det = j.error; } catch(_) {}
+      throw new Error(det);
+    }
+    if (data?.ok) {
       showToast('✅ WhatsApp enviado a ' + nombre, 'success');
       addHistorial(`Confirmación de datos de envío enviada por WhatsApp a ${nombre} (+${telN})`, 'Clientes');
     } else {
-      showToast('❌ Error: ' + (data.error || JSON.stringify(data)), 'error', 8000);
+      throw new Error(data?.error || 'No se pudo enviar');
     }
   } catch(e) {
-    showToast('❌ Error de red: ' + e.message, 'error', 8000);
+    showToast('❌ Error: ' + e.message, 'error', 8000);
   }
 }
 
@@ -12600,8 +12603,7 @@ function renderHistorialPrecios() {
 }
 
 // ── COMPARTIR COTIZACIÓN ─────────────────────────────────────────────────────
-const ULTRA_INSTANCE = 'instance178325';
-const ULTRA_TOKEN    = 'zm383lcp9w2xv11q';
+// WhatsApp se envía vía la Edge Function send-whatsapp (token en secrets, nunca en el código)
 
 async function compartirCotizacion(id) {
   const c = cotizaciones.find(x => x.id === id);
@@ -12704,22 +12706,24 @@ async function enviarWappCotizacion(id) {
   st.innerHTML = '';
 
   try {
-    const res = await fetch(`https://api.ultramsg.com/${ULTRA_INSTANCE}/messages/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ token: ULTRA_TOKEN, to: '+' + tel, body: msg })
+    // El envío pasa por la Edge Function send-whatsapp (el token vive seguro en secrets)
+    const { data, error } = await sb.functions.invoke('send-whatsapp', {
+      body: { to: tel, message: msg, notification_type: 'cotizacion' }
     });
-    const data = await res.json();
-    if (data.sent === 'true' || data.id) {
+    if (error) {
+      let det = error.message || 'Error al enviar';
+      try { const j = await error.context?.json?.(); if (j?.error) det = j.error; } catch(_) {}
+      throw new Error(det);
+    }
+    if (data?.ok) {
       st.innerHTML = '<span style="color:var(--green)">✅ WhatsApp enviado correctamente</span>';
       addHistorial(`Cotización ${c.numero} compartida por WhatsApp a +${tel}`, 'Cotizaciones');
       setTimeout(() => document.getElementById('modalCompartirCot')?.remove(), 2000);
     } else {
-      st.innerHTML = `<span style="color:var(--red)">❌ Error: ${data.error || JSON.stringify(data)}</span>`;
-      btn.disabled = false; btn.textContent = '📲 Reintentar';
+      throw new Error(data?.error || 'No se pudo enviar');
     }
   } catch(e) {
-    st.innerHTML = `<span style="color:var(--red)">❌ Error de red: ${e.message}</span>`;
+    st.innerHTML = `<span style="color:var(--red)">❌ ${e.message}</span>`;
     btn.disabled = false; btn.textContent = '📲 Reintentar';
   }
 }
