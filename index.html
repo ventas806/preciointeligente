@@ -1434,6 +1434,24 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
           </div>
         </div>
         <div class="param-section">
+          <h3>🔌 API Externa (solo lectura)</h3>
+          <table class="param-table"><thead><tr><th>Parámetro</th><th>Valor</th></tr></thead><tbody>
+            <tr>
+              <td>Token de acceso <span style="font-size:11px;color:var(--text2)">(la otra aplicación lo envía en el header <code>x-api-key</code>)</span></td>
+              <td style="display:flex;gap:6px;align-items:center">
+                <input type="password" id="pApiExternaToken" placeholder="Genera un token o pega uno propio" style="flex:1;font-family:monospace;font-size:12px">
+                <button class="btn btn-ghost btn-sm" onclick="const i=document.getElementById('pApiExternaToken');i.type=i.type==='password'?'text':'password'" title="Mostrar/ocultar">👁️</button>
+                <button class="btn btn-ghost btn-sm" onclick="generarTokenApiExterna()" title="Generar token aleatorio seguro">🎲 Generar</button>
+              </td>
+            </tr>
+          </tbody></table>
+          <div style="margin-top:8px;font-size:12px;color:var(--text2)">
+            🔌 Permite a otras aplicaciones consultar en <strong>solo lectura</strong>: <strong>productos</strong> (con precio de venta calculado, sin costos), <strong>ventas</strong> (sin utilidad ni comisiones), <strong>clientes</strong> y <strong>cobros</strong>.<br>
+            Endpoint: <code style="font-size:11px">https://uzhjnedhmbvgfqqssuov.supabase.co/functions/v1/api-externa/&lt;recurso&gt;</code><br>
+            Guarda con el botón "Guardar Parámetros". Si cambias el token, la aplicación anterior pierde acceso de inmediato.
+          </div>
+        </div>
+        <div class="param-section">
           <h3>🤖 Asistente IA (Focus Store AI)</h3>
           <table class="param-table"><thead><tr><th>Parámetro</th><th>Valor</th></tr></thead><tbody>
             <tr>
@@ -3991,6 +4009,9 @@ async function cargarDesdeSheetsYRenderizar() {
     const rawWixKey = parametros.wix_api_key || '';
     parametros._wixKeyGuardada = rawWixKey.length > 10;
     delete parametros.wix_api_key; // No exponer la key en el objeto global
+    // Token de la API externa: mismo tratamiento (no exponerlo en el cliente)
+    parametros._apiExternaGuardado = typeof parametros.api_externa_token === 'string' && parametros.api_externa_token.length > 10;
+    delete parametros.api_externa_token;
 
     // ── Usuarios ──
     if(users.length > 0) {
@@ -5611,6 +5632,27 @@ function initParametrosForm() {
       ? '✅ API Key guardada — dejá vacío para no cambiarla'
       : 'Pegá tu Wix API Key aquí';
   }
+  // Token API Externa: mismo tratamiento
+  const apiExtInp = document.getElementById('pApiExternaToken');
+  if (apiExtInp) {
+    apiExtInp.value = '';
+    apiExtInp.placeholder = parametros._apiExternaGuardado
+      ? '✅ Token guardado — deja vacío para no cambiarlo'
+      : 'Genera un token o pega uno propio';
+  }
+}
+
+// Genera un token aleatorio seguro para la API externa (se guarda con "Guardar Parámetros")
+function generarTokenApiExterna() {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  const token = 'fs_' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  const inp = document.getElementById('pApiExternaToken');
+  if (!inp) return;
+  inp.type = 'text';
+  inp.value = token;
+  inp.select();
+  showToast('🎲 Token generado — cópialo para la otra aplicación y presiona "Guardar Parámetros"', 'info', 8000);
 }
 
 async function guardarLogoUrl() {
@@ -5853,6 +5895,16 @@ async function guardarParametros() {
     await sbSaveParametro('anthropic_api_key', anthKeyInput.value.trim());
     anthKeyInput.value = '';
     anthKeyInput.placeholder = '✅ API Key guardada (no se muestra por seguridad)';
+  }
+  // Token API Externa
+  const apiExtInput = document.getElementById('pApiExternaToken');
+  if (apiExtInput && apiExtInput.value.trim()) {
+    await sbSaveParametro('api_externa_token', apiExtInput.value.trim());
+    parametros._apiExternaGuardado = true;
+    apiExtInput.value = '';
+    apiExtInput.type = 'password';
+    apiExtInput.placeholder = '✅ Token guardado (no se muestra por seguridad)';
+    addHistorial('Token de API Externa actualizado', 'Config');
   }
 
   // Identidad empresa
