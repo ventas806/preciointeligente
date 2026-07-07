@@ -662,15 +662,6 @@ select.field-input { cursor:pointer; }
     <!-- ── NUEVA VENTA ──────────────────── -->
     <div id="panelNueva">
 
-      <!-- Tipo de Venta -->
-      <div style="padding:12px 12px 0">
-        <div class="tipo-venta-wrap">
-          <button class="tipo-btn active-formal" id="btnFormal"   onclick="setTipoVenta('formal')">Formal</button>
-          <button class="tipo-btn"               id="btnInformal" onclick="setTipoVenta('informal')">Informal</button>
-        </div>
-        <div class="tipo-hint" id="tipoHint">Con factura formal, RTN y datos completos del cliente</div>
-      </div>
-
       <!-- Cliente -->
       <div class="section-card">
         <div class="section-title">👤 Cliente</div>
@@ -1179,7 +1170,6 @@ let ventas       = [];
 let vItems       = [];          // items de la venta actual
 let vEditandoId  = null;
 let vClienteId   = null;
-let vTipoVenta   = 'formal';
 let _ventasCargadas  = false;
 let _scannerTarget   = 'venta';
 
@@ -1725,34 +1715,6 @@ function poblarMetodosEnvio() {
   });
 }
 
-/* ════════════════════════════════════════════
-   TIPO DE VENTA
-════════════════════════════════════════════ */
-function setTipoVenta(tipo) {
-  vTipoVenta = tipo;
-  const btnF = document.getElementById('btnFormal');
-  const btnI = document.getElementById('btnInformal');
-  const hint = document.getElementById('tipoHint');
-
-  if (tipo === 'formal') {
-    btnF.className = 'tipo-btn active-formal';
-    btnI.className = 'tipo-btn';
-    if(hint) hint.textContent = 'Con factura formal, RTN y datos completos del cliente';
-    setRequired('lblDireccion','DIRECCIÓN *');
-    setRequired('lblCiudad','CIUDAD *');
-    setRequired('lblTel','TELÉFONO *');
-  } else {
-    btnI.className = 'tipo-btn active-informal';
-    btnF.className = 'tipo-btn';
-    if(hint) hint.textContent = 'Venta rápida sin datos formales — consumidor final';
-    setRequired('lblDireccion','DIRECCIÓN (opcional)');
-    setRequired('lblCiudad','CIUDAD (opcional)');
-    setRequired('lblTel','TELÉFONO (opcional)');
-    const nomEl = document.getElementById('vNombre');
-    if (nomEl && !nomEl.value.trim()) nomEl.value = 'Consumidor Final';
-  }
-}
-
 function setRequired(id, text) {
   const el = document.getElementById(id);
   if(el) el.textContent = text;
@@ -2220,9 +2182,6 @@ async function guardarVenta() {
   const vendedorId = document.getElementById('vVendedor').value;
 
   if (!nombre) { showToast('⚠️ Ingresá el nombre del cliente','warn'); return; }
-  if (vTipoVenta==='formal' && !direccion) { showToast('⚠️ Ingresá la dirección','warn'); return; }
-  if (vTipoVenta==='formal' && !ciudad)    { showToast('⚠️ Ingresá la ciudad','warn'); return; }
-  if (vTipoVenta==='formal' && !tel)       { showToast('⚠️ Ingresá el teléfono','warn'); return; }
   if (!fecha) { showToast('⚠️ Seleccioná la fecha','warn'); return; }
   if (!vendedorId) { showToast('⚠️ Seleccioná el vendedor','warn'); return; }
   if (!document.getElementById('vMetodoPago').value)  { showToast('⚠️ Seleccioná método de pago','warn'); return; }
@@ -2354,7 +2313,6 @@ async function guardarVenta() {
 ════════════════════════════════════════════ */
 function limpiarVenta() {
   vItems = []; vEditandoId = null; vClienteId = null;
-  vTipoVenta = 'formal';
   ['vNombre','vDireccion','vCiudad','vTel','vTel2','vEmail','vMaps','vObservaciones','vBuscarCliente'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
@@ -2365,8 +2323,6 @@ function limpiarVenta() {
   document.getElementById('vDescValor').value = '';
   document.getElementById('vDescTipoBtn').textContent = '%';
   document.getElementById('vEnvio').value = parametros.envioDefecto || 120;
-  // Reset tipo venta
-  setTipoVenta('formal');
   renderItems(); calcResumen();
   // Re-select logged-in user
   const selV = document.getElementById('vVendedor');

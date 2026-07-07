@@ -684,15 +684,6 @@ select.field-input { cursor:pointer; }
     <!-- ── NUEVA VENTA ──────────────────── -->
     <div id="panelNueva">
 
-      <!-- Tipo de Venta (oculto — siempre informal) -->
-      <div style="display:none">
-        <div class="tipo-venta-wrap">
-          <button class="tipo-btn"                id="btnFormal"   onclick="setTipoVenta('formal')">Formal</button>
-          <button class="tipo-btn active-informal" id="btnInformal" onclick="setTipoVenta('informal')">Informal</button>
-        </div>
-        <div class="tipo-hint" id="tipoHint">Venta rápida sin datos formales — consumidor final</div>
-      </div>
-
       <div class="venta-layout"><div class="venta-form">
 
       <!-- Cliente -->
@@ -1131,7 +1122,6 @@ let ventas       = [];
 let vItems       = [];          // items de la venta actual
 let vEditandoId  = null;
 let vClienteId   = null;
-let vTipoVenta   = 'informal';
 let _ventasCargadas  = false;
 let _scannerTarget   = 'venta';
 
@@ -1576,25 +1566,6 @@ function poblarMetodosEnvio() {
     opt.value = m; opt.textContent = m;
     sel.appendChild(opt);
   });
-}
-
-/* ════════════════════════════════════════════
-   TIPO DE VENTA
-════════════════════════════════════════════ */
-function setTipoVenta(tipo) {
-  vTipoVenta = tipo;
-  const btnF = document.getElementById('btnFormal');
-  const btnI = document.getElementById('btnInformal');
-  const hint = document.getElementById('tipoHint');
-  if (tipo === 'formal') {
-    btnF.className = 'tipo-btn active-formal';
-    btnI.className = 'tipo-btn';
-    if(hint) hint.textContent = 'Con factura formal, RTN y datos completos del cliente';
-  } else {
-    btnI.className = 'tipo-btn active-informal';
-    btnF.className = 'tipo-btn';
-    if(hint) hint.textContent = 'Venta rápida sin datos formales — consumidor final';
-  }
 }
 
 function setRequired(id, text) {
@@ -2424,7 +2395,6 @@ function setVentaDefaults() {
 ════════════════════════════════════════════ */
 function limpiarVenta() {
   vItems = []; vEditandoId = null; vClienteId = null;
-  vTipoVenta = 'formal';
   quitarCliente();
   mostrarClienteSeleccionado('Consumidor Final', '');
   document.getElementById('vDescActivo').checked = false;
@@ -2432,7 +2402,6 @@ function limpiarVenta() {
   document.getElementById('vDescValor').value = '';
   document.getElementById('vDescTipoBtn').textContent = '%';
   setVentaDefaults();
-  setTipoVenta('informal');
   renderItems(); calcResumen();
   // Re-select logged-in user
   const selV = document.getElementById('vVendedor');
