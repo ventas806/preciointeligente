@@ -687,8 +687,8 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
       <div id="menuVentasCobros" style="display:none;position:fixed;z-index:2000;background:var(--bg3);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.55);padding:6px;min-width:190px">
         <button class="nav-tab" id="tabVentas" onclick="showTab('ventas');cerrarMenuVentasCobros()" style="display:block;width:100%;text-align:left;margin:0">🛒 Ventas</button>
         <button class="nav-tab" id="tabCobros" onclick="showTab('cobros');cerrarMenuVentasCobros()" style="display:block;width:100%;text-align:left;margin:0">💰 Cobros <span id="badgeCobros" style="display:none;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
-        <button class="nav-tab" id="tabCotizaciones" onclick="showTab('cotizaciones');cerrarMenuVentasCobros()" style="display:block;width:100%;text-align:left;margin:0">📋 Cotizaciones</button>
       </div>
+      <button class="nav-tab" onclick="showTab('cotizaciones')" id="tabCotizaciones">📋 Cotizaciones</button>
     </div>
     <!-- Fila 2: Administración -->
     <div class="nav-tabs" id="navTabs2" style="flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none">
@@ -3911,7 +3911,7 @@ function initApp() {
   });
   // El desplegable Menú se muestra solo si el rol tiene alguna de sus opciones
   const ddVC = document.getElementById('tabVentasCobros');
-  if (ddVC) ddVC.style.display = (perms.tabs.includes('ventas') || perms.tabs.includes('cobros') || perms.tabs.includes('cotizaciones')) ? '' : 'none';
+  if (ddVC) ddVC.style.display = (perms.tabs.includes('ventas') || perms.tabs.includes('cobros')) ? '' : 'none';
 
   // Cargar datos desde Google Sheets
   cargarDesdeSheetsYRenderizar();
@@ -4306,9 +4306,9 @@ function showTab(name) {
     const m=(t.getAttribute('onclick')||'').match(/showTab\('(\w+)'\)/);
     t.classList.toggle('active',m&&m[1]===name);
   });
-  // El botón del desplegable se marca activo si estamos en Ventas, Cobros o Cotizaciones
+  // El botón del desplegable se marca activo si estamos en Ventas o Cobros
   const _ddVC = document.getElementById('tabVentasCobros');
-  if (_ddVC) _ddVC.classList.toggle('active', name==='ventas' || name==='cobros' || name==='cotizaciones');
+  if (_ddVC) _ddVC.classList.toggle('active', name==='ventas' || name==='cobros');
   document.querySelectorAll('.tab-content').forEach(c=>{
     c.classList.toggle('active',c.id==='tab-'+name);
   });
