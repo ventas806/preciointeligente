@@ -3961,7 +3961,8 @@ async function sincronizarSilencioso() {
           url1: r.url1||'', url2: r.url2||'', nota: r.nota||'', imagen: r.imagen||null,
           _ingresadoPor: r.enviado_por||'',
           _fechaPendiente: r.fecha_envio ? new Date(r.fecha_envio).toLocaleString('es-HN') : '',
-          _pendiente: true
+          _pendiente: true,
+          _editaId: (typeof r.id === 'string' && r.id.startsWith('pendedit_')) ? r.id.slice(9) : null
         }));
         actualizarBadgePendientes();
       }
@@ -4039,7 +4040,8 @@ async function cargarDesdeSheetsYRenderizar() {
         nota: r.nota||'', imagen: r.imagen||null,
         _ingresadoPor:   r.enviado_por || '',
         _fechaPendiente: r.fecha_envio ? new Date(r.fecha_envio).toLocaleString('es-HN') : '',
-        _pendiente: true
+        _pendiente: true,
+        _editaId: (typeof r.id === 'string' && r.id.startsWith('pendedit_')) ? r.id.slice(9) : null
       }));
     }
 
@@ -4317,7 +4319,8 @@ function showTab(name) {
   if(name==='ingresar') {
     const btn = document.getElementById('btnGuardarProducto');
     if(btn) {
-      if(currentUser && currentUser.rol === 'gerencia' && !editingId) {
+      if(currentUser && currentUser.rol === 'gerencia') {
+        // Gerencia: tanto productos nuevos como ediciones pasan por aprobación
         btn.textContent = '⏳ Enviar a Aprobación';
         btn.className = 'btn btn-gold btn-lg';
       } else {
@@ -4849,17 +4852,31 @@ async function guardarProducto() {
     roiCostoPct:      +c.roi.toFixed(4)
   };
 
-  const esGerenciaNuevo = currentUser.rol === 'gerencia' && !editingId;
+  const esGerencia = currentUser.rol === 'gerencia';
 
-  mostrarCargando(esGerenciaNuevo ? '⏳ Enviando a aprobación...' : '💾 Guardando en Supabase...');
+  mostrarCargando(esGerencia ? '⏳ Enviando a aprobación...' : '💾 Guardando en Supabase...');
   try {
-    if(editingId) {
+    if(editingId && esGerencia) {
+      // Gerencia edita un producto EXISTENTE → el cambio va a aprobación (no se aplica todavía)
+      data.id = 'pendedit_' + editingId; // una sola edición pendiente por producto
+      data.fechaIngreso = now;
+      data._pendiente = true;
+      data._ingresadoPor = currentUser.nombre;
+      data._fechaPendiente = now;
+      data._editaId = editingId;
+      productosPendientes = productosPendientes.filter(x => x.id !== data.id);
+      productosPendientes.unshift(data);
+      await sbSavePendiente(data);
+      addHistorial(`Edición enviada a aprobación: ${producto}`, 'Edición');
+      showToast('⏳ Cambios enviados a aprobación del Administrador (el producto sigue igual hasta que se apruebe)','warn',6000);
+      actualizarBadgePendientes();
+    } else if(editingId) {
       const idx = productos.findIndex(p=>p.id===editingId);
       if(idx>=0) { productos[idx] = {...productos[idx],...data}; }
       await gsSave('Productos', {...productos[idx], ...dataConCalculos});
       addHistorial(`Producto editado: ${producto}`, 'Edición');
       showToast('Producto actualizado ✅','success');
-    } else if(esGerenciaNuevo) {
+    } else if(esGerencia) {
       // Gerencia: enviar a pendientes, no guardar en Productos directamente
       data.id = 'pend_'+Date.now();
       data.fechaIngreso = now;
@@ -5213,7 +5230,7 @@ function renderAprobacion() {
   }
 
   if(productosPendientes.length === 0) {
-    lista.innerHTML = `<div class="aprob-empty"><div class="icon">✅</div><h3>Sin productos pendientes</h3><p>Cuando Gerencia ingrese productos nuevos aparecerán aquí para tu aprobación.</p></div>`;
+    lista.innerHTML = `<div class="aprob-empty"><div class="icon">✅</div><h3>Sin productos pendientes</h3><p>Cuando Gerencia ingrese productos nuevos o edite productos existentes, aparecerán aquí para tu aprobación.</p></div>`;
     return;
   }
 
@@ -5224,7 +5241,9 @@ function renderAprobacion() {
       <div class="aprob-card-img">${p.imagen ? `<img src="${p.imagen}">` : '📦'}</div>
       <div class="aprob-card-body">
         <div class="aprob-card-nombre">${p.producto}</div>
-        <div class="aprob-card-sku">SKU: ${p.sku} &nbsp;·&nbsp; <span class="aprob-badge-pend">⏳ Pendiente</span></div>
+        <div class="aprob-card-sku">SKU: ${p.sku} &nbsp;·&nbsp; ${p._editaId
+          ? '<span class="aprob-badge-pend" style="background:rgba(61,106,255,.15);color:var(--accent)">✏️ Edición de producto existente</span>'
+          : '<span class="aprob-badge-pend">⏳ Producto nuevo</span>'}</div>
         <div class="aprob-card-meta">
           <div class="aprob-meta-item"><div class="aprob-meta-label">Costo USD</div><div class="aprob-meta-value">${fmtUSD(p.costoUSD)}</div></div>
           <div class="aprob-meta-item"><div class="aprob-meta-label">Precio c/ISV</div><div class="aprob-meta-value" style="color:var(--green)">${fmtLPS(c.precioConISV)}</div></div>
@@ -5355,8 +5374,13 @@ async function aprobarPendiente() {
   const edits = leerFormEditarPendiente();
   if(!edits.sku || !edits.producto || !edits.costoUSD) { showToast('Completa SKU, Nombre y Costo USD','error'); return; }
   const now = new Date().toISOString().replace('Z','').replace('T',' ').substring(0,19);
-  const prodFinal = {...p, ...edits, aprobadoPor: currentUser.nombre, fechaAprobacion: now, ultimaModif: now};
-  delete prodFinal._ingresadoPor; delete prodFinal._fechaPendiente; delete prodFinal._pendiente;
+  // Si es edición de un producto existente, aplicar los cambios sobre ese producto
+  const targetIdx = p._editaId ? productos.findIndex(x => x.id === p._editaId) : -1;
+  const base = targetIdx >= 0 ? productos[targetIdx] : {};
+  const prodFinal = {...base, ...p, ...edits, aprobadoPor: currentUser.nombre, fechaAprobacion: now, ultimaModif: now};
+  prodFinal.id = targetIdx >= 0 ? p._editaId : p.id;
+  if (targetIdx >= 0) prodFinal.fechaIngreso = base.fechaIngreso || prodFinal.fechaIngreso;
+  delete prodFinal._ingresadoPor; delete prodFinal._fechaPendiente; delete prodFinal._pendiente; delete prodFinal._editaId;
 
   const c = calcProd(prodFinal);
   const conCalc = {...prodFinal, costoTotalUSD:+c.costoTotalUSD.toFixed(2), costoTotalLPS:+c.costoTotalLPS.toFixed(2), bandaEfectiva:c.bandaEfectiva, margenFinal:+c.margenFinal.toFixed(4), precioNeto:+c.precioNeto.toFixed(2), precioConISV:+c.precioConISV.toFixed(2), descMaxRef:+c.descMax.toFixed(4), precioFinalDesc:+c.precioFinalDesc.toFixed(2), cantDescLPS:+c.cantDescLPS.toFixed(2), utilBrutaLPS:+c.utilBrutaLPS.toFixed(2), roiCostoPct:+c.roi.toFixed(4)};
@@ -5366,9 +5390,10 @@ async function aprobarPendiente() {
     await gsSave('Productos', conCalc);
     // ✅ FIX: Eliminar de Supabase pendientes_aprobacion para que no reaparezca
     await sbAprobarPendiente(p.id);
-    productos.unshift(prodFinal);
+    if (targetIdx >= 0) productos[targetIdx] = prodFinal;
+    else productos.unshift(prodFinal);
     productosPendientes = productosPendientes.filter(x => x.id !== pendienteEditandoId);
-    addHistorial(`Producto aprobado: ${prodFinal.producto}`, 'Ingreso');
+    addHistorial(`${targetIdx >= 0 ? 'Edición aprobada' : 'Producto aprobado'}: ${prodFinal.producto}`, 'Ingreso');
     showToast(`✅ Producto aprobado: ${prodFinal.producto}`, 'success');
     cerrarModal('modalEditarPendiente');
     renderAprobacion(); renderTablaProductos(); renderDashboard(); actualizarBadgePendientes();
@@ -5380,8 +5405,13 @@ async function aprobarDirecto(id) {
   const p = productosPendientes.find(x => x.id === id);
   if(!p) return;
   const now = new Date().toISOString().replace('Z','').replace('T',' ').substring(0,19);
-  const prodFinal = {...p, aprobadoPor: currentUser.nombre, fechaAprobacion: now, ultimaModif: now};
-  delete prodFinal._ingresadoPor; delete prodFinal._fechaPendiente; delete prodFinal._pendiente;
+  // Si es edición de un producto existente, aplicar los cambios sobre ese producto
+  const targetIdx = p._editaId ? productos.findIndex(x => x.id === p._editaId) : -1;
+  const base = targetIdx >= 0 ? productos[targetIdx] : {};
+  const prodFinal = {...base, ...p, aprobadoPor: currentUser.nombre, fechaAprobacion: now, ultimaModif: now};
+  prodFinal.id = targetIdx >= 0 ? p._editaId : p.id;
+  if (targetIdx >= 0) prodFinal.fechaIngreso = base.fechaIngreso || prodFinal.fechaIngreso;
+  delete prodFinal._ingresadoPor; delete prodFinal._fechaPendiente; delete prodFinal._pendiente; delete prodFinal._editaId;
 
   const c = calcProd(prodFinal);
   const conCalc = {...prodFinal, costoTotalUSD:+c.costoTotalUSD.toFixed(2), costoTotalLPS:+c.costoTotalLPS.toFixed(2), bandaEfectiva:c.bandaEfectiva, margenFinal:+c.margenFinal.toFixed(4), precioNeto:+c.precioNeto.toFixed(2), precioConISV:+c.precioConISV.toFixed(2), descMaxRef:+c.descMax.toFixed(4), precioFinalDesc:+c.precioFinalDesc.toFixed(2), cantDescLPS:+c.cantDescLPS.toFixed(2), utilBrutaLPS:+c.utilBrutaLPS.toFixed(2), roiCostoPct:+c.roi.toFixed(4)};
@@ -5391,9 +5421,10 @@ async function aprobarDirecto(id) {
     await gsSave('Productos', conCalc);
     // ✅ FIX: Eliminar de Supabase pendientes_aprobacion para que no reaparezca
     await sbAprobarPendiente(id);
-    productos.unshift(prodFinal);
+    if (targetIdx >= 0) productos[targetIdx] = prodFinal;
+    else productos.unshift(prodFinal);
     productosPendientes = productosPendientes.filter(x => x.id !== id);
-    addHistorial(`Producto aprobado: ${prodFinal.producto}`, 'Ingreso');
+    addHistorial(`${targetIdx >= 0 ? 'Edición aprobada' : 'Producto aprobado'}: ${prodFinal.producto}`, 'Ingreso');
     showToast(`✅ Aprobado: ${prodFinal.producto}`, 'success');
     renderAprobacion(); renderTablaProductos(); renderDashboard(); actualizarBadgePendientes();
   } catch(err) { showToast('Error al aprobar','error'); }
