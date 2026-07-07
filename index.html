@@ -683,9 +683,12 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
       <button class="nav-tab" onclick="showTab('exportar')" id="tabExportar">📋 Exportar</button>
       <button class="nav-tab" onclick="showTab('etiquetas')" id="tabEtiquetas">🏷️ Etiquetas</button>
       <button class="nav-tab" onclick="showTab('combos')" id="tabCombos">🎁 Combos</button>
-      <button class="nav-tab" onclick="showTab('ventas')" id="tabVentas">🛒 Ventas</button>
+      <button class="nav-tab" id="tabVentasCobros" onclick="toggleMenuVentasCobros(event)">🛒 Ventas ▾ <span id="badgeCobrosTop" style="display:none;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
+      <div id="menuVentasCobros" style="display:none;position:fixed;z-index:2000;background:var(--bg3);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.55);padding:6px;min-width:180px">
+        <button class="nav-tab" id="tabVentas" onclick="showTab('ventas');cerrarMenuVentasCobros()" style="display:block;width:100%;text-align:left;margin:0">🛒 Ventas</button>
+        <button class="nav-tab" id="tabCobros" onclick="showTab('cobros');cerrarMenuVentasCobros()" style="display:block;width:100%;text-align:left;margin:0">💰 Cobros <span id="badgeCobros" style="display:none;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
+      </div>
       <button class="nav-tab" onclick="showTab('cotizaciones')" id="tabCotizaciones">📋 Cotizaciones</button>
-      <button class="nav-tab" onclick="showTab('cobros')" id="tabCobros">💰 Cobros <span id="badgeCobros" style="display:none;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
     </div>
     <!-- Fila 2: Administración -->
     <div class="nav-tabs" id="navTabs2" style="flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none">
@@ -3924,6 +3927,9 @@ function initApp() {
       tab.style.display = perms.tabs.includes(tname) ? '' : 'none';
     }
   });
+  // El desplegable Ventas/Cobros se muestra solo si el rol tiene alguna de las dos
+  const ddVC = document.getElementById('tabVentasCobros');
+  if (ddVC) ddVC.style.display = (perms.tabs.includes('ventas') || perms.tabs.includes('cobros')) ? '' : 'none';
 
   // Cargar datos desde Google Sheets
   cargarDesdeSheetsYRenderizar();
@@ -4296,11 +4302,31 @@ function _notifSonido() {
 }
 
 // ===== TABS =====
+// ── Menú desplegable Ventas / Cobros ──
+function toggleMenuVentasCobros(ev) {
+  ev.stopPropagation();
+  const menu = document.getElementById('menuVentasCobros');
+  if (!menu) return;
+  if (menu.style.display === 'block') { menu.style.display = 'none'; return; }
+  const r = ev.currentTarget.getBoundingClientRect();
+  menu.style.top = (r.bottom + 6) + 'px';
+  menu.style.left = Math.max(8, r.left) + 'px';
+  menu.style.display = 'block';
+  setTimeout(() => document.addEventListener('click', cerrarMenuVentasCobros, { once: true }), 0);
+}
+function cerrarMenuVentasCobros() {
+  const menu = document.getElementById('menuVentasCobros');
+  if (menu) menu.style.display = 'none';
+}
+
 function showTab(name) {
   document.querySelectorAll('.nav-tab').forEach(t=>{
     const m=(t.getAttribute('onclick')||'').match(/showTab\('(\w+)'\)/);
     t.classList.toggle('active',m&&m[1]===name);
   });
+  // El botón del desplegable se marca activo si estamos en Ventas o Cobros
+  const _ddVC = document.getElementById('tabVentasCobros');
+  if (_ddVC) _ddVC.classList.toggle('active', name==='ventas' || name==='cobros');
   document.querySelectorAll('.tab-content').forEach(c=>{
     c.classList.toggle('active',c.id==='tab-'+name);
   });
@@ -11547,6 +11573,9 @@ function _renderCobrosInterno() {
   const badge = document.getElementById('badgeCobros');
   const alertas = nVencidos + nHoy;
   if (badge) { badge.style.display = alertas>0?'':'none'; badge.textContent = alertas; }
+  // Réplica del badge en el botón del menú desplegable (visible sin abrir el menú)
+  const badgeTop = document.getElementById('badgeCobrosTop');
+  if (badgeTop) { badgeTop.style.display = alertas>0?'':'none'; badgeTop.textContent = alertas; }
 
   const statsEl = document.getElementById('cobrosStats');
   if (statsEl) statsEl.innerHTML = `
