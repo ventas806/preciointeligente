@@ -1930,22 +1930,6 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
       <!-- ===== NUEVA VENTA ===== -->
       <div id="vPanelNueva" style="display:none">
 
-        <!-- Tipo de Venta -->
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px">
-          <span style="font-size:13px;font-weight:700;color:var(--text2)">Tipo de Venta:</span>
-          <div style="display:flex;gap:6px">
-            <button id="vBtnFormal" onclick="setTipoVenta('formal')"
-              style="padding:7px 20px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;background:var(--accent);color:#fff">
-              🧾 Formal
-            </button>
-            <button id="vBtnInformal" onclick="setTipoVenta('informal')"
-              style="padding:7px 20px;border-radius:8px;border:1px solid var(--border);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;background:transparent;color:var(--text2)">
-              🤝 Informal
-            </button>
-          </div>
-          <span id="vTipoVentaHint" style="font-size:11px;color:var(--text3);margin-left:4px">Con factura formal, RTN y datos completos</span>
-        </div>
-
         <div style="display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start">
 
           <!-- Columna izquierda: datos + productos -->
@@ -2355,12 +2339,11 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                   <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:left">CLIENTE</th>
                   <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:left">VENDEDOR</th>
                   <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:left">MÉTODO PAGO</th>
-                  <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:left">TIPO</th>
                   <th style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text3);text-align:center">ACCIONES</th>
                 </tr>
               </thead>
               <tbody id="vRPPBody">
-                <tr><td colspan="11" style="text-align:center;padding:32px;color:var(--text3)">Aplica filtros para ver resultados</td></tr>
+                <tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text3)">Aplica filtros para ver resultados</td></tr>
               </tbody>
             </table>
           </div>
@@ -3309,7 +3292,6 @@ async function sbSaveVenta(venta) {
     metodo_envio:     venta.metodoEnvio     || '',
     promesa_pago:     venta.promesaPago      || null,
     nota:             (venta.nota            || '').substring(0, 12),
-    tipo_venta:       venta.tipoVenta        || 'formal',
     fecha_liquidada:  venta.fechaLiquidada   || null,
     items: (venta.items || []).map(it => ({
       sku:         it.sku         || '',
@@ -6860,7 +6842,6 @@ let vItemsActuales = [];
 let vItemsAbonos   = [];   // [{_id, monto, fecha, nota, registradoPor}]
 let vClienteSelId  = null;
 let vEditandoId    = null;
-let vTipoVenta     = 'formal';
 let _ventasCargadas  = false;
 let _ventasChannel   = null;
 let _ventasAutoTimer = null;
@@ -7066,7 +7047,6 @@ function _mapVentaRow(v) {
     fechaLiquidada:  v.fecha_liquidada || '',
     registradoPor:   v.registrado_por  || '',
     nota:            v.nota            || '',
-    tipoVenta:       v.tipo_venta      || 'formal',
     descuento:       parseFloat(v.descuento)       || 0,
     descuentoTipo:   v.descuento_tipo              || '%',
     descuentoValor:  parseFloat(v.descuento_valor) || 0,
@@ -8570,9 +8550,6 @@ async function guardarVenta() {
   const fecha     = document.getElementById('vFecha').value;
   const vendedorId= document.getElementById('vVendedor').value;
   if (!nombre)                              { showToast('⚠️ Selecciona un cliente para la venta','warn'); return; }
-  if (vTipoVenta === 'formal' && !direccion){ showToast('⚠️ El cliente no tiene dirección — usa ✏️ Editar para completarla','warn'); return; }
-  if (vTipoVenta === 'formal' && !ciudad)   { showToast('⚠️ El cliente no tiene ciudad — usa ✏️ Editar para completarla','warn'); return; }
-  if (vTipoVenta === 'formal' && !tel)      { showToast('⚠️ El cliente no tiene teléfono — usa ✏️ Editar para completarlo','warn'); return; }
   if (!fecha)      { showToast('⚠️ Selecciona la fecha de venta','warn'); return; }
   if (!vendedorId) { showToast('⚠️ Selecciona el vendedor','warn'); return; }
 
@@ -8669,8 +8646,7 @@ async function guardarVenta() {
     saldoPendiente:   Math.max(0, total - vItemsAbonos.reduce((s,a)=>s+(a.monto||0),0)),
     fechaRegistro: new Date().toISOString(),
     registradoPor: currentUser ? currentUser.nombre : '—',
-    nota: vEditandoId ? ((ventas.find(x=>x.id===vEditandoId)||{}).nota||'') : '',
-    tipoVenta: vTipoVenta || 'formal'
+    nota: vEditandoId ? ((ventas.find(x=>x.id===vEditandoId)||{}).nota||'') : ''
   };
 
   // Si una venta con saldo pendiente queda saldada → marcar como "Parcial - Liquidada"
@@ -8761,37 +8737,6 @@ function limpiarVenta() {
   const grid = document.querySelector('#vPanelNueva > div[style*="grid-template-columns"]');
   if (grid) grid.style.gridTemplateColumns = '1fr 380px';
   // Reset tipo venta
-  setTipoVenta('formal');
-}
-
-// ── Tipo de Venta (Formal / Informal) ────────────────────────────
-function setTipoVenta(tipo) {
-  vTipoVenta = tipo;
-  const btnF = document.getElementById('vBtnFormal');
-  const btnI = document.getElementById('vBtnInformal');
-  const hint = document.getElementById('vTipoVentaHint');
-  if (!btnF || !btnI) return;
-
-  if (tipo === 'formal') {
-    btnF.style.background = 'var(--accent)'; btnF.style.color = '#fff'; btnF.style.border = 'none';
-    btnI.style.background = 'transparent';   btnI.style.color = 'var(--text2)'; btnI.style.border = '1px solid var(--border)';
-    if (hint) hint.textContent = 'Con factura formal, RTN y datos completos del cliente';
-    // Restaurar labels y required visual
-    const lblDir = document.getElementById('vLblDireccion'); if(lblDir) lblDir.textContent = 'DIRECCIÓN *';
-    const lblCiu = document.getElementById('vLblCiudad');    if(lblCiu) lblCiu.textContent = 'CIUDAD *';
-    const lblTel = document.getElementById('vLblTel');       if(lblTel) lblTel.textContent = 'TELÉFONO *';
-  } else {
-    btnI.style.background = '#f39c12'; btnI.style.color = '#000'; btnI.style.border = 'none';
-    btnF.style.background = 'transparent'; btnF.style.color = 'var(--text2)'; btnF.style.border = '1px solid var(--border)';
-    if (hint) hint.textContent = 'Venta rápida sin datos formales — consumidor final';
-    // Marcar campos opcionales
-    const lblDir = document.getElementById('vLblDireccion'); if(lblDir) lblDir.textContent = 'DIRECCIÓN (opcional)';
-    const lblCiu = document.getElementById('vLblCiudad');    if(lblCiu) lblCiu.textContent = 'CIUDAD (opcional)';
-    const lblTel = document.getElementById('vLblTel');       if(lblTel) lblTel.textContent = 'TELÉFONO (opcional)';
-    // Pre-rellenar nombre si está vacío
-    const nomEl = document.getElementById('vClienteNombre');
-    if (nomEl && !nomEl.value.trim()) nomEl.value = 'Consumidor Final';
-  }
 }
 
 // ===== HISTORIAL DE VENTAS =====
@@ -8993,7 +8938,7 @@ function renderHistorialVentas() {
             ${fechaIng ? `<div style="font-size:10px;color:var(--text3);margin-top:2px">🕐 ${fechaIng}</div>` : ''}
           </td>
           <td style="font-weight:600">
-            ${v.tipoVenta === 'informal' ? '<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:rgba(243,156,18,.15);color:#f39c12;margin-right:5px;vertical-align:middle">🤝 Inf.</span>' : '<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:rgba(61,106,255,.12);color:var(--accent);margin-right:5px;vertical-align:middle">🧾 For.</span>'}${v.clienteNombre}${thumbsHtml}
+            ${v.clienteNombre}${thumbsHtml}
           </td>
           <td onclick="event.stopPropagation()">
             <input type="text" value="${(v.nota||'').replace(/"/g,'&quot;')}" maxlength="12"
@@ -9654,7 +9599,6 @@ function editarVenta(id, _modoAbono) {
   vEditandoId = id;
 
   // Restaurar tipo de venta
-  setTipoVenta(v.tipoVenta || 'formal');
 
   // Cargar datos del cliente
   vClienteSelId = v.clienteId || null;
@@ -10225,8 +10169,7 @@ function renderReporteProductos() {
         cantidad: 1, precioUnit: v.total, subtotal: v.total,
         cliente: v.clienteNombre || '—',
         vendedor: v.vendedorNombre || '—',
-        metodoPago: v.metodoPago || '—',
-        tipo: v.tipoVenta || 'formal'
+        metodoPago: v.metodoPago || '—'
       });
     } else {
       items.forEach(it => {
@@ -10242,8 +10185,7 @@ function renderReporteProductos() {
           cantidad: qty, precioUnit: pUnit, subtotal: sub,
           cliente:    v.clienteNombre  || '—',
           vendedor:   v.vendedorNombre || '—',
-          metodoPago: v.metodoPago     || '—',
-          tipo: v.tipoVenta || 'formal'
+          metodoPago: v.metodoPago     || '—'
         });
       });
     }
@@ -10282,13 +10224,10 @@ function renderReporteProductos() {
   }
 
   if (!filas.length) {
-    body.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:32px;color:var(--text3)">Sin resultados para los filtros aplicados</td></tr>';
+    body.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text3)">Sin resultados para los filtros aplicados</td></tr>';
     return;
   }
 
-  const tipoBadge = t => t === 'informal'
-    ? `<span style="background:rgba(243,156,18,.18);color:#f39c12;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700">🤝 Informal</span>`
-    : `<span style="background:rgba(61,106,255,.15);color:var(--accent);padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700">🧾 Formal</span>`;
   const pagoIcon = { efectivo:'💵', tarjeta:'💳', transferencia:'🏦', parcial:'📆', wix:'🛍️', otro:'💱' };
   const puedeEditar = ['admin','gerencia'].includes(currentUser?.rol);
 
@@ -10303,7 +10242,6 @@ function renderReporteProductos() {
       <td style="padding:8px 12px;font-size:12px;color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${f.cliente}">${f.cliente}</td>
       <td style="padding:8px 12px;font-size:12px;color:var(--text2)">${f.vendedor}</td>
       <td style="padding:8px 12px;font-size:12px;white-space:nowrap">${(pagoIcon[f.metodoPago]||'💱')} ${f.metodoPago}</td>
-      <td style="padding:8px 12px;white-space:nowrap">${tipoBadge(f.tipo)}</td>
       <td style="padding:6px 10px;white-space:nowrap;text-align:center">
         <button onclick="verDetalleVenta('${f.ventaId}')"
           style="padding:4px 9px;font-size:11px;border:none;border-radius:6px;cursor:pointer;background:rgba(61,106,255,.18);color:var(--accent);font-weight:700;margin-right:4px;transition:background .15s"
@@ -10324,7 +10262,7 @@ function exportarReporteProductos() {
   if (!filas.length || filas[0].querySelector('td[colspan]')) {
     showToast('⚠️ No hay datos para copiar','warn'); return;
   }
-  const header = 'FECHA\tSKU\tPRODUCTO\tCANT.\tP. UNIT.\tSUBTOTAL\tCLIENTE\tVENDEDOR\tMÉT. PAGO\tTIPO';
+  const header = 'FECHA\tSKU\tPRODUCTO\tCANT.\tP. UNIT.\tSUBTOTAL\tCLIENTE\tVENDEDOR\tMÉT. PAGO';
   // Exclude last column (acciones / buttons)
   const rows   = filas.map(tr => {
     const celdas = [...tr.querySelectorAll('td')];

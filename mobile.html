@@ -1360,7 +1360,6 @@ function _mapVentaRow(v) {
     metodoPagoLabel:v.metodo_pago_label || '',
     metodoEnvio:    v.metodo_envio    || '',
     fechaRegistro:  v.fecha_registro  || '',
-    tipoVenta:      v.tipo_venta      || 'formal',
     items: (v.venta_items || []).map(it => ({
       tipo:       it.producto_id ? 'catalogo' : 'manual',
       productoId: it.producto_id || null,
@@ -1421,7 +1420,6 @@ async function sbSaveVenta(venta) {
     metodo_envio:      venta.metodoEnvio    || '',
     promesa_pago:      null,
     nota:              '',
-    tipo_venta:        venta.tipoVenta      || 'formal',
     items: (venta.items || []).map(it => ({
       sku:         it.sku         || '',
       nombre:      it.descripcion || it.nombre || '',
@@ -2345,7 +2343,6 @@ async function guardarVenta() {
     metodoPagoLabel:metodoPagoMet ? metodoPagoMet.label : metodoPagoId,
     metodoPagoObs:  (document.getElementById('vObsPago')?.value||'').trim(),
     metodoEnvio:    document.getElementById('vMetodoEnvio').value,
-    tipoVenta:      vTipoVenta,
     fechaRegistro:  new Date().toISOString(),
     registradoPor:  currentUser ? currentUser.nombre : '—'
   };
