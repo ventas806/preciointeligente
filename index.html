@@ -1843,6 +1843,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
           <div style="display:flex;gap:8px;align-items:center">
             <button class="btn btn-ghost btn-sm" onclick="exportSelAll()">☑️ Seleccionar Todo</button>
             <button class="btn btn-ghost btn-sm" onclick="exportDeselAll()">🔲 Deseleccionar Todo</button>
+            <button class="btn btn-ghost btn-sm" onclick="expSelectPendientes()" title="Selecciona los productos con cambio de precio/título o nunca exportados">🎯 Seleccionar pendientes</button>
             <button class="btn btn-success" onclick="exportarBlocNotas()" id="btnExportBloc">📥 Exportar Selección</button>
           </div>
         </div>
@@ -1857,7 +1858,15 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             <option value="Usado">Usado</option>
             <option value="Open Box">Open Box</option>
           </select>
+          <select id="expFiltExport" onchange="renderTablaExportar()" title="Filtrar por estado de exportación a Invelec">
+            <option value="">📤 Exportación: todos</option>
+            <option value="pendiente">🔴 Pendientes de exportar</option>
+            <option value="cambio">🔴 Precio/título cambió</option>
+            <option value="nunca">⚪ Nunca exportados</option>
+            <option value="ok">✅ Ya exportados</option>
+          </select>
           <div class="filter-spacer"></div>
+          <span id="expPendCount" style="font-size:13px;color:#e74c3c;font-weight:700;white-space:nowrap;margin-right:10px"></span>
           <span id="expSelCount" style="font-size:13px;color:var(--text2);white-space:nowrap">0 seleccionados</span>
         </div>
         <!-- Filtros de fecha -->
@@ -1893,6 +1902,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 <th>Categoría</th>
                 <th>Estado</th>
                 <th style="text-align:center">INVELEC</th>
+                <th style="text-align:center">📤 EXPORT</th>
                 <th>Costo Total LPS (N)</th>
                 <th>Precio Neto (W)</th>
                 <th>ISV</th>
@@ -6429,6 +6439,50 @@ let exportSeleccionados = new Set();
 let exportProductosFiltrados = [];
 let exportTxtFinal = '';
 
+// ===== SEGUIMIENTO DE EXPORTACIÓN A INVELEC (local, no toca la base de datos) =====
+const EXP_SNAP_KEY = 'exportInvelecSnapshot_v1';
+let exportUltimaData = [];
+function expSnapLoad(){ try { return JSON.parse(localStorage.getItem(EXP_SNAP_KEY)||'{}') || {}; } catch(e){ return {}; } }
+function expSnapSave(o){ try { localStorage.setItem(EXP_SNAP_KEY, JSON.stringify(o)); } catch(e){} }
+let _expSnap = expSnapLoad();
+
+// Estado de un producto respecto a la última exportación guardada
+function expStatus(p, c){
+  const s = _expSnap[p.id];
+  if(!s) return { code:'nunca' };
+  c = c || calcProd(p);
+  const precioAct = Math.round((c.precioNeto||0)*100)/100;
+  const nombreAct = (p.producto||'').substring(0,60);
+  const dPrecio = Math.abs(precioAct - (s.precio||0)) >= 0.01;
+  const dNombre = nombreAct !== (s.nombre||'');
+  if(dPrecio || dNombre) return { code:'cambio', dPrecio, dNombre, snap:s, precioAct };
+  return { code:'ok', snap:s };
+}
+
+function expBadge(st){
+  if(st.code==='nunca') return `<span style="font-size:11px;color:var(--text3)">⚪ Sin exportar</span>`;
+  if(st.code==='ok')    return `<span style="font-size:11px;color:var(--accent3);font-weight:600" title="Exportado el ${st.snap.fecha}">✅ ${st.snap.fecha}</span>`;
+  const parts = [];
+  if(st.dPrecio){
+    const viejo = (st.snap.precio||0).toLocaleString('es-HN',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const nuevo = (st.precioAct||0).toLocaleString('es-HN',{minimumFractionDigits:2,maximumFractionDigits:2});
+    parts.push(`<span style="font-size:11px;color:#e74c3c;font-weight:700" title="Precio exportado L${viejo} → precio actual L${nuevo}. Falta re-exportar.">🔴 L${viejo}→L${nuevo}</span>`);
+  }
+  if(st.dNombre) parts.push(`<span style="font-size:11px;color:var(--gold);font-weight:600" title="El título cambió desde la última exportación">🟡 Título cambió</span>`);
+  return parts.join('<br>');
+}
+
+// Seleccionar todos los pendientes (cambio de precio/título o nunca exportados) de la vista actual
+function expSelectPendientes(){
+  let n = 0;
+  exportProductosFiltrados.forEach(p => {
+    const code = expStatus(p).code;
+    if(code==='cambio' || code==='nunca'){ exportSeleccionados.add(p.id); n++; }
+  });
+  renderTablaExportar();
+  showToast(n ? `🎯 ${n} pendiente${n!==1?'s':''} seleccionado${n!==1?'s':''}` : 'No hay pendientes en la vista actual', n ? 'success' : 'info');
+}
+
 let exportOrden = ''; // '' = por defecto, 'ingreso' = fecha ingreso desc, 'modif' = fecha modif desc
 
 function setExportSort(tipo) {
@@ -6498,17 +6552,31 @@ function renderTablaExportar() {
     });
   }
 
+  // Filtro por estado de exportación a Invelec (seguimiento local)
+  const fExp = (document.getElementById('expFiltExport')||{}).value||'';
+  if(fExp){
+    exportProductosFiltrados = exportProductosFiltrados.filter(p => {
+      const st = expStatus(p).code;
+      if(fExp==='pendiente') return st==='cambio' || st==='nunca';
+      return st===fExp;
+    });
+  }
+
   const tbody = document.getElementById('tbodyExportar');
   if(!tbody) return;
 
   if(!exportProductosFiltrados.length) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text3)">No hay productos</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text3)">No hay productos</td></tr>`;
+    const _pend0 = document.getElementById('expPendCount'); if(_pend0) _pend0.innerHTML = '';
     actualizarContadorExp();
     return;
   }
 
+  let _cCambio = 0;
   tbody.innerHTML = exportProductosFiltrados.map(p => {
     const c = calcProd(p);
+    const st = expStatus(p, c);
+    if(st.code === 'cambio') _cCambio++;
     const precio = c.precioNeto.toLocaleString('es-HN', {minimumFractionDigits:2, maximumFractionDigits:2});
     const costo  = c.costoTotalLPS.toLocaleString('es-HN', {minimumFractionDigits:2, maximumFractionDigits:2});
     const isv = p.estado === 'Nuevo' ? 15 : 0;
@@ -6527,11 +6595,15 @@ function renderTablaExportar() {
           onchange="toggleInvelec('${p.id}', this.checked)"
           style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent3)">
       </td>
+      <td style="text-align:center;white-space:nowrap">${expBadge(st)}</td>
       <td style="color:var(--text2);font-weight:600">${costo}</td>
       <td class="td-price">${precio}</td>
       <td style="color:${isv?'var(--accent3)':'var(--text3)'};font-weight:700">${isv}</td>
     </tr>`;
   }).join('');
+
+  const _pend = document.getElementById('expPendCount');
+  if(_pend) _pend.innerHTML = _cCambio ? `🔴 ${_cCambio} con cambio de precio/título` : '';
 
   actualizarContadorExp();
 }
@@ -6602,6 +6674,12 @@ function exportarBlocNotas() {
 
   exportTxtFinal = lineas.join('\n');
 
+  // Guardar los datos exactos exportados; se confirman al descargar el .txt
+  exportUltimaData = seleccionados.map(p => {
+    const c = calcProd(p);
+    return { id: p.id, precio: Math.round((c.precioNeto||0)*100)/100, nombre: (p.producto||'').substring(0,60) };
+  });
+
   // Mostrar preview
   const card = document.getElementById('exportPreviewCard');
   const pre  = document.getElementById('exportPreviewTxt');
@@ -6626,7 +6704,14 @@ function descargarBloc() {
   a.click();
   setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1000);
   addHistorial(`Exportación Bloc de Notas: ${exportSeleccionados.size} productos`, 'Exportar');
-  showToast('✅ Archivo .txt descargado correctamente', 'success');
+
+  // Registrar en el seguimiento local: precio y título con que se exportó cada producto
+  const _hoy = new Date().toISOString().split('T')[0];
+  exportUltimaData.forEach(d => { _expSnap[d.id] = { precio: d.precio, nombre: d.nombre, fecha: _hoy }; });
+  expSnapSave(_expSnap);
+  renderTablaExportar();
+
+  showToast('✅ Archivo .txt descargado — productos marcados como exportados', 'success');
 }
 
 function initTablaExportar() {
