@@ -5349,12 +5349,13 @@ function aplicarEstrategiaFin(inpAj, inpDe, banda, nivel) {
 }
 
 // Versión a nivel de datos: devuelve {ajusteManual, descuento} de un pendiente
-// aplicando la estrategia si califica (banda Premium / Alto Normal-Alto), no es
-// edición y aún no tiene ajuste ni descuento propios.
+// aplicando la estrategia si califica (banda Premium / Alto Normal-Alto) y aún no
+// tiene ajuste ni descuento propios. Aplica tanto a productos nuevos como a
+// ediciones — pero SOLO dentro del flujo de aprobación (nunca toca el catálogo solo).
 function pendienteConEstrategia(p) {
   const aj = parseFloat(p?.ajusteManual) || 0;
   const de = parseFloat(p?.descuento) || 0;
-  if (!p || p._editaId || aj !== 0 || de !== 0) return { ajusteManual: aj, descuento: de };
+  if (!p || aj !== 0 || de !== 0) return { ajusteManual: aj, descuento: de };
   const banda = calcProd({ ...p, ajusteManual: 0, descuento: 0 }).bandaEfectiva;
   const esCombo = banda === 'Premium' || (banda === 'Alto' && (p.nivel === 'Normal' || p.nivel === 'Alto'));
   return esCombo ? { ajusteManual: 0.21, descuento: 13 } : { ajusteManual: aj, descuento: de };
@@ -5364,8 +5365,8 @@ function recalcPendientePreview() {
   const p = productosPendientes.find(x => x.id === pendienteEditandoId);
   if (!p) return;
   let edits = leerFormEditarPendiente();
-  // Aplicar la estrategia solo a productos nuevos (no a ediciones de productos existentes)
-  if (edits.costoUSD > 0 && !p._editaId) {
+  // Aplicar la estrategia a lo que se está aprobando (producto nuevo o edición)
+  if (edits.costoUSD > 0) {
     const bandaPre = calcProd({ ...p, ...edits, ajusteManual: 0, descuento: 0 }).bandaEfectiva;
     aplicarEstrategiaFin(document.getElementById('epAjuste'), document.getElementById('epDescuento'), bandaPre, edits.nivel);
     edits = leerFormEditarPendiente(); // releer por si la estrategia cambió los campos
