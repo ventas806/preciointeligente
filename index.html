@@ -5245,7 +5245,7 @@ function renderAprobacion() {
   }
 
   lista.innerHTML = productosPendientes.map(p => {
-    const c = calcProd(p);
+    const c = calcProd({ ...p, ...pendienteConEstrategia(p) });
     return `
     <div class="aprob-card">
       <div class="aprob-card-img">${p.imagen ? `<img src="${p.imagen}">` : '📦'}</div>
@@ -5305,6 +5305,8 @@ function abrirEditarPendiente(id) {
   document.getElementById('epMinStock').value     = p.minStock||0;
   document.getElementById('epOverrideBanda').value= p.overrideBanda||'';
   abrirModal('modalEditarPendiente');
+  // Aplicar la estrategia de extra-financiamiento y refrescar la vista previa
+  recalcPendientePreview();
 }
 
 function leerFormEditarPendiente() {
@@ -5329,10 +5331,45 @@ function leerFormEditarPendiente() {
   };
 }
 
+// Estrategia extra-financiamiento (misma regla que en Ingresar): en banda Premium
+// (cualquier nivel) o Alto (nivel Normal/Alto), rellena +21% ajuste y 13% descuento
+// si están vacíos, y los limpia si la banda deja de aplicar y siguen automáticos.
+function aplicarEstrategiaFin(inpAj, inpDe, banda, nivel) {
+  if (!inpAj || !inpDe) return false;
+  const esCombo = banda === 'Premium' || (banda === 'Alto' && (nivel === 'Normal' || nivel === 'Alto'));
+  if (esCombo && inpAj.value === '' && inpDe.value === '') {
+    inpAj.value = 21; inpDe.value = 13;
+    inpAj.dataset.autoFin = '1'; inpDe.dataset.autoFin = '1';
+  } else if (!esCombo && inpAj.dataset.autoFin === '1' && inpDe.dataset.autoFin === '1'
+             && parseFloat(inpAj.value) === 21 && parseFloat(inpDe.value) === 13) {
+    inpAj.value = ''; inpDe.value = '';
+    delete inpAj.dataset.autoFin; delete inpDe.dataset.autoFin;
+  }
+  return esCombo && parseFloat(inpAj.value) === 21 && parseFloat(inpDe.value) === 13;
+}
+
+// Versión a nivel de datos: devuelve {ajusteManual, descuento} de un pendiente
+// aplicando la estrategia si califica (banda Premium / Alto Normal-Alto), no es
+// edición y aún no tiene ajuste ni descuento propios.
+function pendienteConEstrategia(p) {
+  const aj = parseFloat(p?.ajusteManual) || 0;
+  const de = parseFloat(p?.descuento) || 0;
+  if (!p || p._editaId || aj !== 0 || de !== 0) return { ajusteManual: aj, descuento: de };
+  const banda = calcProd({ ...p, ajusteManual: 0, descuento: 0 }).bandaEfectiva;
+  const esCombo = banda === 'Premium' || (banda === 'Alto' && (p.nivel === 'Normal' || p.nivel === 'Alto'));
+  return esCombo ? { ajusteManual: 0.21, descuento: 13 } : { ajusteManual: aj, descuento: de };
+}
+
 function recalcPendientePreview() {
   const p = productosPendientes.find(x => x.id === pendienteEditandoId);
   if (!p) return;
-  const edits = leerFormEditarPendiente();
+  let edits = leerFormEditarPendiente();
+  // Aplicar la estrategia solo a productos nuevos (no a ediciones de productos existentes)
+  if (edits.costoUSD > 0 && !p._editaId) {
+    const bandaPre = calcProd({ ...p, ...edits, ajusteManual: 0, descuento: 0 }).bandaEfectiva;
+    aplicarEstrategiaFin(document.getElementById('epAjuste'), document.getElementById('epDescuento'), bandaPre, edits.nivel);
+    edits = leerFormEditarPendiente(); // releer por si la estrategia cambió los campos
+  }
   const c = calcProd({ ...p, ...edits });
   const el = document.getElementById('editPendPreview');
   if (!el) return;
@@ -5418,7 +5455,7 @@ async function aprobarDirecto(id) {
   // Si es edición de un producto existente, aplicar los cambios sobre ese producto
   const targetIdx = p._editaId ? productos.findIndex(x => x.id === p._editaId) : -1;
   const base = targetIdx >= 0 ? productos[targetIdx] : {};
-  const prodFinal = {...base, ...p, aprobadoPor: currentUser.nombre, fechaAprobacion: now, ultimaModif: now};
+  const prodFinal = {...base, ...p, ...pendienteConEstrategia(p), aprobadoPor: currentUser.nombre, fechaAprobacion: now, ultimaModif: now};
   prodFinal.id = targetIdx >= 0 ? p._editaId : p.id;
   if (targetIdx >= 0) prodFinal.fechaIngreso = base.fechaIngreso || prodFinal.fechaIngreso;
   delete prodFinal._ingresadoPor; delete prodFinal._fechaPendiente; delete prodFinal._pendiente; delete prodFinal._editaId;
