@@ -515,6 +515,13 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             <div class="form-field"><label>SKU</label><input type="text" id="epSku"></div>
             <div class="form-field"><label>Cantidad</label><input type="number" id="epCantidad"></div>
             <div class="form-field field-full"><label>Nombre del Producto</label><input type="text" id="epProducto"></div>
+            <div class="form-field field-full"><label>Imagen (pega el link para cambiarla)</label>
+              <div style="display:flex;gap:10px;align-items:center">
+                <img id="epImagenPreview" src="" alt="" style="width:56px;height:56px;object-fit:contain;border-radius:8px;background:var(--bg4);border:1px solid var(--border);flex-shrink:0" onerror="this.style.visibility='hidden'">
+                <input type="text" id="epImagen" placeholder="🔗 Pega el link de la imagen..." style="flex:1"
+                  oninput="const im=document.getElementById('epImagenPreview'); im.src=this.value.trim(); im.style.visibility=this.value.trim()?'visible':'hidden'">
+              </div>
+            </div>
             <div class="form-field"><label>Categoría</label><input type="text" id="epCategoria"></div>
             <div class="form-field"><label>Sub Categoría</label><input type="text" id="epSubcategoria"></div>
             <div class="form-field"><label>Estado</label>
@@ -5313,6 +5320,9 @@ function abrirEditarPendiente(id) {
   document.getElementById('epNota').value         = p.nota||'';
   document.getElementById('epMinStock').value     = p.minStock||0;
   document.getElementById('epOverrideBanda').value= p.overrideBanda||'';
+  document.getElementById('epImagen').value       = p.imagen||'';
+  const _epImg = document.getElementById('epImagenPreview');
+  _epImg.src = p.imagen||''; _epImg.style.visibility = p.imagen ? 'visible' : 'hidden';
   abrirModal('modalEditarPendiente');
   // Aplicar la estrategia de extra-financiamiento y refrescar la vista previa
   recalcPendientePreview();
@@ -5336,7 +5346,8 @@ function leerFormEditarPendiente() {
     url2:         document.getElementById('epUrl2').value,
     nota:         document.getElementById('epNota').value,
     minStock:     parseInt(document.getElementById('epMinStock').value)||0,
-    overrideBanda:document.getElementById('epOverrideBanda').value||''
+    overrideBanda:document.getElementById('epOverrideBanda').value||'',
+    imagen:       document.getElementById('epImagen').value.trim() || null
   };
 }
 
