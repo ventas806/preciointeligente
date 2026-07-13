@@ -5244,14 +5244,22 @@ function renderAprobacion() {
     return;
   }
 
+  const _estadoCfg = {
+    'Nuevo':    {bg:'rgba(46,213,115,.15)', c:'#2ed573',      ic:'🆕'},
+    'Usado':    {bg:'rgba(243,156,18,.15)', c:'#f39c12',      ic:'🔄'},
+    'Open Box': {bg:'rgba(61,106,255,.15)', c:'var(--accent)', ic:'📦'}
+  };
   lista.innerHTML = productosPendientes.map(p => {
     const c = calcProd({ ...p, ...pendienteConEstrategia(p) });
+    const est = _estadoCfg[p.estado] || _estadoCfg['Nuevo'];
+    const estBadge = `<span class="aprob-badge-pend" style="background:${est.bg};color:${est.c}">${est.ic} ${p.estado||'Nuevo'}</span>`;
+    const url1Link = p.url1 ? `<a href="${p.url1}" target="_blank" title="Abrir URL 1: ${p.url1}" onclick="event.stopPropagation()" style="text-decoration:none;font-size:15px;margin-left:6px;vertical-align:middle" onmouseenter="this.style.opacity=.7" onmouseleave="this.style.opacity=1">🔗</a>` : '';
     return `
     <div class="aprob-card">
       <div class="aprob-card-img">${p.imagen ? `<img src="${p.imagen}">` : '📦'}</div>
       <div class="aprob-card-body">
-        <div class="aprob-card-nombre">${p.producto}</div>
-        <div class="aprob-card-sku">SKU: ${p.sku} &nbsp;·&nbsp; ${p._editaId
+        <div class="aprob-card-nombre">${p.producto}${url1Link}</div>
+        <div class="aprob-card-sku">SKU: ${p.sku} &nbsp;·&nbsp; ${estBadge} &nbsp; ${p._editaId
           ? '<span class="aprob-badge-pend" style="background:rgba(61,106,255,.15);color:var(--accent)">✏️ Edición de producto existente</span>'
           : '<span class="aprob-badge-pend">⏳ Producto nuevo</span>'}</div>
         <div class="aprob-card-meta">
@@ -5259,6 +5267,7 @@ function renderAprobacion() {
           <div class="aprob-meta-item"><div class="aprob-meta-label">Precio c/ISV</div><div class="aprob-meta-value" style="color:var(--green)">${fmtLPS(c.precioConISV)}</div></div>
           <div class="aprob-meta-item"><div class="aprob-meta-label">Precio Final</div><div class="aprob-meta-value" style="color:var(--accent3)">${fmtLPS(c.precioFinalDesc)}</div></div>
           <div class="aprob-meta-item"><div class="aprob-meta-label">Banda</div><div class="aprob-meta-value">${c.bandaEfectiva}</div></div>
+          <div class="aprob-meta-item"><div class="aprob-meta-label">Nivel compra</div><div class="aprob-meta-value">${p.nivel||'Normal'}</div></div>
           <div class="aprob-meta-item"><div class="aprob-meta-label">ROI</div><div class="aprob-meta-value" style="color:${c.roi>=c.roiRef?'var(--green)':'var(--red)'}">${fmtPct(c.roi)}</div></div>
           <div class="aprob-meta-item"><div class="aprob-meta-label">Categoría</div><div class="aprob-meta-value">${p.categoria||'-'}</div></div>
         </div>
