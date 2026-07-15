@@ -798,9 +798,15 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             <div class="card-title">🔔 Productos Pendientes de Aprobación</div>
             <div class="card-sub">Ingresados por Gerencia — requieren aprobación del Administrador</div>
           </div>
-          <div id="aprobacionStats" style="display:flex;gap:12px;align-items:center"></div>
+          <div id="aprobacionStats" style="display:flex;gap:12px;align-items:center">
+            <button class="btn btn-ghost btn-sm" onclick="toggleRechazados()" id="btnVerRechazados" title="Ver productos rechazados">🗑️ Ver rechazados</button>
+          </div>
         </div>
         <div id="aprobacionLista"></div>
+        <div id="rechazadosPanel" style="display:none;margin-top:18px;border-top:1px solid var(--border);padding-top:16px">
+          <div style="font-size:14px;font-weight:700;color:var(--text2);margin-bottom:12px">🗑️ Productos Rechazados</div>
+          <div id="rechazadosLista"></div>
+        </div>
       </div>
     </div>
 
@@ -5515,6 +5521,94 @@ Se eliminará de la lista de pendientes.`)) return;
 function rechazarPendiente() {
   rechazarDirecto(pendienteEditandoId);
   cerrarModal('modalEditarPendiente');
+}
+
+// ── Productos rechazados ─────────────────────────────────────────────────────
+let _rechazadosVisible = false;
+async function toggleRechazados() {
+  const panel = document.getElementById('rechazadosPanel');
+  const btn = document.getElementById('btnVerRechazados');
+  if (!panel) return;
+  _rechazadosVisible = !_rechazadosVisible;
+  panel.style.display = _rechazadosVisible ? 'block' : 'none';
+  if (btn) btn.textContent = _rechazadosVisible ? '🙈 Ocultar rechazados' : '🗑️ Ver rechazados';
+  if (_rechazadosVisible) await renderRechazados();
+}
+
+async function renderRechazados() {
+  const cont = document.getElementById('rechazadosLista');
+  if (!cont) return;
+  cont.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px">Cargando…</div>';
+  try {
+    const { data, error } = await sb.rpc('listar_rechazados', { p_user: currentUser.user });
+    if (error) throw new Error(error.message);
+    const lista = (data || []).map(r => ({
+      id: r.id, sku: r.sku||'', producto: r.producto||'', categoria: r.categoria||'',
+      estado: r.estado||'Nuevo', nivel: r.nivel||'Normal',
+      costoUSD: parseFloat(r.costo_usd)||0, costoExtra: parseFloat(r.costo_extra)||0,
+      fleteL: parseFloat(r.flete_l)||0, overrideBanda: r.override_banda||'',
+      ajusteManual: parseFloat(r.ajuste_manual)||0, descuento: parseFloat(r.descuento)||0,
+      imagen: r.imagen||null, url1: r.url1||'',
+      _por: r.enviado_por||'', _fecha: r.fecha_envio ? new Date(r.fecha_envio).toLocaleString('es-HN') : '',
+      _esEdit: (typeof r.id === 'string' && r.id.startsWith('pendedit_'))
+    }));
+    if (!lista.length) {
+      cont.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px">No hay productos rechazados.</div>';
+      return;
+    }
+    const esAdmin = currentUser?.rol === 'admin';
+    cont.innerHTML = lista.map(p => {
+      const c = calcProd(p);
+      return `
+      <div class="aprob-card" style="opacity:.85">
+        <div class="aprob-card-img">${p.imagen ? `<img src="${p.imagen}">` : '📦'}</div>
+        <div class="aprob-card-body">
+          <div class="aprob-card-nombre">${p.producto}${p.url1?` <a href="${p.url1}" target="_blank" onclick="event.stopPropagation()" style="text-decoration:none;font-size:14px" title="URL 1">🔗</a>`:''}</div>
+          <div class="aprob-card-sku">SKU: ${p.sku} &nbsp;·&nbsp; <span class="aprob-badge-pend" style="background:rgba(255,71,87,.15);color:var(--red)">❌ Rechazado</span> ${p._esEdit?'&nbsp;<span class="aprob-badge-pend" style="background:rgba(61,106,255,.15);color:var(--accent)">✏️ Edición</span>':''}</div>
+          <div class="aprob-card-meta">
+            <div class="aprob-meta-item"><div class="aprob-meta-label">Costo USD</div><div class="aprob-meta-value">${fmtUSD(p.costoUSD)}</div></div>
+            <div class="aprob-meta-item"><div class="aprob-meta-label">Precio Final</div><div class="aprob-meta-value" style="color:var(--accent3)">${fmtLPS(c.precioFinalDesc)}</div></div>
+            <div class="aprob-meta-item"><div class="aprob-meta-label">Estado</div><div class="aprob-meta-value">${p.estado}</div></div>
+            <div class="aprob-meta-item"><div class="aprob-meta-label">Categoría</div><div class="aprob-meta-value">${p.categoria||'-'}</div></div>
+          </div>
+          <div class="aprob-quien">👤 ${p._por} &nbsp;·&nbsp; ${p._fecha}</div>
+        </div>
+        <div class="aprob-card-actions">
+          <button class="btn btn-success btn-sm" onclick="restaurarRechazado('${p.id}')" title="Devolver a pendientes de aprobación">↩️ Restaurar</button>
+          ${esAdmin ? `<button class="btn btn-danger btn-sm" onclick="eliminarRechazadoDefinitivo('${p.id}','${(p.producto||'').replace(/'/g,'&#39;')}')" title="Borrar para siempre">🗑️ Eliminar definitivo</button>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    cont.innerHTML = `<div style="color:var(--red);font-size:13px;padding:8px">❌ ${e.message}</div>`;
+  }
+}
+
+async function restaurarRechazado(id) {
+  try {
+    mostrarCargando('↩️ Restaurando...');
+    const { error } = await sb.rpc('restaurar_pendiente', { p_user: currentUser.user, p_pend_id: id });
+    if (error) throw new Error(error.message);
+    addHistorial(`Producto rechazado restaurado a pendientes: ${id}`, 'Ingreso');
+    // Recargar pendientes desde la base para que reaparezca en la lista principal
+    await cargarDesdeSheetsYRenderizar();
+    ocultarCargando();
+    showToast('↩️ Restaurado a pendientes de aprobación', 'success');
+    renderAprobacion(); actualizarBadgePendientes(); renderRechazados();
+  } catch(e) { ocultarCargando(); showToast('❌ '+e.message,'error'); }
+}
+
+async function eliminarRechazadoDefinitivo(id, nombre) {
+  if (!confirm(`¿Eliminar DEFINITIVAMENTE el producto rechazado "${nombre}"?\n\nEsta acción no se puede deshacer.`)) return;
+  try {
+    mostrarCargando('🗑️ Eliminando...');
+    const { error } = await sb.rpc('eliminar_pendiente', { p_user: currentUser.user, p_pend_id: id });
+    if (error) throw new Error(error.message);
+    addHistorial(`Producto rechazado eliminado definitivamente: ${nombre}`, 'Eliminación');
+    ocultarCargando();
+    showToast('🗑️ Eliminado definitivamente', 'success');
+    renderRechazados();
+  } catch(e) { ocultarCargando(); showToast('❌ '+e.message,'error'); }
 }
 
 // ===== MODAL DESCUENTO VENDEDOR =====
