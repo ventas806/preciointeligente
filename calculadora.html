@@ -394,13 +394,19 @@ window.addEventListener('load', async () => {
     navigator.serviceWorker.register('calculadora-sw.js').catch(() => {});
   }
 
-  // Restore session
+  // Restore session (válida por 8 horas)
   const saved = localStorage.getItem('calc_user');
   if (saved) {
     try {
-      currentUser = JSON.parse(saved);
-      await loadParams();
-      showApp();
+      const s = JSON.parse(saved);
+      if (s && s.user && s.exp && Date.now() <= s.exp) {
+        currentUser = s.user;
+        await loadParams();
+        showApp();
+      } else {
+        localStorage.removeItem('calc_user');   // sesión vencida (8h) o formato viejo
+        showLogin();
+      }
     } catch(e) {
       showLogin();
     }
@@ -445,7 +451,7 @@ async function doLogin() {
     const u = Array.isArray(data) ? data[0] : data;
     if (!u || u.error) throw new Error(u?.error || 'Credenciales incorrectas');
     currentUser = u;
-    localStorage.setItem('calc_user', JSON.stringify(u));
+    localStorage.setItem('calc_user', JSON.stringify({ user: u, exp: Date.now() + 8*3600*1000 }));
     await loadParams();
     showApp();
   } catch(e) {
