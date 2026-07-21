@@ -166,7 +166,7 @@ async function iniciarChat() {
     const j = await api({ accion:'historial' });
     (j.mensajes || []).forEach(m => addMsg(m.rol, m.contenido));
     if (!j.mensajes || j.mensajes.length === 0) {
-      addMsg('bot', '¡Hola ' + nombre + '! 👋 Mandame el *print de pantalla* de la página del producto o carrito + los *datos del cliente* (nombre, teléfono y cómo pagó) y te registro la venta con su recibo.');
+      addMsg('bot', '¡Hola ' + nombre + '! 👋 Mandame el *print de pantalla* del producto o carrito de la web + los *datos del cliente* (nombre y teléfono) y te registro la venta.\n\nℹ️ Solo productos publicados en la web con precio · pago se registra como *transferencia* · vendedor *WIX* · el recibo queda en espera para emitirse desde el POS.');
     }
     confirmBar(!!j.borrador);
   } catch (e) { addAviso(e.message); }
