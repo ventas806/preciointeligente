@@ -129,6 +129,7 @@ function typing(v) { $('typing').style.display = v ? 'block' : 'none'; if (v) $(
 function confirmBar(v) { $('confirmBar').style.display = v ? 'flex' : 'none'; }
 
 async function api(body) {
+  if (body.accion !== 'login' && !body.token) body.token = token;
   const r = await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
   const j = await r.json().catch(() => ({}));
   if (r.status === 401 && body.accion !== 'login') { salir(); throw new Error('Sesión vencida'); }
