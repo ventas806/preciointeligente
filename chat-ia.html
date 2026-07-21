@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Chat IA — Focus Store (interno)</title>
+<meta name="theme-color" content="#00275E">
+<style>
+  :root { --navy:#00275E; --navy2:#003a85; --gold:#FFC100; --bg:#eef2f8; --burb-user:#fff3cc; --burb-bot:#ffffff; }
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',system-ui,-apple-system,sans-serif; }
+  html,body { height:100%; }
+  body { background:var(--bg); display:flex; flex-direction:column; }
+
+  /* ---------- LOGIN ---------- */
+  #loginView { flex:1; display:flex; align-items:center; justify-content:center; background:linear-gradient(160deg,var(--navy) 0%,var(--navy2) 60%,#00509e 100%); padding:20px; }
+  .loginCard { background:#fff; border-radius:18px; padding:34px 30px; width:100%; max-width:380px; box-shadow:0 18px 50px rgba(0,0,0,.35); }
+  .loginCard h1 { color:var(--navy); font-size:22px; text-align:center; }
+  .loginCard .sub { text-align:center; color:#667; font-size:13px; margin:6px 0 22px; }
+  .loginCard .logo { text-align:center; font-size:40px; margin-bottom:6px; }
+  .loginCard input { width:100%; padding:13px 14px; margin-bottom:12px; border:2px solid #dde3ee; border-radius:10px; font-size:15px; outline:none; }
+  .loginCard input:focus { border-color:var(--gold); }
+  .loginCard button { width:100%; padding:13px; background:var(--navy); color:#fff; border:none; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; }
+  .loginCard button:active { transform:scale(.98); }
+  #loginError { color:#c62828; font-size:13px; text-align:center; margin-top:10px; min-height:18px; }
+
+  /* ---------- CHAT ---------- */
+  #chatView { flex:1; display:none; flex-direction:column; height:100%; max-width:760px; width:100%; margin:0 auto; background:var(--bg); }
+  header { background:var(--navy); color:#fff; padding:12px 16px; display:flex; align-items:center; gap:12px; box-shadow:0 2px 8px rgba(0,0,0,.25); }
+  header .ava { width:40px; height:40px; border-radius:50%; background:var(--gold); color:var(--navy); font-weight:800; display:flex; align-items:center; justify-content:center; font-size:18px; }
+  header .tit { flex:1; }
+  header .tit b { font-size:15px; display:block; }
+  header .tit span { font-size:12px; color:#cfe0ff; }
+  header .salir { background:none; border:1px solid rgba(255,255,255,.4); color:#fff; border-radius:8px; padding:6px 10px; font-size:12px; cursor:pointer; }
+
+  #msgs { flex:1; overflow-y:auto; padding:16px 12px 8px; display:flex; flex-direction:column; gap:10px; }
+  .burb { max-width:82%; padding:10px 14px; border-radius:16px; font-size:14.5px; line-height:1.45; white-space:pre-wrap; word-wrap:break-word; box-shadow:0 1px 2px rgba(0,0,0,.08); animation:pop .18s ease-out; }
+  @keyframes pop { from { opacity:0; transform:translateY(8px) scale(.97);} to { opacity:1; transform:none;} }
+  .burb.user { align-self:flex-end; background:var(--burb-user); border-bottom-right-radius:4px; }
+  .burb.bot  { align-self:flex-start; background:var(--burb-bot); border-bottom-left-radius:4px; border-left:3px solid var(--gold); }
+  .burb img.mini { max-width:200px; max-height:200px; border-radius:10px; display:block; margin-bottom:6px; }
+  .hora { font-size:10px; color:#99a; margin-top:4px; text-align:right; }
+
+  #typing { align-self:flex-start; display:none; background:#fff; border-radius:16px; padding:12px 16px; box-shadow:0 1px 2px rgba(0,0,0,.08); }
+  #typing i { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--navy); margin:0 2px; opacity:.4; animation:blink 1.2s infinite; }
+  #typing i:nth-child(2){ animation-delay:.2s; } #typing i:nth-child(3){ animation-delay:.4s; }
+  @keyframes blink { 0%,80%,100%{opacity:.25; transform:translateY(0);} 40%{opacity:1; transform:translateY(-4px);} }
+
+  #confirmBar { display:none; gap:10px; padding:10px 12px; background:#fffbe8; border-top:2px solid var(--gold); }
+  #confirmBar button { flex:1; padding:13px; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
+  #btnConfirmar { background:#1b8a3a; color:#fff; }
+  #btnCancelar { background:#eee; color:#555; }
+
+  #previews { display:none; gap:8px; padding:8px 12px 0; flex-wrap:wrap; }
+  #previews .pv { position:relative; }
+  #previews img { height:64px; border-radius:8px; border:2px solid var(--gold); }
+  #previews .x { position:absolute; top:-6px; right:-6px; background:#c62828; color:#fff; border:none; border-radius:50%; width:20px; height:20px; font-size:11px; cursor:pointer; line-height:1; }
+
+  #inputBar { display:flex; align-items:flex-end; gap:8px; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:#fff; border-top:1px solid #dde; }
+  #inputBar button.icon { background:none; border:none; font-size:22px; cursor:pointer; padding:8px 4px; }
+  #txt { flex:1; border:2px solid #dde3ee; border-radius:20px; padding:10px 14px; font-size:15px; resize:none; outline:none; max-height:110px; }
+  #txt:focus { border-color:var(--gold); }
+  #btnEnviar { background:var(--navy); color:#fff; border:none; border-radius:50%; width:42px; height:42px; font-size:17px; cursor:pointer; flex-shrink:0; }
+  #btnEnviar:disabled { opacity:.5; }
+  .aviso { align-self:center; background:#e3eaf6; color:#456; font-size:12px; padding:6px 14px; border-radius:12px; }
+</style>
+</head>
+<body>
+
+<div id="loginView">
+  <div class="loginCard">
+    <div class="logo">🤖</div>
+    <h1>Chat IA — Focus Store</h1>
+    <div class="sub">Agente interno: mandá el print y te registro la venta</div>
+    <input id="loginUser" placeholder="Usuario" autocomplete="username">
+    <input id="loginPass" type="password" placeholder="Contraseña" autocomplete="current-password">
+    <button id="btnLogin">Entrar</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<div id="chatView">
+  <header>
+    <div class="ava" id="hAva">IA</div>
+    <div class="tit"><b>Agente de Ventas IA</b><span id="hSub">interno · Focus Store</span></div>
+    <button class="salir" id="btnSalir">Salir</button>
+  </header>
+  <div id="msgs"></div>
+  <div id="typing"><i></i><i></i><i></i></div>
+  <div id="confirmBar">
+    <button id="btnConfirmar">✅ Confirmar venta</button>
+    <button id="btnCancelar">❌ Cancelar</button>
+  </div>
+  <div id="previews"></div>
+  <div id="inputBar">
+    <button class="icon" id="btnAdj" title="Adjuntar print">📎</button>
+    <input type="file" id="filePick" accept="image/*" multiple hidden>
+    <textarea id="txt" rows="1" placeholder="Escribí o pegá el print (Ctrl+V)…"></textarea>
+    <button id="btnEnviar">➤</button>
+  </div>
+</div>
+
+<script>
+const API = 'https://uzhjnedhmbvgfqqssuov.supabase.co/functions/v1/chat-interno';
+const $ = (id) => document.getElementById(id);
+let token = sessionStorage.getItem('chatia_token') || '';
+let nombre = sessionStorage.getItem('chatia_nombre') || '';
+let imgs = []; // {media_type, data, urlPreview}
+
+function esc(t) {
+  const d = document.createElement('div'); d.textContent = t;
+  return d.innerHTML.replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>');
+}
+function addMsg(rol, texto, thumbs) {
+  const b = document.createElement('div');
+  b.className = 'burb ' + (rol === 'user' ? 'user' : 'bot');
+  let html = '';
+  (thumbs || []).forEach(u => { html += `<img class="mini" src="${u}">`; });
+  html += esc(texto || '');
+  html += `<div class="hora">${new Date().toLocaleTimeString('es-HN',{hour:'2-digit',minute:'2-digit'})}</div>`;
+  b.innerHTML = html;
+  $('msgs').appendChild(b);
+  $('msgs').scrollTop = $('msgs').scrollHeight;
+}
+function addAviso(t) {
+  const d = document.createElement('div'); d.className = 'aviso'; d.textContent = t;
+  $('msgs').appendChild(d); $('msgs').scrollTop = $('msgs').scrollHeight;
+}
+function typing(v) { $('typing').style.display = v ? 'block' : 'none'; if (v) $('msgs').scrollTop = $('msgs').scrollHeight; }
+function confirmBar(v) { $('confirmBar').style.display = v ? 'flex' : 'none'; }
+
+async function api(body) {
+  const r = await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401 && body.accion !== 'login') { salir(); throw new Error('Sesión vencida'); }
+  if (!r.ok) throw new Error(j.error || ('Error ' + r.status));
+  return j;
+}
+
+function vista(chat) {
+  $('loginView').style.display = chat ? 'none' : 'flex';
+  $('chatView').style.display = chat ? 'flex' : 'none';
+}
+function salir() {
+  sessionStorage.removeItem('chatia_token'); sessionStorage.removeItem('chatia_nombre');
+  token = ''; vista(false);
+}
+
+$('btnLogin').onclick = async () => {
+  $('loginError').textContent = '';
+  try {
+    const j = await api({ accion:'login', user:$('loginUser').value.trim(), pass:$('loginPass').value });
+    token = j.token; nombre = j.nombre;
+    sessionStorage.setItem('chatia_token', token); sessionStorage.setItem('chatia_nombre', nombre);
+    iniciarChat();
+  } catch (e) { $('loginError').textContent = e.message; }
+};
+$('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') $('btnLogin').click(); });
+$('btnSalir').onclick = salir;
+
+async function iniciarChat() {
+  vista(true);
+  $('hAva').textContent = (nombre || 'IA').slice(0,1).toUpperCase();
+  $('hSub').textContent = nombre + ' · Focus Store';
+  $('msgs').innerHTML = '';
+  try {
+    const j = await api({ accion:'historial' });
+    (j.mensajes || []).forEach(m => addMsg(m.rol, m.contenido));
+    if (!j.mensajes || j.mensajes.length === 0) {
+      addMsg('bot', '¡Hola ' + nombre + '! 👋 Mandame el *print de pantalla* de la página del producto o carrito + los *datos del cliente* (nombre, teléfono y cómo pagó) y te registro la venta con su recibo.');
+    }
+    confirmBar(!!j.borrador);
+  } catch (e) { addAviso(e.message); }
+}
+
+// ---------- imágenes: adjuntar, pegar, comprimir ----------
+$('btnAdj').onclick = () => $('filePick').click();
+$('filePick').onchange = () => { [...$('filePick').files].forEach(agregarImg); $('filePick').value = ''; };
+document.addEventListener('paste', (e) => {
+  if (!token) return;
+  [...(e.clipboardData?.items || [])].forEach(it => {
+    if (it.type.startsWith('image/')) { agregarImg(it.getAsFile()); e.preventDefault(); }
+  });
+});
+function agregarImg(file) {
+  if (!file || imgs.length >= 4) return;
+  const img = new Image();
+  img.onload = () => {
+    const MAX = 1600;
+    let { width:w, height:h } = img;
+    if (w > MAX || h > MAX) { const f = MAX / Math.max(w, h); w = Math.round(w*f); h = Math.round(h*f); }
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    cv.getContext('2d').drawImage(img, 0, 0, w, h);
+    const dataUrl = cv.toDataURL('image/jpeg', 0.85);
+    imgs.push({ media_type:'image/jpeg', data: dataUrl.split(',')[1], urlPreview: dataUrl });
+    pintarPreviews();
+    URL.revokeObjectURL(img.src);
+  };
+  img.src = URL.createObjectURL(file);
+}
+function pintarPreviews() {
+  const c = $('previews');
+  c.innerHTML = '';
+  c.style.display = imgs.length ? 'flex' : 'none';
+  imgs.forEach((im, i) => {
+    const d = document.createElement('div'); d.className = 'pv';
+    d.innerHTML = `<img src="${im.urlPreview}"><button class="x">✕</button>`;
+    d.querySelector('.x').onclick = () => { imgs.splice(i,1); pintarPreviews(); };
+    c.appendChild(d);
+  });
+}
+
+// ---------- enviar ----------
+$('txt').addEventListener('input', function(){ this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,110)+'px'; });
+$('txt').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } });
+$('btnEnviar').onclick = enviar;
+
+async function enviar() {
+  const texto = $('txt').value.trim();
+  if (!texto && imgs.length === 0) return;
+  const thumbs = imgs.map(i => i.urlPreview);
+  const payload = { accion:'chat', token, texto, imagenes: imgs.map(({media_type,data}) => ({media_type,data})) };
+  addMsg('user', texto, thumbs);
+  $('txt').value = ''; $('txt').style.height = 'auto';
+  imgs = []; pintarPreviews();
+  confirmBar(false); typing(true); $('btnEnviar').disabled = true;
+  try {
+    const j = await api(payload);
+    typing(false);
+    addMsg('bot', j.respuesta);
+    confirmBar(!!j.borrador);
+  } catch (e) { typing(false); addAviso('⚠️ ' + e.message); }
+  $('btnEnviar').disabled = false;
+}
+
+$('btnConfirmar').onclick = async () => {
+  confirmBar(false); typing(true);
+  try {
+    const j = await api({ accion:'confirmar', token });
+    typing(false); addMsg('bot', j.respuesta);
+  } catch (e) { typing(false); addAviso('⚠️ ' + e.message); confirmBar(true); }
+};
+$('btnCancelar').onclick = async () => {
+  confirmBar(false);
+  try { const j = await api({ accion:'cancelar', token }); addMsg('bot', j.respuesta); }
+  catch (e) { addAviso('⚠️ ' + e.message); }
+};
+
+if (token) iniciarChat(); else vista(false);
+</script>
+</body>
+</html>
