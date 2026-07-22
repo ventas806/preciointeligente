@@ -45,10 +45,11 @@
   #typing i:nth-child(2){ animation-delay:.2s; } #typing i:nth-child(3){ animation-delay:.4s; }
   @keyframes blink { 0%,80%,100%{opacity:.25; transform:translateY(0);} 40%{opacity:1; transform:translateY(-4px);} }
 
-  #confirmBar { display:none; gap:10px; padding:10px 12px; background:#fffbe8; border-top:2px solid var(--gold); }
-  #confirmBar button { flex:1; padding:13px; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
-  #btnConfirmar { background:#1b8a3a; color:#fff; }
-  #btnCancelarVenta { background:#eee; color:#555; }
+  #confirmBar { display:none; flex-direction:column; gap:8px; padding:10px 12px; max-height:260px; overflow-y:auto; background:#fffbe8; border-top:2px solid var(--gold); }
+  #confirmBar .lbl { font-size:11px; font-weight:700; color:#7a6200; text-transform:uppercase; letter-spacing:.02em; }
+  .metodoBtn { width:100%; padding:12px 14px; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; background:#1b8a3a; color:#fff; text-align:left; }
+  .metodoBtn:active { transform:scale(.98); }
+  #btnCancelarVenta { padding:11px; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; background:#eee; color:#555; }
 
   #previews { display:none; gap:8px; padding:8px 12px 0; flex-wrap:wrap; }
   #previews .pv { position:relative; }
@@ -87,8 +88,9 @@
   <div id="msgs"></div>
   <div id="typing"><i></i><i></i><i></i></div>
   <div id="confirmBar">
-    <button id="btnConfirmar">✅ Confirmar venta</button>
-    <button id="btnCancelarVenta">❌ Cancelar</button>
+    <div class="lbl">👇 Elegí el método de pago</div>
+    <div id="metodosPagoList"></div>
+    <button id="btnCancelarVenta">❌ Cancelar venta</button>
   </div>
   <div id="previews"></div>
   <div id="inputBar">
@@ -126,7 +128,17 @@ function addAviso(t) {
   $('msgs').appendChild(d); $('msgs').scrollTop = $('msgs').scrollHeight;
 }
 function typing(v) { $('typing').style.display = v ? 'block' : 'none'; if (v) $('msgs').scrollTop = $('msgs').scrollHeight; }
-function confirmBar(v) { $('confirmBar').style.display = v ? 'flex' : 'none'; }
+let ultimosMetodosPago = [];
+function renderMetodosPago(metodos) {
+  ultimosMetodosPago = metodos || [];
+  $('metodosPagoList').innerHTML = ultimosMetodosPago.length
+    ? ultimosMetodosPago.map(m => `<button class="metodoBtn" data-m="${m.id}">${m.label}</button>`).join('')
+    : '<div style="font-size:12px;color:#a66">No hay métodos de pago configurados en el sistema.</div>';
+}
+function confirmBar(v, metodos) {
+  if (v) renderMetodosPago(metodos || ultimosMetodosPago);
+  $('confirmBar').style.display = v ? 'flex' : 'none';
+}
 
 async function api(body) {
   if (body.accion !== 'login' && !body.token) body.token = token;
@@ -167,9 +179,9 @@ async function iniciarChat() {
     const j = await api({ accion:'historial' });
     (j.mensajes || []).forEach(m => addMsg(m.rol, m.contenido));
     if (!j.mensajes || j.mensajes.length === 0) {
-      addMsg('bot', '¡Hola ' + nombre + '! 👋 Mandame el *print de pantalla* del producto o carrito de la web + los *datos del cliente* (nombre y teléfono) y te registro la venta.\n\nℹ️ Solo productos publicados en la web con precio · queda como registro en el *Módulo de Ventas* a tu nombre (' + nombre + ') · completás ciudad, dirección, método de envío y de pago directo en el sistema.');
+      addMsg('bot', '¡Hola ' + nombre + '! 👋 Mandame el *print de pantalla* del producto o carrito de la web + el *nombre del cliente* y te armo la venta.\n\nℹ️ Solo productos publicados en la web con precio · elegís el *método de pago* con botones (los mismos de "Nueva Venta") · queda como registro en el *Módulo de Ventas* a tu nombre (' + nombre + ') · completás ciudad, dirección y método de envío directo en el sistema.');
     }
-    confirmBar(!!j.borrador);
+    confirmBar(!!j.borrador, j.metodosPago);
   } catch (e) { addAviso(e.message); }
 }
 
@@ -228,18 +240,20 @@ async function enviar() {
     const j = await api(payload);
     typing(false);
     addMsg('bot', j.respuesta);
-    confirmBar(!!j.borrador);
+    confirmBar(!!j.borrador, j.metodosPago);
   } catch (e) { typing(false); addAviso('⚠️ ' + e.message); }
   $('btnEnviar').disabled = false;
 }
 
-$('btnConfirmar').onclick = async () => {
+$('metodosPagoList').addEventListener('click', async (e) => {
+  const btn = e.target.closest('.metodoBtn');
+  if (!btn) return;
   confirmBar(false); typing(true);
   try {
-    const j = await api({ accion:'confirmar', token });
+    const j = await api({ accion:'confirmar', token, metodo: btn.dataset.m });
     typing(false); addMsg('bot', j.respuesta);
   } catch (e) { typing(false); addAviso('⚠️ ' + e.message); confirmBar(true); }
-};
+});
 $('btnCancelarVenta').onclick = async () => {
   confirmBar(false);
   try { const j = await api({ accion:'cancelar', token }); addMsg('bot', j.respuesta); }
