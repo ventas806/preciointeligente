@@ -2669,7 +2669,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 <th>SKU</th>
                 <th style="width:52px">Foto</th>
                 <th>Producto</th>
-                <th>Categoría</th>
+                <th>📍 Ubicación</th>
                 <th>Estado</th>
                 <th style="text-align:center">Existencia</th>
                 <th>Nota</th>
@@ -4400,7 +4400,7 @@ function showTab(name) {
   if(name==='historial') renderHistorial();
   if(name==='aprobacion') renderAprobacion();
   if(name==='exportar') initTablaExportar();
-  if(name==='etiquetas') initTablaEtiquetas();
+  if(name==='etiquetas') { initTablaEtiquetas(); cargarMapaUbicaciones().then(()=>initTablaEtiquetas()); }
   if(name==='combos') { _combosCargados = false; renderCombos(); cancelarCombo(); }
   if(name==='ventas') { initVentas(); }
   if(name==='cobros') { renderCobros(); }
@@ -6938,6 +6938,21 @@ function etiqSelAll()   { etiqProductosFiltrados.forEach(p=>etiqSeleccionados.ad
 function etiqDeselAll() { etiqSeleccionados.clear(); document.querySelectorAll('.etiqChk').forEach(c=>c.checked=false); const a=document.getElementById('chkEtiqAll');if(a)a.checked=false; actualizarContadorEtiq(); }
 function actualizarContadorEtiq() { const el=document.getElementById('etiqSelCount'); if(el) el.textContent=`${etiqSeleccionados.size} seleccionado${etiqSeleccionados.size!==1?'s':''}`; }
 
+// Mapa producto_id → código de ubicación (del sistema Scanner). Se carga una vez al abrir Etiquetas.
+let _mapaUbicaciones = {};
+let _ubicEtiqCargadas = false;
+async function cargarMapaUbicaciones(force) {
+  if (_ubicEtiqCargadas && !force) return;
+  try {
+    const { data, error } = await sb.rpc('mapa_ubicaciones', { p_user: currentUser.user });
+    if (!error) {
+      _mapaUbicaciones = {};
+      (data||[]).forEach(r => { if (r.pid && r.codigo) _mapaUbicaciones[r.pid] = r.codigo; });
+      _ubicEtiqCargadas = true;
+    }
+  } catch(e) {}
+}
+
 function initTablaEtiquetas() {
   const tbody = document.getElementById('tbodyEtiquetas');
   if(!tbody) return;
@@ -6986,7 +7001,9 @@ function initTablaEtiquetas() {
         ? `<div class="prod-thumb" onmouseenter="mostrarImgPreview('${p.imagen}',event)" onmousemove="mostrarImgPreview('${p.imagen}',event)" onmouseleave="ocultarImgPreview()"><img src="${p.imagen}" loading="lazy"></div>`
         : `<div class="prod-thumb">📦</div>`}</td>
       <td class="td-name" style="max-width:220px;overflow:hidden;text-overflow:ellipsis">${p.producto||''}</td>
-      <td style="font-size:12px">${p.categoria||'—'}</td>
+      <td style="font-size:12px">${_mapaUbicaciones[p.id]
+        ? `<span style="font-family:monospace;font-weight:700;color:var(--accent3)">📍 ${_mapaUbicaciones[p.id]}</span>`
+        : `<span style="color:var(--text3)">—</span>`}</td>
       <td><span class="badge badge-${(p.estado||'nuevo').toLowerCase().replace(/ /g,'-')}">${p.estado||'—'}</span></td>
       <td style="text-align:center;font-weight:700;color:${cantColor}">${cantidad}</td>
       <td onclick="event.stopPropagation()">
@@ -7028,7 +7045,7 @@ function initTablaEtiquetas() {
         ? `<div class="prod-thumb" onmouseenter="mostrarImgPreview('${combo.imagenUrl}',event)" onmousemove="mostrarImgPreview('${combo.imagenUrl}',event)" onmouseleave="ocultarImgPreview()"><img src="${combo.imagenUrl}" loading="lazy"></div>`
         : `<div class="prod-thumb">🎁</div>`}</td>
       <td class="td-name" style="max-width:220px;overflow:hidden;text-overflow:ellipsis">${combo.nombre||''}</td>
-      <td style="font-size:12px">Combo</td>
+      <td style="font-size:12px;color:var(--text3)">—</td>
       <td><span style="background:rgba(61,106,255,.15);color:var(--accent);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">🎁 Combo</span></td>
       <td style="text-align:center;font-weight:700;color:${stockColor}">${stockDisp}</td>
       <td style="font-size:12px;color:var(--text2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${combo.nota||''}">${combo.nota||'—'}</td>
