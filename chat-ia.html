@@ -45,11 +45,10 @@
   #typing i:nth-child(2){ animation-delay:.2s; } #typing i:nth-child(3){ animation-delay:.4s; }
   @keyframes blink { 0%,80%,100%{opacity:.25; transform:translateY(0);} 40%{opacity:1; transform:translateY(-4px);} }
 
-  #confirmBar { display:none; flex-direction:column; gap:8px; padding:10px 12px; background:#fffbe8; border-top:2px solid var(--gold); }
-  .metodosRow { display:flex; gap:8px; }
-  .metodoBtn { flex:1; padding:12px 4px; border:none; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; background:#1b8a3a; color:#fff; }
-  .metodoBtn:active { transform:scale(.97); }
-  #btnCancelarVenta { padding:11px; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; background:#eee; color:#555; }
+  #confirmBar { display:none; gap:10px; padding:10px 12px; background:#fffbe8; border-top:2px solid var(--gold); }
+  #confirmBar button { flex:1; padding:13px; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
+  #btnConfirmar { background:#1b8a3a; color:#fff; }
+  #btnCancelarVenta { background:#eee; color:#555; }
 
   #previews { display:none; gap:8px; padding:8px 12px 0; flex-wrap:wrap; }
   #previews .pv { position:relative; }
@@ -88,12 +87,8 @@
   <div id="msgs"></div>
   <div id="typing"><i></i><i></i><i></i></div>
   <div id="confirmBar">
-    <div class="metodosRow">
-      <button class="metodoBtn" data-m="efectivo">💵 Efectivo</button>
-      <button class="metodoBtn" data-m="transferencia">🏦 Transferencia</button>
-      <button class="metodoBtn" data-m="tarjeta">💳 Tarjeta</button>
-    </div>
-    <button id="btnCancelarVenta">❌ Cancelar venta</button>
+    <button id="btnConfirmar">✅ Confirmar venta</button>
+    <button id="btnCancelarVenta">❌ Cancelar</button>
   </div>
   <div id="previews"></div>
   <div id="inputBar">
@@ -172,7 +167,7 @@ async function iniciarChat() {
     const j = await api({ accion:'historial' });
     (j.mensajes || []).forEach(m => addMsg(m.rol, m.contenido));
     if (!j.mensajes || j.mensajes.length === 0) {
-      addMsg('bot', '¡Hola ' + nombre + '! 👋 Mandame el *print de pantalla* del producto o carrito de la web + los *datos del cliente* (nombre y teléfono) y te registro la venta.\n\nℹ️ Solo productos publicados en la web con precio · al final elegís el *método de pago* con botones (Efectivo, Transferencia o Tarjeta) · la venta queda a tu nombre (' + nombre + ') · el recibo queda en espera para emitirse desde el POS.');
+      addMsg('bot', '¡Hola ' + nombre + '! 👋 Mandame el *print de pantalla* del producto o carrito de la web + los *datos del cliente* (nombre y teléfono) y te registro la venta.\n\nℹ️ Solo productos publicados en la web con precio · queda como registro en el *Módulo de Ventas* a tu nombre (' + nombre + ') · completás ciudad, dirección, método de envío y de pago directo en el sistema.');
     }
     confirmBar(!!j.borrador);
   } catch (e) { addAviso(e.message); }
@@ -238,13 +233,13 @@ async function enviar() {
   $('btnEnviar').disabled = false;
 }
 
-document.querySelectorAll('.metodoBtn').forEach(b => b.onclick = async () => {
+$('btnConfirmar').onclick = async () => {
   confirmBar(false); typing(true);
   try {
-    const j = await api({ accion:'confirmar', token, metodo: b.dataset.m });
+    const j = await api({ accion:'confirmar', token });
     typing(false); addMsg('bot', j.respuesta);
   } catch (e) { typing(false); addAviso('⚠️ ' + e.message); confirmBar(true); }
-});
+};
 $('btnCancelarVenta').onclick = async () => {
   confirmBar(false);
   try { const j = await api({ accion:'cancelar', token }); addMsg('bot', j.respuesta); }
