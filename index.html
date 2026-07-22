@@ -9742,6 +9742,7 @@ function verDetalleVenta(id) {
   `;
   // Add print button at bottom of modal
   body.innerHTML += `<div class="btn-row" style="margin-top:16px">
+    <button class="btn btn-sm" onclick="imprimirReciboTermico('${v.id}')" style="background:#555;color:#fff;border:none">🧾 Imprimir Factura</button>
     <button class="btn btn-primary" onclick="imprimirEtiquetaEnvio('${v.id}')">🖨️ Imprimir Etiqueta</button>
     ${['admin','gerencia'].includes(currentUser?.rol) ? `<button class="btn btn-ghost" onclick="cerrarModal('modalDetalleVenta');editarVenta('${v.id}')">✏️ Editar Venta</button>` : ''}
     <button class="btn btn-ghost" onclick="cerrarModal('modalDetalleVenta')">Cerrar</button>
