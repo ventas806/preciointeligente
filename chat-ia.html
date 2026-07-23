@@ -153,9 +153,19 @@ function vista(chat) {
   $('loginView').style.display = chat ? 'none' : 'flex';
   $('chatView').style.display = chat ? 'flex' : 'none';
 }
+let pollCobros = null;
 function salir() {
   sessionStorage.removeItem('chatia_token'); sessionStorage.removeItem('chatia_nombre');
-  token = ''; vista(false);
+  token = ''; if (pollCobros) { clearInterval(pollCobros); pollCobros = null; } vista(false);
+}
+
+// Consulta si entró algún pago de los links generados y lo muestra en el chat
+async function revisarPagos() {
+  if (!token) return;
+  try {
+    const j = await api({ accion:'estado_cobros', token });
+    (j.nuevos_pagos || []).forEach(msg => addMsg('bot', msg));
+  } catch (_) { /* silencioso: reintenta en el siguiente ciclo */ }
 }
 
 $('btnLogin').onclick = async () => {
@@ -179,10 +189,14 @@ async function iniciarChat() {
     const j = await api({ accion:'historial' });
     (j.mensajes || []).forEach(m => addMsg(m.rol, m.contenido));
     if (!j.mensajes || j.mensajes.length === 0) {
-      addMsg('bot', '¡Hola ' + nombre + '! 👋 Mandame el *print de pantalla* del producto o carrito de la web + el *nombre del cliente* y te armo la venta.\n\nℹ️ Solo productos publicados en la web con precio · elegís el *método de pago* con botones (los mismos de "Nueva Venta") · queda como registro en el *Módulo de Ventas* a tu nombre (' + nombre + ') · completás ciudad, dirección y método de envío directo en el sistema.');
+      addMsg('bot', '¡Hola ' + nombre + '! 👋 Puedo ayudarte con dos cosas:\n\n🧾 *Registrar una venta:* mandame el *print* del producto o carrito + el *nombre del cliente* y te la armo (queda en el Módulo de Ventas a tu nombre).\n\n💳 *Generar un link de pago:* pedime algo como *"hazme un link de pago de 1500 por una reparación"* y te mando el link de Tilopay. Apenas el cliente pague, te aviso acá mismo. 🔔');
     }
     confirmBar(!!j.borrador, j.metodosPago);
   } catch (e) { addAviso(e.message); }
+  // Notificaciones de pago: al abrir y luego cada 25s mientras el chat esté abierto
+  revisarPagos();
+  if (pollCobros) clearInterval(pollCobros);
+  pollCobros = setInterval(revisarPagos, 25000);
 }
 
 // ---------- imágenes: adjuntar, pegar, comprimir ----------
