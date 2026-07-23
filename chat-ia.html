@@ -48,6 +48,7 @@
   #confirmBar { display:none; flex-direction:column; gap:8px; padding:10px 12px; max-height:260px; overflow-y:auto; background:#fffbe8; border-top:2px solid var(--gold); }
   #confirmBar .lbl { font-size:11px; font-weight:700; color:#7a6200; text-transform:uppercase; letter-spacing:.02em; }
   .metodoBtn { width:100%; padding:12px 14px; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; background:#1b8a3a; color:#fff; text-align:left; }
+  .metodoBtn.envio { background:var(--navy); }
   .metodoBtn:active { transform:scale(.98); }
   #btnCancelarVenta { padding:11px; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; background:#eee; color:#555; }
 
@@ -88,8 +89,8 @@
   <div id="msgs"></div>
   <div id="typing"><i></i><i></i><i></i></div>
   <div id="confirmBar">
-    <div class="lbl">👇 Elegí el método de pago</div>
-    <div id="metodosPagoList"></div>
+    <div class="lbl" id="confirmLbl">👇 Elegí</div>
+    <div id="metodosList"></div>
     <button id="btnCancelarVenta">❌ Cancelar venta</button>
   </div>
   <div id="previews"></div>
@@ -128,15 +129,26 @@ function addAviso(t) {
   $('msgs').appendChild(d); $('msgs').scrollTop = $('msgs').scrollHeight;
 }
 function typing(v) { $('typing').style.display = v ? 'block' : 'none'; if (v) $('msgs').scrollTop = $('msgs').scrollHeight; }
-let ultimosMetodosPago = [];
-function renderMetodosPago(metodos) {
-  ultimosMetodosPago = metodos || [];
-  $('metodosPagoList').innerHTML = ultimosMetodosPago.length
-    ? ultimosMetodosPago.map(m => `<button class="metodoBtn" data-m="${m.id}">${m.label}</button>`).join('')
-    : '<div style="font-size:12px;color:#a66">No hay métodos de pago configurados en el sistema.</div>';
+let mPago = [], mEnvio = [], envioSel = null;
+function pasoEnvio() {
+  envioSel = null;
+  $('confirmLbl').textContent = '🚚 Elegí el método de envío';
+  $('metodosList').innerHTML = mEnvio.length
+    ? mEnvio.map((e, i) => `<button class="metodoBtn envio" data-tipo="envio" data-i="${i}">🚚 ${e}</button>`).join('')
+    : '<div style="font-size:12px;color:#a66">No hay métodos de envío configurados.</div>';
 }
-function confirmBar(v, metodos) {
-  if (v) renderMetodosPago(metodos || ultimosMetodosPago);
+function pasoPago() {
+  $('confirmLbl').innerHTML = '💳 Elegí el método de pago <span style="font-weight:400;text-transform:none">· 🚚 ' + envioSel + '</span>';
+  $('metodosList').innerHTML = mPago.length
+    ? mPago.map(m => `<button class="metodoBtn" data-tipo="pago" data-m="${m.id}">${m.label}</button>`).join('')
+    : '<div style="font-size:12px;color:#a66">No hay métodos de pago configurados.</div>';
+}
+function confirmBar(v, metodosPago, metodosEnvio) {
+  if (v) {
+    if (metodosPago) mPago = metodosPago;
+    if (metodosEnvio) mEnvio = metodosEnvio;
+    pasoEnvio();
+  }
   $('confirmBar').style.display = v ? 'flex' : 'none';
 }
 
@@ -191,7 +203,7 @@ async function iniciarChat() {
     if (!j.mensajes || j.mensajes.length === 0) {
       addMsg('bot', '¡Hola ' + nombre + '! 👋 Puedo ayudarte con dos cosas:\n\n🧾 *Registrar una venta:* mandame el *print* del producto o carrito + el *nombre del cliente* y te la armo (queda en el Módulo de Ventas a tu nombre).\n\n💳 *Generar un link de pago:* pedime algo como *"hazme un link de pago de 1500 por una reparación"* y te mando el link de Tilopay. Apenas el cliente pague, te aviso acá mismo. 🔔');
     }
-    confirmBar(!!j.borrador, j.metodosPago);
+    confirmBar(!!j.borrador, j.metodosPago, j.metodosEnvio);
   } catch (e) { addAviso(e.message); }
   // Notificaciones de pago: al abrir y luego cada 25s mientras el chat esté abierto
   revisarPagos();
@@ -254,19 +266,25 @@ async function enviar() {
     const j = await api(payload);
     typing(false);
     addMsg('bot', j.respuesta);
-    confirmBar(!!j.borrador, j.metodosPago);
+    confirmBar(!!j.borrador, j.metodosPago, j.metodosEnvio);
   } catch (e) { typing(false); addAviso('⚠️ ' + e.message); }
   $('btnEnviar').disabled = false;
 }
 
-$('metodosPagoList').addEventListener('click', async (e) => {
+$('metodosList').addEventListener('click', async (e) => {
   const btn = e.target.closest('.metodoBtn');
   if (!btn) return;
-  confirmBar(false); typing(true);
+  if (btn.dataset.tipo === 'envio') {
+    envioSel = mEnvio[parseInt(btn.dataset.i)];
+    pasoPago();
+    return;
+  }
+  // método de pago elegido → registrar con envío + pago
+  $('confirmBar').style.display = 'none'; typing(true);
   try {
-    const j = await api({ accion:'confirmar', token, metodo: btn.dataset.m });
+    const j = await api({ accion:'confirmar', token, metodo: btn.dataset.m, envio: envioSel });
     typing(false); addMsg('bot', j.respuesta);
-  } catch (e) { typing(false); addAviso('⚠️ ' + e.message); confirmBar(true); }
+  } catch (e) { typing(false); addAviso('⚠️ ' + e.message); pasoPago(); $('confirmBar').style.display = 'flex'; }
 });
 $('btnCancelarVenta').onclick = async () => {
   confirmBar(false);
