@@ -2180,6 +2180,32 @@ function onChangePago() {
   if(wrap) wrap.style.display = (met&&met.observaciones) ? '' : 'none';
 }
 
+// Normaliza nombre/teléfono para comparar sin acentos/mayúsculas
+function _normNomCli(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim(); }
+function _normTelCli(s) { return (s||'').replace(/\D/g,''); }
+// Busca un cliente EXISTENTE por nombre exacto (evita duplicar "Consumidor Final" u otros repetidos)
+function _buscarClienteExacto(nombre, excluirId) {
+  const nom = _normNomCli(nombre);
+  if (!nom) return null;
+  return clientes.find(c => c.id !== excluirId && _normNomCli(c.nombre) === nom) || null;
+}
+// Máximo 2 clientes (casa/trabajo) con el mismo nombre o teléfono. Bloquea a partir del 3ro.
+function _buscarClienteDuplicado(datos, excluirId) {
+  const nom  = _normNomCli(datos.nombre);
+  const tels = [_normTelCli(datos.tel), _normTelCli(datos.tel2)].filter(t => t.length >= 7);
+  const telIgual = (a, b) => { if (a.length < 7 || b.length < 7) return false; return a === b || a.endsWith(b) || b.endsWith(a); };
+  const coincidencias = [];
+  for (const c of clientes) {
+    if (excluirId && c.id === excluirId) continue;
+    const cTels = [_normTelCli(c.tel), _normTelCli(c.tel2)].filter(t => t.length >= 7);
+    const porNombre = nom && _normNomCli(c.nombre) === nom;
+    const porTel     = tels.some(t => cTels.some(ct => telIgual(t, ct)));
+    if (porNombre || porTel) coincidencias.push({ cliente: c, motivo: porNombre ? 'nombre' : 'teléfono' });
+  }
+  if (coincidencias.length >= 2) return { cliente: coincidencias[0].cliente, motivo: coincidencias[0].motivo };
+  return null;
+}
+
 /* ════════════════════════════════════════════
    GUARDAR VENTA
 ════════════════════════════════════════════ */
@@ -2190,6 +2216,7 @@ async function guardarVenta() {
   const direccion  = (document.getElementById('vDireccion').value||'').trim();
   const ciudad     = (document.getElementById('vCiudad').value||'').trim();
   const tel        = (document.getElementById('vTel').value||'').trim();
+  const tel2       = (document.getElementById('vTel2').value||'').trim();
   const fecha      = document.getElementById('vFecha').value;
   const vendedorId = document.getElementById('vVendedor').value;
 
@@ -2201,10 +2228,22 @@ async function guardarVenta() {
 
   // Guardar/actualizar cliente
   let clienteId = vClienteId;
+  if (!clienteId) {
+    // Reusar cliente existente con el mismo nombre (ej. "Consumidor Final") en vez de duplicarlo
+    const existente = _buscarClienteExacto(nombre, null);
+    if (existente) clienteId = existente.id;
+  }
+  if (!clienteId) {
+    const dup = _buscarClienteDuplicado({ nombre, tel, tel2 }, null);
+    if (dup) {
+      showToast(`⚠️ Ya existen 2 clientes con ese ${dup.motivo} (ej. "${dup.cliente.nombre}") — máximo permitido (casa/trabajo). Buscá y seleccioná el cliente existente`, 'warn', 6000);
+      return;
+    }
+  }
   const clienteObj = {
     id:          clienteId || ('cli_' + Date.now()),
     nombre, direccion, ciudad, tel,
-    tel2:        (document.getElementById('vTel2').value||'').trim(),
+    tel2,
     email:       (document.getElementById('vEmail').value||'').trim(),
     fechaCreado: new Date().toISOString()
   };

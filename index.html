@@ -7546,8 +7546,8 @@ function vShowSub(sub) {
 // ===== MÓDULO ADMINISTRACIÓN DE CLIENTES =====
 let cliEditandoId = null;
 
-// Valida si ya existe OTRO cliente con el mismo nombre o teléfono.
-// tel y tel2 del MISMO cliente (casa/trabajo) sí pueden convivir.
+// Valida si ya existen 2 clientes (máximo permitido: casa + trabajo) con el mismo nombre o teléfono.
+// Bloquea sólo a partir del 3er registro; el 2do (casa/trabajo) sí se permite.
 function _buscarClienteDuplicado(datos, excluirId) {
   const normNom = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim();
   const normTel = s => (s||'').replace(/\D/g,'');
@@ -7558,11 +7558,16 @@ function _buscarClienteDuplicado(datos, excluirId) {
   };
   const nom  = normNom(datos.nombre);
   const tels = [normTel(datos.tel), normTel(datos.tel2)].filter(t => t.length >= 7);
+  const coincidencias = [];
   for (const c of clientes) {
     if (excluirId && c.id === excluirId) continue;
-    if (nom && normNom(c.nombre) === nom) return { cliente: c, motivo: 'nombre' };
     const cTels = [normTel(c.tel), normTel(c.tel2)].filter(t => t.length >= 7);
-    if (tels.some(t => cTels.some(ct => telIgual(t, ct)))) return { cliente: c, motivo: 'teléfono' };
+    const porNombre = nom && normNom(c.nombre) === nom;
+    const porTel     = tels.some(t => cTels.some(ct => telIgual(t, ct)));
+    if (porNombre || porTel) coincidencias.push({ cliente: c, motivo: porNombre ? 'nombre' : 'teléfono' });
+  }
+  if (coincidencias.length >= 2) {
+    return { cliente: coincidencias[0].cliente, motivo: coincidencias[0].motivo, total: coincidencias.length };
   }
   return null;
 }
@@ -7885,7 +7890,7 @@ async function guardarCliente() {
     tel2:   document.getElementById('cliTel2').value.trim()
   }, cliEditandoId);
   if (dup) {
-    showToast(`⚠️ Ya existe un cliente con ese ${dup.motivo}: "${dup.cliente.nombre}"${dup.cliente.tel?' · 📞 '+dup.cliente.tel:''} — verifícalo o actualízalo en vez de crear uno nuevo`, 'error', 8000);
+    showToast(`⚠️ Ya existen 2 clientes con ese ${dup.motivo} (ej. "${dup.cliente.nombre}"${dup.cliente.tel?' · 📞 '+dup.cliente.tel:''}) — máximo permitido (casa/trabajo). Usa el buscador para editar uno existente en vez de crear otro`, 'error', 8000);
     return;
   }
 
@@ -8898,10 +8903,17 @@ async function guardarVenta() {
     }
   } else {
     // Respaldo legacy: crear cliente mínimo desde los campos visibles
+    // Antes de crear, bloquear si ya existen 2 clientes (máximo casa/trabajo) con ese nombre o teléfono
+    const tel2Legacy = (document.getElementById('vClienteTel2').value||'').trim();
+    const dupVenta = _buscarClienteDuplicado({ nombre, tel, tel2: tel2Legacy }, null);
+    if (dupVenta) {
+      showToast(`⚠️ Ya existen 2 clientes con ese ${dupVenta.motivo} (ej. "${dupVenta.cliente.nombre}"${dupVenta.cliente.tel?' · 📞 '+dupVenta.cliente.tel:''}) — máximo permitido. Selecciona uno existente con el buscador de cliente en vez de escribirlo manual`, 'error', 8000);
+      return;
+    }
     clienteId = 'cli_' + Date.now();
     const clienteObj = {
       id: clienteId, nombre, direccion, ciudad, tel,
-      tel2:  (document.getElementById('vClienteTel2').value||'').trim(),
+      tel2:  tel2Legacy,
       email: (document.getElementById('vClienteEmail').value||'').trim(),
       fechaCreado: new Date().toISOString()
     };
