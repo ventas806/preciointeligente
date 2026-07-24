@@ -2624,9 +2624,11 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
           </div>
           <div style="display:flex;gap:8px;align-items:center">
             <input type="text" id="comboFiltBuscar" placeholder="🔍 Buscar combo..." style="padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none;min-width:200px" oninput="renderCombos()">
+            <button class="btn btn-ghost btn-sm" onclick="sincronizarCombosWix()" id="btnSyncCombosWix" title="Enviar a Wix el stock de combos armables, habilitar los disponibles y marcar agotados">🛒 Sincronizar Wix</button>
             <button class="btn btn-success btn-sm" onclick="nuevoCombo()">+ Nuevo Combo</button>
           </div>
         </div>
+        <div id="combosSyncWixResultado" style="display:none;margin-bottom:12px"></div>
         <div id="combosLista"></div>
       </div>
 
@@ -11623,6 +11625,53 @@ function confirmarVentaCombo(comboId) {
 }
 
 // ── Render lista de combos ──
+// ── Sincronizar combos con Wix (stock = armables, habilitar/agotar, colección KIT-COMBOS) ──
+// Nota: también corre AUTOMÁTICO vía triggers de la BD cuando cambia stock o se edita un combo.
+async function sincronizarCombosWix() {
+  const btn = document.getElementById('btnSyncCombosWix');
+  const panel = document.getElementById('combosSyncWixResultado');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Sincronizando...'; }
+  try {
+    const { data, error } = await sb.functions.invoke('wix-sync', { body: { action: 'sync_combos' } });
+    if (error) throw new Error(error.message || JSON.stringify(error));
+    if (data?.error) throw new Error(data.error);
+    const res = data?.resultados || [];
+    const oks       = res.filter(r => r.resultado === 'OK');
+    const agotados  = res.filter(r => r.armables === 0 && r.resultado !== 'no_esta_en_wix');
+    const sinWix    = res.filter(r => r.resultado === 'no_esta_en_wix');
+    const agregados = res.filter(r => r.coleccion === 'agregado');
+    showToast(`✅ ${oks.length} combo(s) sincronizados con Wix${agotados.length ? ` · ${agotados.length} agotado(s)` : ''}${sinWix.length ? ` · ${sinWix.length} sin producto en Wix` : ''}`, 'success', 7000);
+    if (panel) {
+      panel.style.display = '';
+      panel.innerHTML = `
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+            <div style="font-size:13px;font-weight:700">🛒 Resultado sync Wix — colección: ${data.colName || '—'}</div>
+            <button onclick="document.getElementById('combosSyncWixResultado').style.display='none'" style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:16px">✕</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;max-height:260px;overflow-y:auto">
+            ${res.map(r => {
+              const esSinWix = r.resultado === 'no_esta_en_wix';
+              const icono = esSinWix ? '⚠️' : (r.armables === 0 ? '🔴' : '🟢');
+              const estado = esSinWix
+                ? '<span style="color:var(--gold)">No existe en Wix (crear producto con ese SKU)</span>'
+                : `Stock Wix: <b>${r.armables}</b>${r.armables === 0 ? ' · <span style="color:var(--red)">AGOTADO</span>' : ''}${r.habilitado ? ' · <span style="color:var(--green)">habilitado</span>' : ''}${r.coleccion === 'agregado' ? ' · <span style="color:var(--accent)">+ KIT-COMBOS</span>' : ''}`;
+              return `<div style="font-size:12px;display:flex;gap:8px;align-items:baseline">
+                <span>${icono}</span>
+                <span style="font-family:monospace;color:var(--text2);flex-shrink:0">${r.codigo}</span>
+                <span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${r.nombre}</span>
+                <span style="white-space:nowrap">${estado}</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+    }
+  } catch(e) {
+    showToast('❌ Error sincronizando combos: ' + e.message, 'error', 8000);
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '🛒 Sincronizar Wix'; }
+}
+
 async function renderCombos() {
   await cargarCombos();
   const lista = document.getElementById('combosLista');
