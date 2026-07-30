@@ -8156,6 +8156,8 @@ function editarClienteDesdeVenta() {
 function seleccionarConsumidorFinal() {
   let cf = clientes.find(c => (c.nombre||'').trim().toLowerCase() === 'consumidor final');
   if (!cf) {
+    // Solo se crea si la lista de clientes ya cargó (si no, evitamos generar un duplicado)
+    if (!clientes.length) return;
     cf = { id: 'cli_consumidor_final', nombre: 'Consumidor Final', ciudad: '', tel: '', tel2: '', email: '', rtn: '', direccion: '', observaciones: '', fechaCreado: new Date().toISOString() };
     clientes.push(cf);
     sbSaveCliente(cf).catch(e => console.warn('No se pudo guardar Consumidor Final:', e.message));
@@ -8905,13 +8907,13 @@ async function guardarVenta() {
     }
   } else {
     // Respaldo legacy: crear cliente mínimo desde los campos visibles
-    // Antes de crear, bloquear si ya existen 2 clientes (máximo casa/trabajo) con ese nombre o teléfono
+    // Si ya existe un cliente con ese nombre/teléfono, se REUTILIZA (evita duplicados como "Consumidor Final")
     const tel2Legacy = (document.getElementById('vClienteTel2').value||'').trim();
-    const dupVenta = _buscarClienteDuplicado({ nombre, tel, tel2: tel2Legacy }, null);
-    if (dupVenta) {
-      showToast(`⚠️ Ya existen 2 clientes con ese ${dupVenta.motivo} (ej. "${dupVenta.cliente.nombre}"${dupVenta.cliente.tel?' · 📞 '+dupVenta.cliente.tel:''}) — máximo permitido. Selecciona uno existente con el buscador de cliente en vez de escribirlo manual`, 'error', 8000);
-      return;
-    }
+    let dupVenta = null;
+    try { dupVenta = _buscarClienteDuplicado({ nombre, tel, tel2: tel2Legacy }, null); } catch(e) {}
+    if (dupVenta && dupVenta.cliente) {
+      clienteId = dupVenta.cliente.id;
+    } else {
     clienteId = 'cli_' + Date.now();
     const clienteObj = {
       id: clienteId, nombre, direccion, ciudad, tel,
@@ -8925,6 +8927,7 @@ async function guardarVenta() {
     } catch(e) {
       console.warn('⚠️ Cliente no guardado en Supabase:', e.message);
       clienteId = null;
+    }
     }
   }
 
