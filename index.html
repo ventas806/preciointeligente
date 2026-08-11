@@ -1034,6 +1034,13 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
             style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
             <option value="">Todas las categorías</option>
           </select>
+          <select id="invFiltOrden" onchange="renderTablaInventario()" title="Ordenar la lista"
+            style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none">
+            <option value="estado">↕️ Estado de stock</option>
+            <option value="modificacion">🕒 Última modificación</option>
+            <option value="ingreso">📥 Fecha de ingreso (reciente)</option>
+            <option value="ingreso_asc">📥 Fecha de ingreso (antiguo)</option>
+          </select>
           <button class="btn btn-ghost btn-sm" onclick="invFiltrarEstado('')">✕ Limpiar filtro</button>
           <button class="btn btn-ghost btn-sm" onclick="exportarInventarioExcel()" title="Exportar a Excel" style="margin-left:auto;color:#1abc9c;border-color:#1abc9c">📥 Excel</button>
         </div>
@@ -1053,6 +1060,7 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
                 <th style="text-align:center">Mín.</th>
                 <th style="text-align:center">Próx. llegada</th>
                 <th style="text-align:right">Costo USD</th>
+                <th style="text-align:center" id="invThFecha">🕒 Modificado</th>
                 <th style="text-align:center">🔗</th>
                 <th style="text-align:center">🛒</th>
                 <th style="text-align:center">Acciones</th>
@@ -15577,10 +15585,29 @@ function invFiltrarEstado(estado) {
   renderTablaInventario();
 }
 
+// Ordena la lista del inventario según el selector: estado de stock (por defecto),
+// última modificación, o fecha de ingreso (reciente / antiguo).
+function ordenarListaInventario(lista, modo) {
+  const ts = v => { const d = new Date(v); return isNaN(d) ? 0 : d.getTime(); };
+  if (modo === 'modificacion') {
+    lista.sort((a, b) => ts(b.ultimaModif) - ts(a.ultimaModif));
+  } else if (modo === 'ingreso') {
+    lista.sort((a, b) => ts(b.fechaIngreso) - ts(a.fechaIngreso));
+  } else if (modo === 'ingreso_asc') {
+    lista.sort((a, b) => ts(a.fechaIngreso) - ts(b.fechaIngreso));
+  } else {
+    // Estado: agotado sin pedido → en camino → bajo → en stock
+    const orden = { agotado: 0, en_camino: 1, bajo: 2, en_stock: 3 };
+    lista.sort((a, b) => orden[calcEstadoStock(a)] - orden[calcEstadoStock(b)]);
+  }
+  return lista;
+}
+
 function renderTablaInventario() {
   const q      = (document.getElementById('invBuscar')?.value || '').toLowerCase().trim();
   const filtEst = document.getElementById('invFiltEstado')?.value || '';
   const filtCat = document.getElementById('invFiltCat')?.value || '';
+  const filtOrd = document.getElementById('invFiltOrden')?.value || 'estado';
 
   const mostrandoDesc = filtEst === 'descontinuado';
 
@@ -15595,9 +15622,12 @@ function renderTablaInventario() {
     return true;
   });
 
-  // Orden: agotado sin pedido → en camino → bajo → en stock
-  const orden = { agotado: 0, en_camino: 1, bajo: 2, en_stock: 3 };
-  lista.sort((a, b) => orden[calcEstadoStock(a)] - orden[calcEstadoStock(b)]);
+  ordenarListaInventario(lista, filtOrd);
+
+  // La columna de fecha muestra ingreso o modificación según el orden elegido
+  const porIngreso = filtOrd === 'ingreso' || filtOrd === 'ingreso_asc';
+  const thFecha = document.getElementById('invThFecha');
+  if (thFecha) thFecha.textContent = porIngreso ? '📥 Ingreso' : '🕒 Modificado';
 
   // Actualizar tarjetas resumen (solo productos activos para los 4 estados)
   const activos = productos.filter(p => !p.descontinuado);
@@ -15612,7 +15642,7 @@ function renderTablaInventario() {
   if (!tbody) return;
 
   if (!lista.length) {
-    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:32px;color:var(--text3)">Sin resultados</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;padding:32px;color:var(--text3)">Sin resultados</td></tr>`;
     return;
   }
 
@@ -15637,6 +15667,7 @@ function renderTablaInventario() {
       <td style="text-align:center;color:var(--text3)">${min || '—'}</td>
       <td style="text-align:center">${(()=>{ const proxFecha = ordActivas.filter(o=>o.estado==='en_transito'&&o.fechaEstimada).map(o=>o.fechaEstimada).sort()[0]; if(!proxFecha) return '<span style="color:var(--text3)">—</span>'; const [y,m,d]=proxFecha.split('-'); return `<span style="font-size:11px;color:#a29bfe;font-weight:600">🚢 ${d}/${m}/${y}</span>`; })()}</td>
       <td style="text-align:right;font-weight:600;color:var(--gold)">${p.costoUSD ? `$ ${(+p.costoUSD).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '<span style="color:var(--text3)">—</span>'}</td>
+      <td style="text-align:center;font-size:11px;color:var(--text2);white-space:nowrap" title="${porIngreso ? 'Ingresado: ' : 'Última modificación: '}${fmtFecha(porIngreso ? p.fechaIngreso : p.ultimaModif)}">${fmtFecha(porIngreso ? p.fechaIngreso : p.ultimaModif)}</td>
       <td style="text-align:center">${p.url1 ? `<a href="${p.url1}" target="_blank" title="${p.url1}" style="color:var(--accent);font-size:16px;text-decoration:none">🔗</a>` : `<span style="color:var(--text3);font-size:13px">—</span>`}</td>
       <td style="text-align:center">${p.url2 ? `<a href="${p.url2}" target="_blank" title="Ver en Focus Store: ${p.url2}" style="font-size:16px;text-decoration:none;opacity:.85" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.85">🛒</a>` : `<span style="color:var(--text3);font-size:13px">—</span>`}</td>
       <td style="text-align:center;white-space:nowrap;gap:4px">
@@ -15675,12 +15706,11 @@ function exportarInventarioExcel() {
     return true;
   });
 
-  const orden = { agotado: 0, en_camino: 1, bajo: 2, en_stock: 3 };
-  lista.sort((a, b) => orden[calcEstadoStock(a)] - orden[calcEstadoStock(b)]);
+  ordenarListaInventario(lista, document.getElementById('invFiltOrden')?.value || 'estado');
 
   // Encabezados
   const filas = [
-    ['Producto','SKU','Categoría','Condición','Estado Stock','Cantidad','Mínimo','En Camino','Próx. Llegada','Costo USD','URL Referencia','URL Tienda']
+    ['Producto','SKU','Categoría','Condición','Estado Stock','Cantidad','Mínimo','En Camino','Próx. Llegada','Costo USD','Ingreso','Última Modificación','URL Referencia','URL Tienda']
   ];
 
   lista.forEach(p => {
@@ -15701,6 +15731,8 @@ function exportarInventarioExcel() {
       enCamino || 0,
       proxFormato,
       p.costoUSD ? parseFloat(p.costoUSD) : '',
+      p.fechaIngreso ? fmtFecha(p.fechaIngreso) : '',
+      p.ultimaModif  ? fmtFecha(p.ultimaModif)  : '',
       p.url1 || '',
       p.url2 || '',
     ]);
