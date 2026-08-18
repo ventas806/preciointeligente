@@ -1,0 +1,32 @@
+{
+  "name": "Agente de Ventas IA — Focus Store",
+  "short_name": "Ventas IA",
+  "description": "Agente interno: registrar ventas desde prints, links de pago y ubicación en bodega",
+  "start_url": "/preciointeligente/chat-ia.html",
+  "scope": "/preciointeligente/",
+  "display": "standalone",
+  "background_color": "#00275E",
+  "theme_color": "#00275E",
+  "orientation": "portrait",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%2300275E'/><text y='132' x='34' font-size='104' font-family='system-ui'>🤖</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%2300275E'/><text y='352' x='92' font-size='280' font-family='system-ui'>🤖</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%2300275E'/><text y='330' x='118' font-size='230' font-family='system-ui'>🤖</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

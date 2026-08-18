@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Chat IA — Focus Store (interno)</title>
 <meta name="theme-color" content="#00275E">
+<link rel="manifest" href="chat-ia-manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ventas IA">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%2300275E'/><text y='132' x='34' font-size='104' font-family='system-ui'>🤖</text></svg>">
 <style>
   :root { --navy:#00275E; --navy2:#003a85; --gold:#FFC100; --bg:#eef2f8; --burb-user:#fff3cc; --burb-bot:#ffffff; }
   * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',system-ui,-apple-system,sans-serif; }
@@ -31,6 +36,17 @@
   header .tit b { font-size:15px; display:block; }
   header .tit span { font-size:12px; color:#cfe0ff; }
   header .salir { background:none; border:1px solid rgba(255,255,255,.4); color:#fff; border-radius:8px; padding:6px 10px; font-size:12px; cursor:pointer; }
+  header .instalar { background:var(--gold); border:none; color:var(--navy); border-radius:8px; padding:7px 11px; font-size:12px; font-weight:800; cursor:pointer; white-space:nowrap; }
+  header .instalar:active { transform:scale(.96); }
+
+  /* Instrucciones de instalación (iPhone / fallback) */
+  #instalarModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:50; align-items:center; justify-content:center; padding:20px; }
+  #instalarModal .card { background:#fff; border-radius:16px; padding:24px; max-width:360px; width:100%; box-shadow:0 18px 50px rgba(0,0,0,.35); }
+  #instalarModal h3 { color:var(--navy); font-size:17px; margin-bottom:10px; }
+  #instalarModal p, #instalarModal li { font-size:13.5px; color:#445; line-height:1.55; }
+  #instalarModal ol { margin:8px 0 4px 18px; }
+  #instalarModal li { margin-bottom:6px; }
+  #instalarModal button { width:100%; margin-top:16px; padding:12px; background:var(--navy); color:#fff; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
 
   #msgs { flex:1; overflow-y:auto; padding:16px 12px 8px; display:flex; flex-direction:column; gap:10px; }
   .burb { max-width:82%; padding:10px 14px; border-radius:16px; font-size:14.5px; line-height:1.45; white-space:pre-wrap; word-wrap:break-word; box-shadow:0 1px 2px rgba(0,0,0,.08); animation:pop .18s ease-out; }
@@ -80,10 +96,19 @@
   </div>
 </div>
 
+<div id="instalarModal">
+  <div class="card">
+    <h3>📲 Instalar como app</h3>
+    <div id="instalarPasos"></div>
+    <button id="btnCerrarInstalar">Entendido</button>
+  </div>
+</div>
+
 <div id="chatView">
   <header>
     <div class="ava" id="hAva">IA</div>
     <div class="tit"><b>Agente de Ventas IA</b><span id="hSub">interno · Focus Store</span></div>
+    <button class="instalar" id="btnInstalar" style="display:none">📲 Instalar</button>
     <button class="salir" id="btnSalir">Salir</button>
   </header>
   <div id="msgs"></div>
@@ -291,6 +316,48 @@ $('btnCancelarVenta').onclick = async () => {
   try { const j = await api({ accion:'cancelar', token }); addMsg('bot', j.respuesta); }
   catch (e) { addAviso('⚠️ ' + e.message); }
 };
+
+// ---------- PWA: instalar como app en Windows / Android ----------
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('chat-ia-sw.js').catch(() => {});
+}
+
+let promptInstalar = null;
+const yaInstalada = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+// Android / Windows (Chrome, Edge): el navegador avisa que se puede instalar
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  promptInstalar = e;
+  if (!yaInstalada()) $('btnInstalar').style.display = '';
+});
+
+window.addEventListener('appinstalled', () => {
+  promptInstalar = null;
+  $('btnInstalar').style.display = 'none';
+});
+
+// iPhone/iPad y navegadores sin prompt automático: mostrar el botón con instrucciones
+const esIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+if (!yaInstalada() && (esIOS || !('BeforeInstallPromptEvent' in window))) {
+  $('btnInstalar').style.display = '';
+}
+
+$('btnInstalar').onclick = async () => {
+  if (promptInstalar) {
+    promptInstalar.prompt();
+    const { outcome } = await promptInstalar.userChoice;
+    if (outcome === 'accepted') $('btnInstalar').style.display = 'none';
+    promptInstalar = null;
+    return;
+  }
+  // Sin prompt nativo → instrucciones según el dispositivo
+  $('instalarPasos').innerHTML = esIOS
+    ? '<p>En iPhone/iPad se instala desde Safari:</p><ol><li>Tocá el botón <b>Compartir</b> ⬆️ (abajo en el centro).</li><li>Bajá y elegí <b>“Agregar a pantalla de inicio”</b>.</li><li>Tocá <b>Agregar</b> — te queda el ícono 🤖 como una app.</li></ol>'
+    : '<p>Con <b>Chrome</b> o <b>Edge</b>:</p><ol><li><b>Windows:</b> tocá el ícono de instalar ⬇️ en la barra de direcciones (o Menú ⋮ → <b>Instalar…</b>). Te queda como programa con su acceso directo.</li><li><b>Android:</b> Menú ⋮ → <b>Instalar aplicación</b> / <b>Agregar a pantalla principal</b>.</li></ol><p style="margin-top:8px;color:#889;font-size:12.5px">Si no ves la opción, recargá la página e intentá de nuevo.</p>';
+  $('instalarModal').style.display = 'flex';
+};
+$('btnCerrarInstalar').onclick = () => { $('instalarModal').style.display = 'none'; };
 
 if (token) iniciarChat(); else vista(false);
 </script>
