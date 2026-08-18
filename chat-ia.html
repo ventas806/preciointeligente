@@ -201,7 +201,7 @@ async function iniciarChat() {
     const j = await api({ accion:'historial' });
     (j.mensajes || []).forEach(m => addMsg(m.rol, m.contenido));
     if (!j.mensajes || j.mensajes.length === 0) {
-      addMsg('bot', '¡Hola ' + nombre + '! 👋 Puedo ayudarte con dos cosas:\n\n🧾 *Registrar una venta:* mandame el *print* del producto o carrito + el *nombre del cliente* y te la armo (queda en el Módulo de Ventas a tu nombre).\n\n💳 *Generar un link de pago:* pedime algo como *"hazme un link de pago de 1500 por una reparación"* y te mando el link de Tilopay. Apenas el cliente pague, te aviso acá mismo. 🔔');
+      addMsg('bot', '¡Hola ' + nombre + '! 👋 Puedo ayudarte con tres cosas:\n\n🧾 *Registrar una venta:* mandame el *print* del producto o carrito + el *nombre del cliente* y te la armo (queda en el Módulo de Ventas a tu nombre).\n\n💳 *Generar un link de pago:* pedime algo como *"hazme un link de pago de 1500 por una reparación"* y te mando el link de Tilopay. Apenas el cliente pague, te aviso acá mismo. 🔔\n\n📍 *Ubicación en bodega:* preguntame *"dónde está [SKU o nombre]"* y te digo en qué bodega y estante está.');
     }
     confirmBar(!!j.borrador, j.metodosPago, j.metodosEnvio);
   } catch (e) { addAviso(e.message); }
