@@ -3,7 +3,7 @@
 // El cache es solo un respaldo para cuando no hay internet — asi el vendedor
 // nunca queda atrapado en una version vieja de la app (problema que ya paso
 // con el cache del navegador y obligaba a Ctrl+Shift+R).
-const CACHE = 'focus-chatia-v1';
+const CACHE = 'focus-chapi-v2'; // v2: rebranding a CHAPI + iconos amarillos
 const SHELL = '/preciointeligente/chat-ia.html';
 
 self.addEventListener('install', (e) => {

@@ -3,13 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Chat IA — Focus Store (interno)</title>
+<title>CHAPI</title>
 <meta name="theme-color" content="#00275E">
+<link rel="icon" type="image/png" sizes="32x32" href="chapi-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="chapi-192.png">
+<link rel="shortcut icon" href="chapi-32.png">
 <link rel="manifest" href="chat-ia-manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Ventas IA">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%2300275E'/><text y='132' x='34' font-size='104' font-family='system-ui'>🤖</text></svg>">
+<meta name="apple-mobile-web-app-title" content="CHAPI">
+<link rel="apple-touch-icon" sizes="180x180" href="chapi-180.png">
 <style>
   :root { --navy:#00275E; --navy2:#003a85; --gold:#FFC100; --bg:#eef2f8; --burb-user:#fff3cc; --burb-bot:#ffffff; }
   * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',system-ui,-apple-system,sans-serif; }
@@ -86,8 +89,8 @@
 
 <div id="loginView">
   <div class="loginCard">
-    <div class="logo">🤖</div>
-    <h1>Chat IA — Focus Store</h1>
+    <div class="logo"><img src="chapi-192.png" alt="CHAPI" width="72" height="72" style="border-radius:16px"></div>
+    <h1>CHAPI</h1>
     <div class="sub">Agente interno: mandá el print y te registro la venta</div>
     <input id="loginUser" placeholder="Usuario" autocomplete="username">
     <input id="loginPass" type="password" placeholder="Contraseña" autocomplete="current-password">
@@ -107,7 +110,7 @@
 <div id="chatView">
   <header>
     <div class="ava" id="hAva">IA</div>
-    <div class="tit"><b>Agente de Ventas IA</b><span id="hSub">interno · Focus Store</span></div>
+    <div class="tit"><b>CHAPI</b><span id="hSub">interno · Focus Store</span></div>
     <button class="instalar" id="btnInstalar" style="display:none">📲 Instalar</button>
     <button class="salir" id="btnSalir">Salir</button>
   </header>
@@ -353,7 +356,7 @@ $('btnInstalar').onclick = async () => {
   }
   // Sin prompt nativo → instrucciones según el dispositivo
   $('instalarPasos').innerHTML = esIOS
-    ? '<p>En iPhone/iPad se instala desde Safari:</p><ol><li>Tocá el botón <b>Compartir</b> ⬆️ (abajo en el centro).</li><li>Bajá y elegí <b>“Agregar a pantalla de inicio”</b>.</li><li>Tocá <b>Agregar</b> — te queda el ícono 🤖 como una app.</li></ol>'
+    ? '<p>En iPhone/iPad se instala desde Safari:</p><ol><li>Tocá el botón <b>Compartir</b> ⬆️ (abajo en el centro).</li><li>Bajá y elegí <b>“Agregar a pantalla de inicio”</b>.</li><li>Tocá <b>Agregar</b> — te queda el ícono amarillo de <b>CHAPI</b> como una app.</li></ol>'
     : '<p>Con <b>Chrome</b> o <b>Edge</b>:</p><ol><li><b>Windows:</b> tocá el ícono de instalar ⬇️ en la barra de direcciones (o Menú ⋮ → <b>Instalar…</b>). Te queda como programa con su acceso directo.</li><li><b>Android:</b> Menú ⋮ → <b>Instalar aplicación</b> / <b>Agregar a pantalla principal</b>.</li></ol><p style="margin-top:8px;color:#889;font-size:12.5px">Si no ves la opción, recargá la página e intentá de nuevo.</p>';
   $('instalarModal').style.display = 'flex';
 };
