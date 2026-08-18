@@ -1,4 +1,5 @@
 {
+  "id": "/preciointeligente/chat-ia.html",
   "name": "CHAPI",
   "short_name": "CHAPI",
   "description": "Agente interno de Focus Store: registrar ventas desde prints, links de pago y ubicación en bodega",
@@ -10,8 +11,9 @@
   "orientation": "portrait",
   "lang": "es",
   "icons": [
-    { "src": "chapi-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "chapi-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "chapi-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/preciointeligente/chapi-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/preciointeligente/chapi-256.png", "sizes": "256x256", "type": "image/png", "purpose": "any" },
+    { "src": "/preciointeligente/chapi-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/preciointeligente/chapi-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
