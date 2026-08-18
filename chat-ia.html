@@ -32,6 +32,7 @@
   .loginCard button { width:100%; padding:13px; background:var(--navy); color:#fff; border:none; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; }
   .loginCard button:active { transform:scale(.98); }
   #loginError { color:#c62828; font-size:13px; text-align:center; margin-top:10px; min-height:18px; }
+  #btnInstalarLogin { background:var(--gold); color:var(--navy); font-size:14px; font-weight:800; margin-top:4px; }
 
   /* ---------- CHAT ---------- */
   #chatView { flex:1; display:none; flex-direction:column; height:100%; max-width:760px; width:100%; margin:0 auto; background:var(--bg); }
@@ -98,6 +99,7 @@
     <input id="loginPass" type="password" placeholder="Contraseña" autocomplete="current-password">
     <button id="btnLogin">Entrar</button>
     <div id="loginError"></div>
+    <button id="btnInstalarLogin" style="display:none">📲 Instalar CHAPI en este dispositivo</button>
   </div>
 </div>
 
@@ -329,39 +331,51 @@ if ('serviceWorker' in navigator) {
 
 let promptInstalar = null;
 const yaInstalada = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const esIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const esAndroid = /Android/i.test(navigator.userAgent);
+const botonesInstalar = () => [$('btnInstalar'), $('btnInstalarLogin')].filter(Boolean);
+function mostrarInstalar(v) { botonesInstalar().forEach(b => b.style.display = v ? '' : 'none'); }
 
-// Android / Windows (Chrome, Edge): el navegador avisa que se puede instalar
+// El botón se muestra SIEMPRE salvo que la app ya esté instalada.
+// (Antes solo aparecía si el navegador disparaba 'beforeinstallprompt', y en Android
+//  ese evento puede no llegar nunca → el botón quedaba invisible.)
+if (!yaInstalada()) mostrarInstalar(true);
+
+// Si el navegador ofrece instalación nativa (Chrome/Edge en Android y Windows), la guardamos
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   promptInstalar = e;
-  if (!yaInstalada()) $('btnInstalar').style.display = '';
+  if (!yaInstalada()) mostrarInstalar(true);
 });
 
 window.addEventListener('appinstalled', () => {
   promptInstalar = null;
-  $('btnInstalar').style.display = 'none';
+  mostrarInstalar(false);
 });
 
-// iPhone/iPad y navegadores sin prompt automático: mostrar el botón con instrucciones
-const esIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-if (!yaInstalada() && (esIOS || !('BeforeInstallPromptEvent' in window))) {
-  $('btnInstalar').style.display = '';
+function pasosInstalacion() {
+  if (esIOS) {
+    return '<p>En iPhone/iPad se instala desde <b>Safari</b>:</p><ol><li>Tocá el botón <b>Compartir</b> ⬆️ (abajo en el centro).</li><li>Bajá y elegí <b>“Agregar a pantalla de inicio”</b>.</li><li>Tocá <b>Agregar</b> — te queda el ícono amarillo de <b>CHAPI</b>.</li></ol>';
+  }
+  if (esAndroid) {
+    return '<p>En Android, desde <b>Chrome</b>:</p><ol><li>Tocá el menú <b>⋮</b> (arriba a la derecha).</li><li>Elegí <b>“Instalar aplicación”</b> o <b>“Agregar a pantalla principal”</b>.</li><li>Confirmá <b>Instalar</b> — te queda el ícono amarillo de <b>CHAPI</b>.</li></ol><p style="margin-top:8px;color:#889;font-size:12.5px">Si usás otro navegador (Samsung Internet, Firefox), buscá esa misma opción en su menú.</p>';
+  }
+  return '<p>En la computadora, con <b>Chrome</b> o <b>Edge</b>:</p><ol><li>Tocá el ícono de instalar ⬇️ en la barra de direcciones, o el menú <b>⋮</b> → <b>Instalar…</b></li><li>Confirmá <b>Instalar</b> — queda como programa con su acceso directo.</li></ol>';
 }
 
-$('btnInstalar').onclick = async () => {
+async function accionInstalar() {
   if (promptInstalar) {
     promptInstalar.prompt();
     const { outcome } = await promptInstalar.userChoice;
-    if (outcome === 'accepted') $('btnInstalar').style.display = 'none';
+    if (outcome === 'accepted') mostrarInstalar(false);
     promptInstalar = null;
     return;
   }
-  // Sin prompt nativo → instrucciones según el dispositivo
-  $('instalarPasos').innerHTML = esIOS
-    ? '<p>En iPhone/iPad se instala desde Safari:</p><ol><li>Tocá el botón <b>Compartir</b> ⬆️ (abajo en el centro).</li><li>Bajá y elegí <b>“Agregar a pantalla de inicio”</b>.</li><li>Tocá <b>Agregar</b> — te queda el ícono amarillo de <b>CHAPI</b> como una app.</li></ol>'
-    : '<p>Con <b>Chrome</b> o <b>Edge</b>:</p><ol><li><b>Windows:</b> tocá el ícono de instalar ⬇️ en la barra de direcciones (o Menú ⋮ → <b>Instalar…</b>). Te queda como programa con su acceso directo.</li><li><b>Android:</b> Menú ⋮ → <b>Instalar aplicación</b> / <b>Agregar a pantalla principal</b>.</li></ol><p style="margin-top:8px;color:#889;font-size:12.5px">Si no ves la opción, recargá la página e intentá de nuevo.</p>';
+  $('instalarPasos').innerHTML = pasosInstalacion();
   $('instalarModal').style.display = 'flex';
-};
+}
+
+botonesInstalar().forEach(b => b.onclick = accionInstalar);
 $('btnCerrarInstalar').onclick = () => { $('instalarModal').style.display = 'none'; };
 
 if (token) iniciarChat(); else vista(false);
