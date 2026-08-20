@@ -9405,6 +9405,173 @@ function ajustarTotalDeseado(valorStr) {
 }
 
 // ===== RECIBO TÉRMICO 80mm =====
+// ── Monto en letras (mismo algoritmo que usa la caja: lib/letras.js) ──────
+const _LET_U = ['', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE', 'DIEZ',
+  'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISEIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE', 'VEINTE'];
+const _LET_D = ['', '', 'VEINTI', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
+const _LET_C = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS',
+  'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
+
+function _letras2(n) {
+  if (n <= 20) return _LET_U[n];
+  const d = Math.floor(n / 10), u = n % 10;
+  if (d === 2) return u ? `VEINTI${_LET_U[u]}` : 'VEINTE';
+  return u ? `${_LET_D[d]} Y ${_LET_U[u]}` : _LET_D[d];
+}
+function _letras3(n) {
+  if (n === 0) return '';
+  if (n === 100) return 'CIEN';
+  const c = Math.floor(n / 100), r = n % 100;
+  return `${_LET_C[c]}${c && r ? ' ' : ''}${r ? _letras2(r) : ''}`;
+}
+function _letrasEntero(n) {
+  if (n === 0) return 'CERO';
+  let out = '';
+  const millones = Math.floor(n / 1000000);
+  const miles    = Math.floor((n % 1000000) / 1000);
+  const resto    = n % 1000;
+  if (millones) out += millones === 1 ? 'UN MILLON ' : `${_letrasEntero(millones)} MILLONES `;
+  if (miles)    out += miles === 1 ? 'MIL ' : `${_letras3(miles)} MIL `;
+  if (resto)    out += _letras3(resto);
+  return out.trim();
+}
+function lempirasEnLetras(monto) {
+  const n = Math.round(Number(monto || 0) * 100);
+  const entero = Math.floor(n / 100), cent = n % 100;
+  return `${_letrasEntero(entero)} LEMPIRAS ${cent ? `CON ${String(cent).padStart(2,'0')}/100` : 'EXACTOS'}`;
+}
+
+// ── Factura fiscal — formato idéntico al del kiosco/caja ─────────────────
+// Los datos salen del RPC pos_factura_detalle_venta, que reutiliza
+// pos_factura_detalle (el mismo que usa la caja), para que ambos tickets
+// no puedan desincronizarse.
+function _ticketFacturaHTML(det, copia) {
+  const fac = det.factura;
+  const L   = n => 'L ' + Number(n||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const r2  = x => Math.round(x * 100) / 100;
+  const esc = s => String(s==null?'':s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const sep = '<p class="c">------------------------------</p>';
+
+  const etiquetaPago = p =>
+    p.metodo === 'bac_lane_manual' ? `TARJETA BAC ${p.marca||''} ****${p.ultimos4||''} AUT ${p.autorizacion||''}`
+    : p.metodo === 'pos_manual'    ? `TARJETA ${p.banco||'POS'} ${p.marca||''} ****${p.ultimos4||''} AUT ${p.autorizacion||''}`
+    : p.metodo === 'tilopay_qr'    ? `TARJETA/QR TILOPAY${p.autorizacion ? ` AUT ${p.autorizacion}` : ''}`
+    : p.metodo === 'efectivo'      ? 'EFECTIVO'
+    : p.metodo === 'transferencia' ? `TRANSFERENCIA${p.referencia ? ` REF ${p.referencia}` : ''}`
+    : String(p.metodo||'').toUpperCase();
+
+  const items = (det.items || []).map(it => {
+    const subSin    = r2(Number(it.total_linea) - Number(it.isv_monto));
+    const precioSin = r2((subSin + Number(it.descuento)) / (it.cantidad || 1));
+    return `<p>(${it.lleva_isv ? 'G' : 'E'}) ${esc(String(it.descripcion).slice(0,38))}</p>
+      <p class="fila"><span>${it.cantidad} x ${L(precioSin)}${Number(it.descuento) > 0 ? ` (−${L(it.descuento)})` : ''}</span><span>${L(subSin)}</span></p>`;
+  }).join('');
+
+  const pagos = (det.pagos || []).map(p => `<p>${esc(etiquetaPago(p))} — ${L(p.monto)}</p>`).join('');
+  const subtotalBruto = Number(fac.subtotal_exento) + Number(fac.subtotal_gravado15) + Number(fac.descuento);
+
+  return `<div class="print-area">
+  ${fac.es_prueba ? '<p class="prueba">*** DOCUMENTO DE PRUEBA ***<br>SIN VALOR FISCAL</p>' : ''}
+  <p class="c grande b">${esc(fac.emisor_nombre)}</p>
+  <p class="c">RTN: ${esc(fac.emisor_rtn)}</p>
+  <p class="c">${esc(fac.emisor_direccion)}</p>
+  <p class="c">Tel: ${esc(fac.emisor_telefono)}</p>
+  ${sep}
+  <p class="c b">FACTURA VENTA</p>
+  <p class="c b">${esc(fac.numero)}</p>
+  ${copia ? `<p class="c b">( ${copia} )</p>` : ''}
+  <p class="c">${new Date(fac.created_at).toLocaleString('es-HN')}</p>
+  <p class="c">Cajero: ${esc(fac.emitida_por || '')}</p>
+  ${sep}
+  <p>Cliente: ${esc(fac.cliente_nombre)}</p>
+  <p>RTN: ${esc(fac.cliente_rtn || 'CONSUMIDOR FINAL')}</p>
+  <p>No. O/C Exenta:</p>
+  <p>No. Reg. de Exonerado:</p>
+  <p>No. de Reg. de la SAG:</p>
+  ${sep}
+  ${items}
+  ${sep}
+  <p class="fila"><span>SUB-TOTAL</span><span>${L(subtotalBruto)}</span></p>
+  <p class="fila"><span>DESCUENTOS Y REBAJAS</span><span>${L(fac.descuento)}</span></p>
+  <p class="fila"><span>IMPORTE EXENTO</span><span>${L(fac.subtotal_exento)}</span></p>
+  <p class="fila"><span>IMPORTE EXONERADO</span><span>${L(0)}</span></p>
+  <p class="fila"><span>IMPORTE GRAVADO 15%</span><span>${L(fac.subtotal_gravado15)}</span></p>
+  <p class="fila"><span>IMPORTE GRAVADO 18%</span><span>${L(fac.subtotal_gravado18)}</span></p>
+  <p class="fila"><span>I.S.V. (15%)</span><span>${L(fac.isv15)}</span></p>
+  <p class="fila"><span>I.S.V. (18%)</span><span>${L(fac.isv18)}</span></p>
+  <p class="fila grande b"><span>TOTAL</span><span>${L(fac.total)}</span></p>
+  <p class="mt">(${lempirasEnLetras(fac.total)})</p>
+  ${sep}
+  ${pagos}
+  <p class="mt2">C.A.I. ${esc(fac.cai)}</p>
+  <p class="c mt">Rango autorizado:</p>
+  <p class="c">${esc(fac.rango_autorizado)}</p>
+  <p class="c">Fecha límite de emisión: ${esc(fac.fecha_limite_emision)}</p>
+  <p class="c mt2">GRAVADO = G · EXENTO = E</p>
+  <p class="c">Original: Cliente</p>
+  <p class="c">Copia: Obligado Tributario Emisor</p>
+  <p class="c mt2 b">"La factura es beneficio de todos. ¡Exíjala!"</p>
+</div>`;
+}
+
+async function imprimirFacturaFiscal(ventaId) {
+  let det = null;
+  try {
+    const { data, error } = await sb.rpc('pos_factura_detalle_venta', {
+      p_user: currentUser?.user || '', p_venta_id: ventaId
+    });
+    if (error) throw new Error(error.message);
+    det = data;
+  } catch(e) {
+    showToast('❌ No se pudo obtener la factura: ' + e.message, 'error', 7000);
+    return;
+  }
+
+  if (!det || !det.factura) {
+    // Venta que no pasó por caja: no existe factura fiscal, se imprime el comprobante
+    showToast('⚠️ Esta venta no tiene factura fiscal emitida (no pasó por caja). Se imprime el comprobante de pago.', 'warn', 8000);
+    imprimirReciboTermico(ventaId);
+    return;
+  }
+
+  // Se imprimen los dos ejemplares, igual que en la caja
+  const cuerpo = _ticketFacturaHTML(det, 'ORIGINAL') + _ticketFacturaHTML(det, 'DUPLICADO');
+
+  const html = `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><title>Factura ${det.factura.numero}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { background:#fff; color:#000; font-family:"Courier New", ui-monospace, monospace; font-weight:700 }
+  .print-area { width:72mm; margin:0 auto; padding:4mm 1mm 6mm; font-size:10.5pt; line-height:1.25 }
+  .c { text-align:center }
+  .b { font-weight:900 }
+  .grande { font-size:13pt }
+  .mt { margin-top:4px }
+  .mt2 { margin-top:8px }
+  .fila { display:flex; justify-content:space-between; gap:8px }
+  .fila span:last-child { font-variant-numeric:tabular-nums; white-space:nowrap }
+  .prueba { border:2px solid #000; padding:4px; text-align:center; font-weight:900; margin-bottom:4px }
+  .barra { text-align:center; padding:10px 0 }
+  .barra button { background:#222; color:#fff; border:none; padding:8px 20px; font-size:13px; font-weight:700; border-radius:5px; cursor:pointer; font-family:inherit }
+  @media print {
+    @page { size:72mm auto; margin:0 }
+    .barra { display:none }
+    .print-area { padding:0 1mm 5mm }
+    .print-area + .print-area { break-before:page; page-break-before:always }
+  }
+</style></head>
+<body>
+<div class="barra"><button onclick="window.print()">🖨️ Imprimir</button></div>
+${cuerpo}
+</body></html>`;
+
+  const win = window.open('', '_blank', 'width=340,height=700');
+  if (!win) { showToast('⚠️ El navegador bloqueó la ventana emergente', 'warn'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.onload = () => { setTimeout(() => { win.focus(); win.print(); }, 300); };
+}
+
 function imprimirReciboTermico(id) {
   const v = ventas.find(x => x.id === id);
   if (!v) return;
@@ -9802,7 +9969,7 @@ function verDetalleVenta(id) {
   `;
   // Add print button at bottom of modal
   body.innerHTML += `<div class="btn-row" style="margin-top:16px">
-    <button class="btn btn-sm" onclick="imprimirReciboTermico('${v.id}')" style="background:#555;color:#fff;border:none">🧾 Imprimir Factura</button>
+    <button class="btn btn-sm" onclick="imprimirFacturaFiscal('${v.id}')" style="background:#555;color:#fff;border:none" title="Factura fiscal — mismo formato que la caja">🧾 Imprimir Factura</button>
     <button class="btn btn-primary" onclick="imprimirEtiquetaEnvio('${v.id}')">🖨️ Imprimir Etiqueta</button>
     ${['admin','gerencia'].includes(currentUser?.rol) ? `<button class="btn btn-ghost" onclick="cerrarModal('modalDetalleVenta');editarVenta('${v.id}')">✏️ Editar Venta</button>` : ''}
     <button class="btn btn-ghost" onclick="cerrarModal('modalDetalleVenta')">Cerrar</button>
