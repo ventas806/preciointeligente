@@ -7139,7 +7139,9 @@ function imprimirEtiquetas() {
     .etiq-precios{display:flex;flex-direction:column;align-items:center;margin-top:0.2mm;}
     .etiq-precio-antes{font-size:8pt;font-weight:600;color:#888;text-decoration:line-through;text-align:center;line-height:1.2;}
     .etiq-precio{font-size:15pt;font-weight:900;color:#000;text-align:center;letter-spacing:-0.5px;line-height:1.1;}
-    @media print{body{margin:0;}.no-print{display:none;}}
+    /* !important: el encabezado lleva display:flex en su atributo style y el
+       estilo inline gana sobre la hoja, así que sin esto salía impreso. */
+    @media print{body{margin:0;}.no-print{display:none !important;}}
   </style></head><body>
   <div class="no-print" style="padding:12px;background:#f0f4ff;border-bottom:1px solid #ccd;font-family:Arial;font-size:13px;display:flex;gap:12px;align-items:center;">
     <strong>🏷️ ${totalEtiq} etiqueta(s) · DYMO 1-1/8" × 3-1/2"</strong>
