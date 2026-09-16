@@ -726,6 +726,16 @@ tbody td { padding: 11px 14px; color: var(--text); white-space: nowrap; }
           <div id="dashRecent"></div>
         </div>
       </div>
+
+      <!-- Crecimiento mes a mes -->
+      <div class="card" style="margin-top:20px" id="dashCrecCard">
+        <div class="card-header">
+          <div><div class="card-title">📈 Crecimiento mes a mes</div><div class="card-sub" id="dashCrecSub">Evolución acumulada del inventario</div></div>
+          <select id="dashCrecMetrica" onchange="renderDashCrecimiento()" title="Métrica a graficar"
+            style="padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-size:13px;outline:none"></select>
+        </div>
+        <div id="dashCrecimiento" style="overflow-x:auto"></div>
+      </div>
     </div>
 
     <!-- PRODUCTOS -->
@@ -4432,6 +4442,7 @@ function renderDashboard() {
   const inversionLPS = calcsConStock.reduce((a,c)=>a+c.costoTotalLPS*(parseInt(c.cantidad)||0),0);
   const utilidadTotal = calcsConStock.reduce((a,c)=>a+c.utilBrutaCant,0);
   const roiProm = calcsConStock.length ? calcsConStock.reduce((a,c)=>a+c.roi,0)/calcsConStock.length : 0;
+  _dashKpisActuales = { productos: totalProds, inversion: inversionLPS, utilidad: utilidadTotal, roi: roiProm };
 
   let statsHTML = `
     <div class="stat-card"><div class="stat-label">Productos</div><div class="stat-value stat-blue">${totalProds}</div><div class="stat-sub">${totalCantidad} unidades · <span style="color:var(--accent3)">${prodsConStock} con stock</span></div></div>
@@ -4470,6 +4481,167 @@ function renderDashboard() {
         <div class="hist-meta">Modificado: ${p.ultimaModif} · ${p.categoria}</div>
       </div>
     </div>`).join('');
+
+  renderDashCrecimiento();
+  _guardarSnapshotDashboard();
+}
+
+// ===== DASHBOARD · Crecimiento mes a mes =====
+// Serie mensual acumulada de los KPIs del dashboard. Los meses pasados se
+// reconstruyen por fecha de ingreso (con costo y stock actuales); el mes en
+// curso usa el valor real, y ese valor se guarda como "foto" del mes en el
+// parámetro dashSnapshots para que el historial vaya quedando exacto.
+let _dashKpisActuales = null;
+const _MESES_CORTOS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+function _mesHoyTegu() {
+  const t = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Tegucigalpa'}));
+  return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}`;
+}
+function _mesDe(valor) {
+  const s = String(valor || '');
+  if (/^\d{4}-\d{2}/.test(s)) return s.slice(0, 7);
+  const d = new Date(s);
+  if (isNaN(d)) return null;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function _etiquetaMes(ym) { const [y, m] = ym.split('-'); return `${_MESES_CORTOS[+m-1]} ${y.slice(2)}`; }
+function _fmtCorto(v, moneda) {
+  const a = Math.abs(v); let s;
+  if (a >= 1e6)      s = (v/1e6).toFixed(2) + 'M';
+  else if (a >= 1e3) s = (v/1e3).toFixed(0) + 'K';
+  else               s = v.toFixed(0);
+  return (moneda ? 'L ' : '') + s;
+}
+
+function _dashSnapshots() {
+  const s = parametros.dashSnapshots;
+  return (s && typeof s === 'object' && !Array.isArray(s)) ? s : {};
+}
+
+function _dashSerieMensual(metrica) {
+  const snaps  = _dashSnapshots();
+  const mesHoy = _mesHoyTegu();
+  // Aporte de cada producto al mes en que ingresó
+  const porMes = {};
+  productos.forEach(p => {
+    const m = _mesDe(p.fechaIngreso) || _mesDe(p.ultimaModif);
+    if (!m) return;
+    const cant = parseInt(p.cantidad) || 0;
+    if (!porMes[m]) porMes[m] = { productos:0, inversion:0, utilidad:0 };
+    porMes[m].productos += 1;
+    if (cant > 0) {
+      const c = calcProd(p);
+      porMes[m].inversion += c.costoTotalLPS * cant;
+      porMes[m].utilidad  += c.utilBrutaCant;
+    }
+  });
+  const meses = Object.keys(porMes).filter(m => m <= mesHoy).sort();
+  if (!meses.length) return [];
+
+  // Rango continuo desde el primer mes hasta el mes en curso (acumulando)
+  const serie = [];
+  const acc = { productos:0, inversion:0, utilidad:0 };
+  let [y, m] = meses[0].split('-').map(Number);
+  const [yh, mh] = mesHoy.split('-').map(Number);
+  let guard = 0;
+  while ((y < yh || (y === yh && m <= mh)) && guard++ < 120) {
+    const key = `${y}-${String(m).padStart(2,'0')}`;
+    if (porMes[key]) { acc.productos += porMes[key].productos; acc.inversion += porMes[key].inversion; acc.utilidad += porMes[key].utilidad; }
+    let valor, exacto = false;
+    if (key === mesHoy && _dashKpisActuales)               { valor = _dashKpisActuales[metrica]; exacto = true; }
+    else if (snaps[key] && snaps[key][metrica] != null)     { valor = +snaps[key][metrica];       exacto = true; }
+    else                                                     { valor = acc[metrica]; }
+    serie.push({ mes:key, valor: +valor || 0, exacto });
+    m++; if (m > 12) { m = 1; y++; }
+  }
+  return serie;
+}
+
+// Guarda la "foto" del mes en curso (solo admin, máx. una vez por hora y solo si cambió)
+async function _guardarSnapshotDashboard() {
+  if (!_dashKpisActuales || currentUser?.rol !== 'admin') return;
+  try {
+    const snaps = { ..._dashSnapshots() };
+    const mes = _mesHoyTegu(), prev = snaps[mes], k = _dashKpisActuales;
+    const igual = prev && prev.productos === k.productos
+      && Math.round(prev.inversion) === Math.round(k.inversion)
+      && Math.round(prev.utilidad)  === Math.round(k.utilidad);
+    if (igual) return;
+    if (prev && prev.ts && Date.now() - new Date(prev.ts).getTime() < 3600*1000) return;
+    snaps[mes] = { productos:k.productos, inversion:+k.inversion.toFixed(2), utilidad:+k.utilidad.toFixed(2), roi:+k.roi.toFixed(4), ts:new Date().toISOString() };
+    const claves = Object.keys(snaps).sort();
+    while (claves.length > 36) delete snaps[claves.shift()];
+    parametros.dashSnapshots = snaps;
+    await sbSaveParametro('dashSnapshots', snaps);
+  } catch(e) { /* la foto es opcional: nunca debe romper el dashboard */ }
+}
+
+function renderDashCrecimiento() {
+  const cont = document.getElementById('dashCrecimiento');
+  const sel  = document.getElementById('dashCrecMetrica');
+  const sub  = document.getElementById('dashCrecSub');
+  if (!cont || !sel) return;
+  const perms = PERMS[currentUser.rol] || {};
+
+  const opciones = [];
+  if (perms.verCostos)   opciones.push({ v:'inversion', l:'💰 Inversión Total LPS', moneda:true,  color:'var(--gold)' });
+  if (perms.verUtilidad) opciones.push({ v:'utilidad',  l:'📈 Utilidad Potencial',  moneda:true,  color:'var(--green)' });
+  opciones.push({ v:'productos', l:'📦 Productos', moneda:false, color:'var(--accent)' });
+  const actual = opciones.some(o => o.v === sel.value) ? sel.value : opciones[0].v;
+  sel.innerHTML = opciones.map(o => `<option value="${o.v}"${o.v === actual ? ' selected' : ''}>${o.l}</option>`).join('');
+  const op = opciones.find(o => o.v === actual);
+
+  const serie = _dashSerieMensual(actual);
+  if (!serie.length) { cont.innerHTML = '<div class="empty-state"><div class="icon">📈</div><p>Sin datos para graficar</p></div>'; return; }
+
+  const fmtV  = v => op.moneda ? _fmtCorto(v, true) : String(Math.round(v));
+  const fmtL  = v => op.moneda ? fmtLPS(v) : Math.round(v).toLocaleString('es-HN');
+  const mesHoy = _mesHoyTegu();
+
+  // Dimensiones: llena el ancho disponible y crece (con scroll) si hay muchos meses
+  const n = serie.length;
+  const W = Math.max(cont.clientWidth || 900, n * 88), H = 270;
+  const padL = 14, padR = 14, padT = 36, padB = 48;
+  const maxV = Math.max(...serie.map(s => s.valor), 1);
+  const bw = (W - padL - padR) / n, barW = Math.min(58, bw * 0.62);
+  const yDe = v => padT + (H - padT - padB) * (1 - v / maxV);
+
+  const barras = serie.map((s, i) => {
+    const x = padL + bw * i + (bw - barW) / 2, y = yDe(s.valor), h = Math.max(H - padB - y, 1);
+    const prev = i > 0 ? serie[i-1].valor : null;
+    const pct  = prev ? (s.valor - prev) / prev * 100 : null;
+    const pctTxt = pct == null ? '' : (pct >= 0 ? '▲ +' : '▼ ') + pct.toFixed(1) + '%';
+    const pctCol = pct == null ? 'var(--text3)' : pct >= 0 ? 'var(--green)' : 'var(--red)';
+    const esHoy  = s.mes === mesHoy;
+    return `<g>
+      <title>${_etiquetaMes(s.mes)}: ${fmtL(s.valor)}${s.exacto ? '' : ' (estimado por fecha de ingreso)'}</title>
+      <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="5"
+        style="fill:${op.color};opacity:${s.exacto ? 1 : .45}${esHoy ? ';stroke:var(--text);stroke-width:1.5' : ''}"></rect>
+      <text x="${(x + barW/2).toFixed(1)}" y="${(y - 8).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" style="fill:var(--text)">${fmtV(s.valor)}</text>
+      <text x="${(x + barW/2).toFixed(1)}" y="${H - padB + 17}" text-anchor="middle" font-size="11" style="fill:var(--text2)">${_etiquetaMes(s.mes)}</text>
+      <text x="${(x + barW/2).toFixed(1)}" y="${H - padB + 33}" text-anchor="middle" font-size="10" font-weight="700" style="fill:${pctCol}">${pctTxt}</text>
+    </g>`;
+  }).join('');
+
+  cont.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="display:block;font-family:inherit">
+    <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" style="stroke:var(--border);stroke-width:1"></line>
+    ${barras}
+  </svg>`;
+
+  // Resumen: crecimiento total y del último mes
+  if (sub) {
+    const primero = serie[0], ultimo = serie[n-1], previo = n > 1 ? serie[n-2] : null;
+    const total = primero.valor ? (ultimo.valor - primero.valor) / primero.valor * 100 : null;
+    const ult   = previo && previo.valor ? (ultimo.valor - previo.valor) / previo.valor * 100 : null;
+    const hayEst = serie.some(s => !s.exacto);
+    const p = v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+    sub.innerHTML = [
+      total != null ? `${_etiquetaMes(primero.mes)} → ${_etiquetaMes(ultimo.mes)}: <strong style="color:${total>=0?'var(--green)':'var(--red)'}">${p(total)}</strong>` : '',
+      ult   != null ? `último mes: <strong style="color:${ult>=0?'var(--green)':'var(--red)'}">${p(ult)}</strong>` : '',
+      hayEst ? '<span style="color:var(--text3)">barras claras = estimado por fecha de ingreso; desde hoy se guarda el valor real de cada mes</span>' : ''
+    ].filter(Boolean).join(' · ');
+  }
 }
 
 // ===== TABLA PRODUCTOS =====
